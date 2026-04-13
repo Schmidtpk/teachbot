@@ -72,7 +72,9 @@ railway variables set KEY=value
 railway redeploy --yes
 ```
 
-- Secrets (e.g. `OPENROUTER_API_KEY`) must be set as Railway variables — never committed to git
+- Secrets must be set as Railway variables — never committed to git:
+  - `OPENROUTER_API_KEY` — LLM access via OpenRouter
+  - `GOOGLE_SERVICE_ACCOUNT_JSON` — service account key for Sheets logging (IID-SHEETS-LOG)
 - Content in `content/` is tracked in git and deployed with the app
 
 ## Stack
@@ -93,6 +95,7 @@ railway redeploy --yes
 | `.env.example` | SID-API-CONFIG | Template for .env |
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans `content/` folder |
 | `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
-| `src/chat_logger.py` | IID-CHAT-LOG | Writes `logs/<uuid>.jsonl` per session |
+| `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
+| `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
 | `intentions.md` | — | All IIDs and their lifecycle status |
 | `standards.md` | — | All SIDs (cross-cutting standards) |
