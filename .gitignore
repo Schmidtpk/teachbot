@@ -1,0 +1,30 @@
+# Secrets and environment
+.env
+
+# Runtime data
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Chainlit (track config.toml, ignore generated translations)
+.chainlit/translations/
+chainlit.md
+
+# Virtual environment
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Lecture content is tracked in git (required for Railway deploy)
+
+# Agent done plans (not tracked)
+agent/done/

@@ -92,26 +92,11 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Description:** as v1, but add feedback with widgets (e.g. thumbs up/down, free-text comment) on each bot message, and persist feedback events to a database for later analysis.
 **No-Goals:** Native mobile app.
 
-## Core Mode: Pre-enrollment QA
-
-### IID-PRECOURSE-QA
-**Lifecycle:** v1
-**Description:** Public-facing QA mode for prospective students to ask about course scope, topics, prerequisites, and fit — before enrollment. No authentication required. Accessible via a shared URL. Context is the syllabus and course overview content from `content/` (injected via IID-CONTENT-INJECT).
-**Inputs:**
-- `question` (string, required): free-text prospective student question.
-**Outputs:**
-- `answer` (Markdown string): grounded in course overview / syllabus content.
-**Success criteria:**
-- Answers reflect course scope accurately without overpromising or misrepresenting content.
-- Bot stays on topic (course-related questions only); politely declines off-topic requests.
-- No login required; app is stateless per session from the student's perspective.
-**No-Goals:** Personalized recommendations, enrollment actions, external data sources.
-
-## Core Mode: QA (enrolled students)
+## Core Mode: QA
 
 ### IID-QNA-CORE
 **Lifecycle:** v1
-**Description:** QA mode for enrolled students — ask a question, the bot answers using full lecture content injected into context (IID-CONTENT-INJECT). v1 uses full-context stuffing; v2 will use RAG (IID-RAG-RETRIEVAL).
+**Description:** Single QA mode (no auth, public URL) — any visitor can ask questions and the bot answers using full lecture content injected into context (IID-CONTENT-INJECT). v1 uses full-context stuffing; v2 will use RAG (IID-RAG-RETRIEVAL). Covers both prospective and enrolled students.
 **Inputs:**
 - `question` (string, required): free-text student question.
 **Outputs:**
@@ -120,6 +105,13 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 - Answer is factually correct relative to lecture material.
 - Answer is relevant to the question.
 - Answer cites or paraphrases lecture content, not generic web knowledge.
+- Bot stays on topic; politely declines off-topic requests.
+- No login required; app is stateless per session from the student's perspective.
+**No-Goals:** Personalized recommendations, enrollment actions, external data sources.
+
+### IID-PRECOURSE-QA
+**Lifecycle:** DEPRECATED
+**Description:** Merged into IID-QNA-CORE for v1 (single mode, no auth distinction).
 
 ## Core Mode: Learn
 
@@ -186,8 +178,8 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 ## Login
 
 ### IID-AUTH-BASIC
-**Lifecycle:** v1
-**Description:** Minimal authentication: student login via email with invitation link restricted to a configured domain (e.g. `@university.edu`). Upgraded from v1 — v1 has no auth (public URL).
+**Lifecycle:** v2
+**Description:** Minimal authentication: student login via email restricted to a configured domain (e.g. `@university.edu`). v1 is fully public (no auth required).
 **No-Goals:** SSO, OAuth, institutional LDAP integration
 
 ---

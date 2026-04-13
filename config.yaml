@@ -1,0 +1,15 @@
+# IID-EDUCATOR-CONFIG, SID-API-CONFIG
+# Educator-facing configuration. Edit this file to customise the course chatbot.
+
+course_name: "Predictions: Economics, Empirics and Evaluations"
+
+# Folders (relative to project root)
+content_dir: content   # IID-LECTURE-CONTENT
+logs_dir: logs         # IID-CHAT-LOG
+
+# LLM settings — SID-LLM-PROVIDER
+llm:
+  base_url: https://openrouter.ai/api/v1
+  model: google/gemini-3-flash-preview   # large context window, low cost — SID-LLM-PROVIDER
+  temperature: 0.3
+  max_tokens: 2048

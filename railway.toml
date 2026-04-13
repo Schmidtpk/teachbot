@@ -1,0 +1,8 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+# SID-STACK: Chainlit binds to Railway's injected $PORT
+startCommand = "chainlit run app.py --host 0.0.0.0 --port $PORT"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

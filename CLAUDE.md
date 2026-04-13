@@ -44,39 +44,26 @@ Plan/documentation should be intention-first:
             - should contain: Linked IID/SID, Decisions taken, 
         - Commit
             - should name linked IID/SID and plan_name
-    - Track only code and key .md files: intentions.md, CLAUDE.md, README.md, but do not track lecture content or done plans, etc.
+    - Track only code and key .md files: intentions.md, CLAUDE.md, README.md, standards.md, but do not track lecture content or done plans, etc.
 
+## Stack
 
+- Python 3.11+, Chainlit 2.x (SID-STACK)
+- LLM via OpenRouter, model `google/gemini-3-flash-preview` (SID-LLM-PROVIDER)
+- Config in `config.yaml` + `.env` for secrets (SID-API-CONFIG)
+- Run: `.venv\Scripts\python -m chainlit run app.py`
 
-## List of files
+## Key files
 
-
-
-## Things to discuss
-
-
-## Intentions draft
-
-- Intentions have **lifecycles CANDO, TODO, v1, IN_PROGRESS, EXPERIMENTAL, DONE, DEPRECATED**.
-    - v1 refers to aspects that should work in next version. TODO only at some point. CANDO only potentially.
-    - intentions can mention No-Goals: Things that are not planned, used to reduce complexity.
-
-- **Safety + Privacy** Standards
-
-    - What can be stored?
-    - Guardrails for harmful or unsafe requests?
-
-- Data Baseline
-    - Minimum entities to expect?
-
-- Define QA, Learn, Evaluate in operational terms:
-    - QA:
-        - Inputs:
-            - Question (obligartory): Student question
-        - Outputs:
-            - Answer: md text rendered for chat
-        - Success criteria:
-            - Answer correct
-            - Answer reflects lecture content
-            - Answer related to question
-        
+| File | IID/SID | Description |
+|------|---------|-------------|
+| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE | Chainlit entry point |
+| `config.yaml` | IID-EDUCATOR-CONFIG, SID-API-CONFIG | Course + LLM config |
+| `requirements.txt` | SID-STACK | Pinned dependencies |
+| `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
+| `.env.example` | SID-API-CONFIG | Template for .env |
+| `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans `content/` folder |
+| `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
+| `src/chat_logger.py` | IID-CHAT-LOG | Writes `logs/<uuid>.jsonl` per session |
+| `intentions.md` | — | All IIDs and their lifecycle status |
+| `standards.md` | — | All SIDs (cross-cutting standards) |

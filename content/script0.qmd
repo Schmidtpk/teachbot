@@ -1,0 +1,486 @@
+---
+title: "Predictions: Economics, Empirics and Evaluations"
+subtitle: "Introduction"
+---
+
+# Introduction
+
+
+### Predictions
+
+![](plots/theme.jpeg){width="150" fig-align="center"}
+
+::: {.incremental}
+
+-   We are all forecasters
+    -   How cold is it outside?
+    -   Is it more fun to go out or stay home?
+    -   What's my life like if I study Economics? And if I walk barefoot to India?
+    -   If I take a student loan now, how will my financial situation be in 10 years?
+    
+:::
+
+### Some predictions from the past
+
+-   the end of history
+
+    -   no more conflict, uncertainty,... 
+    
+. . .
+
+-   Democratization through open markets
+
+    -   "China/Russia will become more democratic"
+    
+. . .
+
+-   "The internet will liberate us."
+
+    -   Information $\Rightarrow$ freedom + productivity
+ 
+. . .
+
+::: callout-tip
+## Takeaway
+
+Widely held beliefs can be entirely wrong.
+:::
+
+
+
+
+### Right or wrong?
+
+::: callout
+Somebody (maybe Niels Bohr):
+
+“Prediction is very difficult, especially if it's about the future!”
+:::
+
+. . .
+
+::: {.incremental}
+
+-   Example: When Russia amassed troops in the winter of 2021–2022, many analysts deemed a large-scale invasion of Ukraine unlikely [@driedger2023utility].
+
+    -   If somebody says "Russia is not invading Ukraine". Wrong.
+    
+    -   If somebody says "It is unlikely". In what sense is she wrong?
+    
+
+-   Example: "Trump's winning odds are 53.4 percent, over Harris' 46.2 percent."
+
+    -   Was Nate Silver's forecast right? ...good? ...helpful?
+    
+    -   Clearly, not the same as saying Trump will win.
+
+:::
+
+### Some problems are more difficult than others
+
+::: {.incremental}
+
+-   many predictions work pretty well
+
+    -   We focus often on the difficult predictions (or the ones gone bad)
+
+-   some issues are more **difficult** to predict
+
+    -   "Does the flap of a Butterflies wing cause a Tornado?"
+    
+    -   Chaos theory: Study of dynamic systems that are highly(!) sensitive to initial conditions
+
+-   Others are **easier** to predict
+
+    -   stable dynamic systems
+    
+    -   or averages
+       
+:::
+
+<!-- ### Difficult predictions -->
+
+<!-- Some things are relatively hard to predict and we are not used to somebody predicting them: -->
+
+<!-- -   What will be the temperature in 20 days at 2pm? -->
+
+<!-- -   What is the likelihood of that civilization will be destroyed in 10 years? -->
+
+<!-- -   Will there be AGI in 20 years? -->
+
+### Pitfalls
+
+-   **human judgment** is (often/on average) heavily flawed
+
+    -   luckily if the bias is known, it can be accounted for
+
+. . .
+
+-   there is a set of (psychological) skills that help
+
+    -   "superforecasters" [@tetlock2016superforecasting]
+
+
+. . .
+
+-   Alternatively, one can use **data**...
+
+### Data and predictions
+
+-   If humans are flawed, why not use computers (and statistical algorithms)?
+
+    -   **statistical learning** or **machine learning**
+
+. . .
+
+-   **requires data** to perform well
+
+    -   much data: Cat and dog pictures
+    -   much data: Predict next word in text
+    -   little data: Is a certain business making money in 2025?
+    -   little data: Will humanity persist in 100 years?
+
+. . .    
+
+-   One solution: Structural modeling
+
+    -   combines human judgment and statistical learning
+    -   model incorporates human knowledge
+    -   algorithm make adequate predictions based on data
+    -   Example: The linear model $$\hat y = x\beta$$
+
+### Subjective predictions (aka judgmental predictions)
+
+::: {.incremental}
+
+-   use judgment predictions if
+
+    (i) **no good data** are available for statistical predictions
+    (ii) in **combination** with data
+
+<!-- -   statistical forecasts are generated, and then adjusted by judgment -->
+<!-- -   statistical and subjective predictions are generated independently and then combined -->
+<!-- -   data available for parts of model, remainder is based on expert judgment -->
+
+-   will Machine Learning replace all human prediction skills?
+
+    -   short: no.
+    
+    -   machine predictions always will need human checks
+    
+    -   machine learning still mostly useful in narrow fields
+    
+    -   important skill: use ML
+
+:::
+
+
+### Summary
+
+Predictions
+
+-   are important for decision making
+
+-   can be deterministic ("yes"/"no") or probabilistic ("x%")
+
+-   are sometimes simple, sometimes difficult
+
+-   sometimes right, sometimes wrong, sometimes partly right
+
+
+-   can be based on subjective judgment (always possible) and data and algorithms (better if good data is available)
+
+
+
+
+## Formalities
+
+
+
+### Syllabus
+
+-   A comprehensive approach to predictions that spans from
+
+    -   its decision-theoretic (microeconomic) foundations over
+    -   subjective judgments to
+    -   machine learning.
+
+-   The focus will be on probabilistic predictions.
+
+-   15 lectures
+
+    -   will leave some for forecasting competition
+    -   optional topics on Deep Learning, AI forecasting, and Ambiguity
+    -   and exam preparation
+
+
+### Where is the knowledge coming from?
+
+
+ \hspace{1cm} Statistics \hspace{3cm} Computer Science
+
+\vspace{2cm}
+
+ \hspace{1cm} Decision-Theory \hspace{2cm} Psychology
+
+
+
+
+### Part 1: Decision-theory and optimal predictions (3 lectures)
+
+1.  Introduction to Decision Theory
+
+-   actions, consequences, and preferences
+-   uncertainty as probability and subjective expected utility
+-   dynamic consistency and Bayesian updating
+
+- Exercise (Pen and Paper)
+
+2.  Predictions and their properties
+
+-   point predictions vs probabilistic predictions
+-   mathematical framework: the prediction space setting
+-   calibration, accuracy, sharpness
+-   Optimal predictions
+
+- Exercise: (Illustrations)
+
+
+### Part 2: Predicting with subjective judgment (3 lectures)
+
+3.  Measurement and Elicitation
+
+-   elicitation procedures
+-   incentives
+
+- Exercise: Define forecast target for competition
+
+4.  Evaluation methods
+
+-   calibration curves
+-   proper scoring rules and Diebold-Mariano Tests
+-   PIT diagram
+-   Mincer-Zarnowitz regression
+-   Exercise: Empirical evaluation of predictions
+
+------------------------------------------------------------------------
+
+5.  Empirical findings on subjective predictions
+
+-   heuristics and biases
+-   characteristics of super forecasters
+
+- Exercise: Issue judgement predictions for forecast competition
+
+6. Market-based predictions
+
+-   prediction markets
+-   efficient market hypothesis
+
+
+### Part 3: Statistical forecasts (4 lectures)
+
+7.  Monte-Carlo predictions
+
+-   structural generative models
+-   simulating random outcomes
+-   analyzing Monte-Carlo samples
+-   example: life-time saving choice as young adults
+
+8.  Bayesian modelling
+
+-   Bayesian workflow: model, prior, posterior
+-   Markov-Chain-Monte-Carlo methods
+-   Posterior samples and convergence
+-   Probabilistic programming in Stan/Jags
+-   example: Monty-Hall problem and forecast combination
+
+------------------------------------------------------------------------
+
+10.  Basics of Statistical Learning
+
+-   loss functions
+-   train, test, validate
+-   in-sample, out-of-sample, and cross-validation
+-   model complexity and the bias-variance tradeoff
+
+11.  Deep learning
+
+-   Neural networks
+-   best practices
+-   Exercise: Statistical forecasts
+
+- Exercise: Issue statistical forecast for forecast competition
+
+### Part 4: Other
+
+12. Extra lecture on 
+    - Language Models and Predicting with AI or
+    - Ambiguity
+
+13. Evaluation forecast competition
+
+14. Exam Preparation
+
+15. **Exam** (last lecture)
+
+### Extra lectures if time and interest allows
+
+XX. Beyond Bayes: ambiguity and imprecise probabilities
+
+-   the Ellsberg Urn
+-   Ambiguity theory and robust decisions
+
+------------------------------------------------------------------------
+
+XX. Language models for judgment predictions
+
+-   introduction to language models
+-   limits and fine tuning
+-   reasoning and tool use
+
+
+
+
+
+### Grading
+
+
+-   exam (100%): last lecture date
+
+-   Extra points for
+
+    - finding and reporting AI fail cases
+    
+    - scoring high in forecast competition
+    
+    - Sidenote: Extra points cannot help with passing and are not necessary for achieving the best grade
+
+
+### Recommendation
+
+-   learning preferences differ, but let me recommend...
+
+-   come to the lecture and exercise (3h)
+
+    -   ask questions
+
+-   afterwards: actively engage with the content (e.g., summarize it or discuss) (1h)
+
+-   before next lecture: quickly check the past content (30 minutes)
+
+-   spend some time on test questions and assignments (2h, but not evenly distributed)
+
+------------------------------------------------------------------------
+
+-   learning is effective if
+
+    -   engaged
+    
+    -   slightly overwhelmed
+    
+    -   rest and sleep
+
+. . .
+
+-   testing, summarizing, and discussion is helpful
+
+    -   I will provide tests and suggestions to engage
+
+-   group work is great
+
+. . .
+
+-   theory and statistics learning needs more breaks
+
+-   avoid binge learning
+
+. . .
+
+-   try to focus on the content (not the exam)
+
+### Literature
+
+-   there is no single text-book for this lecture
+
+-   For the broadly interested
+
+Silver, N. (2012): The Signal and the Noise: Why So Many Predictions Fail-but Some Don’t, Penguin Press.
+
+Tetlock, P. E., & Gardner, D. (2016). Superforecasting: The art and science of prediction. Random House.
+
+Benjamin, D. J. "Chapter 2-errors in probabilistic reasoning and judgment biases. Volume 2 of Handbook of Behavioral Economics: Applications and Foundations 1." (2019): 69-186.
+
+James, G., Witten, D., Hastie, T., Tibshirani, R., & Taylor, J. (2023). An introduction to statistical learning: with applications in R. Second Edition. Spinger.
+
+
+
+## Same same, but different
+
+### Related topics that are not the focus...
+
+![](plots/words.jpeg){width="200" fig-align="center"}
+
+-   some things we will not cover here or only from an uncommon perspective
+
+### Causality
+
+-   Famously: $$causality \neq correlation$$
+
+-   Similarly, good predictions are not necessarily helpful in revealing causal relationships.
+
+
+### Estimation and testing
+
+-   Estimation is closely connected to predictions
+
+    -   Estimation is just predicting a parameter
+
+-   Hypothesis testing is the reduction of estimation to yes/no decisions
+
+    -   Decision making in relation to predictions will be covered
+
+    -   Testing is a sub-problem of decision making but will not receive special attention
+
+### Linear Regression Model
+
+-   The linear regression model,
+
+$$ E[y|x]=x'\beta,$$
+
+with the ordinary least squares (OLS) estimator
+
+$$\hat \beta_{OLS} = \arg \min_\beta \sum (y_i-x_i'\beta)^2$$ is the workhorse of econometrics.
+
+\note{historically based on convenient computational properties that are less crucial nowadays}
+
+-   In this lecture, the linear regression will take a backseat
+
+-   but will discuss its prediction properties $$\hat y = x'\hat \beta_{OLS}$$
+
+### Time series
+
+-   forecasting is often taught from a time series perspective
+
+    -   many important predictions have time series format
+
+-   we will not cover time series modeling specifically
+
+    -   but some lessons learned here are applicable in time series forecasting
+
+### Normative and descriptive approaches
+
+-   normative: How should things optimally be?
+
+-   descriptive: How are things actually?
+
+-   here:
+
+    -   Decisions: Normative approach
+    
+    -   Subjective judgment predictions: Mostly descriptive approach
+    
+    -   Statistical forecasting: Focus on application
+
+
+# References
