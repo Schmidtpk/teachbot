@@ -1,0 +1,31 @@
+# IID-TEST-SMOKE
+# CI: verify the live Railway deployment is responding after every push to master.
+# Uses only Python stdlib (urllib) — no pip install required.
+#
+# For the full Playwright chat simulation, run locally:
+#   pip install playwright && playwright install chromium
+#   python tests/smoke.py --full
+
+name: Smoke Test
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  smoke:
+    name: HTTP ping — live app
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: HTTP ping
+        run: python tests/smoke.py
+        # Exits non-zero (and fails the job) if the Railway URL does not return 2xx.
+        # No API keys or dependencies required — uses Python stdlib urllib.

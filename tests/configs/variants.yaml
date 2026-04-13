@@ -1,0 +1,32 @@
+# IID-TEST-MODEL-COMPARE
+# Model/prompt variants for comparison testing.
+# Each variant runs all test cases and results are compared in a table.
+#
+# Fields:
+#   id:                     unique identifier shown in the report
+#   model:                  OpenRouter model string
+#   temperature:            0.0–1.0 (omit to use config.yaml default)
+#   max_tokens:             (omit to use config.yaml default)
+#   system_prompt_override: (null = use default prompt from app.py)
+
+variants:
+  - id: baseline
+    model: google/gemini-3-flash-preview
+    temperature: 0.3
+    system_prompt_override: null
+
+  - id: low-temp
+    model: google/gemini-3-flash-preview
+    temperature: 0.0
+    system_prompt_override: null
+
+  # Uncomment to compare against other models available on OpenRouter:
+  # - id: gpt4o-mini
+  #   model: openai/gpt-4o-mini
+  #   temperature: 0.3
+  #   system_prompt_override: null
+
+  # - id: claude-haiku
+  #   model: anthropic/claude-haiku-4-5-20251001
+  #   temperature: 0.3
+  #   system_prompt_override: null

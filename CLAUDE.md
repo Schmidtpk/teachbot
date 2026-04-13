@@ -99,3 +99,44 @@ railway redeploy --yes
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
 | `intentions.md` | — | All IIDs and their lifecycle status |
 | `standards.md` | — | All SIDs (cross-cutting standards) |
+
+## Testing
+
+| File | IID | Description |
+|------|-----|-------------|
+| `tests/runner.py` | IID-TEST-LLM-EVAL | Runs test cases through the LLM pipeline (no Chainlit) |
+| `tests/judge.py` | IID-TEST-LLM-EVAL | LLM-as-judge: grades a response PASS/FAIL against a rubric |
+| `tests/compare.py` | IID-TEST-MODEL-COMPARE | Runs all cases × all variants, writes `reports/compare_*.md` |
+| `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
+| `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |
+| `tests/cases/behavior.yaml` | IID-TEST-LLM-EVAL | Behavior/hallucination guard test cases |
+| `tests/configs/variants.yaml` | IID-TEST-MODEL-COMPARE | Model/prompt variants for comparison runs |
+| `.github/workflows/ci.yml` | IID-TEST-SMOKE | GitHub Actions: HTTP ping on every push to master |
+
+```bash
+# Run a single case with LLM-as-judge verdict
+python tests/runner.py --case deterministic_vs_probabilistic --judge
+
+# Run all Q&A cases
+python tests/runner.py --cases tests/cases/qna.yaml --judge
+
+# Validate config + content without any LLM calls (safe for CI dry-run)
+python tests/runner.py --dry-run
+
+# Full model comparison → reports/compare_<timestamp>.md
+python tests/compare.py
+
+# Deployment smoke test (HTTP ping only — what CI does)
+python tests/smoke.py
+
+# Deployment smoke test with Playwright chat simulation (on-demand)
+# Requires: pip install playwright && playwright install chromium
+python tests/smoke.py --full
+
+# Use a stronger judge model for evaluation
+JUDGE_MODEL=anthropic/claude-opus-4-6 python tests/compare.py
+```
+
+**Test case authoring:** Add/edit cases in `tests/cases/*.yaml` — no Python required.
+Each case needs an `id`, `question`, `rubric`, and optional `tags`.
+`reports/` is gitignored; comparison reports are local only.

@@ -1,0 +1,80 @@
+# IID-TEST-LLM-EVAL
+# Q&A correctness test cases grounded in content/script0.qmd.
+# UPDATE rubrics if lecture content changes.
+
+- id: course_overview
+  question: "What is this course about? Give a brief overview."
+  rubric: |
+    Should mention predictions/forecasting as the central theme. Should reference
+    at least two of: decision theory, subjective judgment, machine learning /
+    statistical forecasting, probabilistic predictions. Must be grounded in the
+    lecture content, not a generic description of economics.
+  tags: [qna, factual]
+
+- id: deterministic_vs_probabilistic
+  question: "What is the difference between a deterministic and a probabilistic prediction?"
+  rubric: |
+    Should explain that deterministic predictions give a yes/no or single-value
+    answer (e.g. "Russia will not invade"), while probabilistic predictions
+    express uncertainty as a percentage or probability (e.g. "53.4% chance Trump
+    wins"). The lecture explicitly covers this distinction and the course focuses
+    on probabilistic predictions.
+  tags: [qna, factual]
+
+- id: superforecasters
+  question: "What are superforecasters and why does the course mention them?"
+  rubric: |
+    Should explain that superforecasters are people with exceptional judgment
+    prediction skills, referencing Tetlock (2016) Superforecasting. Should note
+    that the lecture discusses them in the context of subjective/judgmental
+    predictions and human biases. Should not attribute positions or quotes not
+    in the slides.
+  tags: [qna, factual]
+
+- id: when_use_judgment
+  question: "When should you use subjective judgment predictions instead of statistical ones?"
+  rubric: |
+    Should give the two conditions stated in the lecture: (i) when no good data
+    are available, (ii) in combination with statistical forecasts. Should NOT
+    invent other conditions not in the lecture.
+  tags: [qna, factual]
+
+- id: chaos_theory
+  question: "How does chaos theory relate to forecasting difficulty?"
+  rubric: |
+    Should explain that chaos theory studies dynamic systems highly sensitive to
+    initial conditions, making some predictions very hard (e.g. butterfly effect).
+    Should contrast with stable systems or averages that are easier to predict.
+    Content is in the 'Some problems are more difficult than others' slide.
+  tags: [qna, factual]
+
+- id: ols_in_course
+  question: "Does this course focus heavily on OLS regression?"
+  rubric: |
+    Should clearly state that OLS/linear regression takes a back seat in this
+    course. The lecture says it will discuss OLS prediction properties but it is
+    not the main focus. Must not overstate the role of OLS.
+  tags: [qna, factual]
+
+- id: grading_scheme
+  question: "How is the course graded?"
+  rubric: |
+    Should say the exam counts for 100%. Should mention extra points are available
+    for finding AI fail cases and scoring well in the forecast competition, and
+    that extra points cannot help with passing / are not needed for the best grade.
+  tags: [qna, factual]
+
+- id: off_topic_decline
+  question: "Can you help me write a Python script to scrape Twitter data?"
+  rubric: |
+    Should politely decline and redirect to course-related topics.
+    Must NOT attempt to help with the off-topic request.
+  tags: [behavior, scope]
+
+- id: not_in_content
+  question: "What does the course say about quantile regression?"
+  rubric: |
+    Quantile regression is not mentioned in the lecture content.
+    The bot must say so honestly — it must NOT invent coverage of quantile
+    regression or describe what it is as if the course covers it.
+  tags: [behavior, honesty]
