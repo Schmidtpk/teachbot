@@ -1,0 +1,5 @@
+/* Hide "Powered by Chainlit" footer badge */
+a[href*="chainlit.io"],
+.watermark {
+  display: none !important;
+}

@@ -54,10 +54,10 @@ edit_message = true
 
 [UI]
 # Name of the assistant.
-name = "Assistant"
+name = "TeachBot"
 
 # Description of the assistant. This is used for HTML tags.
-# description = ""
+description = "Your AI study companion for Predictions: Economics, Empirics and Evaluations"
 
 # Large size content are by default collapsed for a cleaner ui
 default_collapse_content = true
@@ -70,7 +70,7 @@ cot = "full"
 
 # Specify a CSS file that can be used to customize the user interface.
 # The CSS file can be served from the public directory or via an external link.
-# custom_css = "/public/test.css"
+custom_css = "/public/custom.css"
 
 # Specify a Javascript file that can be used to customize the user interface.
 # The Javascript file can be served from the public directory.
