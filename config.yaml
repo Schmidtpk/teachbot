@@ -6,6 +6,7 @@ course_name: "Predictions: Economics, Empirics and Evaluations"
 # Folders (relative to project root)
 content_dir: content   # IID-LECTURE-CONTENT
 logs_dir: logs         # IID-CHAT-LOG
+sheets_log_id: "1Hg-r3cLuzGC8wAoYJFvyVlcDdLFVdDRcL77bVs5wpD8"  # IID-SHEETS-LOG: Google Sheet ID; leave blank to disable
 
 # LLM settings — SID-LLM-PROVIDER
 llm:
