@@ -3,6 +3,9 @@
 google-credentials*.json
 credentials/*.json
 
+# IID-AUTH-BASIC: runtime user registry (emails + bcrypt hashes, created on first registration)
+users.yaml
+
 # Runtime data
 logs/
 

@@ -168,7 +168,7 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Success criteria:**
 - Every message in every session is persisted before the next turn begins.
 - Educator can open log files without special tooling (plain JSONL).
-- No PII beyond message content is stored in v1 (no name, email, IP).
+- When IID-AUTH-BASIC is active, `user_email` is included in each log entry; absent otherwise.
 **No-Goals:** Database storage, search/query UI over logs — those are v2.
 
 ### IID-SHEETS-LOG
@@ -190,9 +190,12 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 ## Login
 
 ### IID-AUTH-BASIC
-**Lifecycle:** v2
-**Description:** Minimal authentication: student login via email restricted to a configured domain (e.g. `@university.edu`). v1 is fully public (no auth required).
-**No-Goals:** SSO, OAuth, institutional LDAP integration
+**Lifecycle:** DONE
+**Description:** Minimal authentication: student login via email restricted to configured domains / individual addresses. First login = automatic self-registration (student picks their own password). Educator configures `auth.allowed_domains` and `auth.allowed_emails` in `config.yaml`. If both lists are empty, auth is disabled and app is public. Registered users stored in `users.yaml` (gitignored, bcrypt-hashed passwords). User email is captured in session state and included in all log entries (IID-CHAT-LOG, IID-SHEETS-LOG).
+**Key files:** `src/auth.py`, `config.yaml` (auth section), `users.yaml` (runtime, gitignored), `app.py` (`@cl.password_auth_callback`)
+**Setup:** Generate JWT secret with `chainlit create-secret`, add as `CHAINLIT_AUTH_SECRET` in `.env` and Railway variables.
+**Password reset:** Educator removes student entry from `users.yaml`; student re-registers on next login.
+**No-Goals:** SSO, OAuth, institutional LDAP integration, email verification, password strength enforcement
 
 ---
 

@@ -1,16 +1,18 @@
 """
-IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER
+IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC
 Chainlit entry point for teachbot v1.
 Run with:  chainlit run app.py
 """
 
 import uuid
 from pathlib import Path
+from typing import Optional
 
 import chainlit as cl
 import yaml
 from dotenv import load_dotenv
 
+from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.llm_client import build_client, stream_response
@@ -44,15 +46,52 @@ Your role is to answer student questions accurately based solely on the lecture 
 """
 
 
+_AUTH_CFG = CFG.get("auth", {})
+
+
+# IID-AUTH-BASIC: password-based login/registration.
+# Only active when auth.allowed_domains or auth.allowed_emails is non-empty in config.yaml.
+# If auth is disabled (both lists empty), Chainlit skips the login screen entirely.
+if auth_enabled(_AUTH_CFG):
+    @cl.password_auth_callback
+    async def auth_callback(username: str, password: str) -> Optional[cl.User]:
+        """Validate credentials.  First login with an allowed email = registration."""
+        email = username.strip().lower()
+
+        if not is_valid_email(email):
+            return None
+
+        if not is_email_allowed(email, _AUTH_CFG):
+            return None
+
+        users = load_users()
+        user = find_user(email, users)
+
+        if user is None:
+            # First login → register with chosen password (no strength requirements)
+            register_user(email, password)
+            return cl.User(identifier=email)
+
+        if verify_password(email, password, users):
+            return cl.User(identifier=email)
+
+        return None  # wrong password
+
+
 @cl.on_chat_start
 async def on_chat_start() -> None:
-    """IID-CHAT-SHELL1: Initialise session state."""
+    """IID-CHAT-SHELL1, IID-AUTH-BASIC: Initialise session state."""
     session_id = str(uuid.uuid4())
-    logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id)
+
+    # IID-AUTH-BASIC: capture authenticated user email (None when auth is disabled)
+    chainlit_user = cl.context.session.user
+    user_email = chainlit_user.identifier if chainlit_user else None
+
+    logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id, user_email=user_email)
 
     # IID-SHEETS-LOG: optional persistent Google Sheets logger (disabled when sheets_log_id is blank)
     sheets_id = CFG.get("sheets_log_id", "")
-    sheets_logger = SheetsLogger(sheets_id, session_id) if sheets_id else None
+    sheets_logger = SheetsLogger(sheets_id, session_id, user_email=user_email) if sheets_id else None
 
     # Store in Chainlit user session
     cl.user_session.set("history", [{"role": "system", "content": SYSTEM_PROMPT}])

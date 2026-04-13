@@ -8,6 +8,16 @@ content_dir: content   # IID-LECTURE-CONTENT
 logs_dir: logs         # IID-CHAT-LOG
 sheets_log_id: "1Hg-r3cLuzGC8wAoYJFvyVlcDdLFVdDRcL77bVs5wpD8"  # IID-SHEETS-LOG: Google Sheet ID; leave blank to disable
 
+# Authentication — IID-AUTH-BASIC
+# Students must log in with an email from an allowed domain or the individual list.
+# First login = automatic registration (student chooses their own password).
+# Password reset: remove the student's entry from users.yaml, they can re-register.
+# Leave both lists empty to disable auth entirely (public / no-login mode).
+auth:
+  allowed_domains:
+    - stud.uni-heidelberg.de
+  allowed_emails: []    # add individual addresses here, e.g. guest@gmail.com
+
 # LLM settings — SID-LLM-PROVIDER
 llm:
   base_url: https://openrouter.ai/api/v1
