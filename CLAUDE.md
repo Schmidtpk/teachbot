@@ -75,6 +75,7 @@ railway redeploy --yes
 - Secrets must be set as Railway variables — never committed to git:
   - `OPENROUTER_API_KEY` — LLM access via OpenRouter
   - `GOOGLE_SERVICE_ACCOUNT_JSON` — service account key for Sheets logging (IID-SHEETS-LOG)
+  - `CHAINLIT_AUTH_SECRET` — JWT secret for student sessions (IID-AUTH-BASIC)
 - Content in `content/` is tracked in git and deployed with the app
 
 ## Stack
@@ -88,7 +89,7 @@ railway redeploy --yes
 
 | File | IID/SID | Description |
 |------|---------|-------------|
-| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE | Chainlit entry point |
+| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC | Chainlit entry point |
 | `config.yaml` | IID-EDUCATOR-CONFIG, SID-API-CONFIG | Course + LLM config |
 | `requirements.txt` | SID-STACK | Pinned dependencies |
 | `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
@@ -96,9 +97,38 @@ railway redeploy --yes
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans `content/` folder |
 | `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
+| `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
+| `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
 | `intentions.md` | — | All IIDs and their lifecycle status |
 | `standards.md` | — | All SIDs (cross-cutting standards) |
+
+## Authentication (IID-AUTH-BASIC)
+
+- Students log in at the Chainlit login screen using their **institutional email as username** and a password of their choice.
+- **First login = automatic registration** — no separate sign-up flow. The student's account is created on first successful login.
+- Auth is controlled by `config.yaml` under the `auth:` key:
+
+```yaml
+auth:
+  allowed_domains:
+    - stud.uni-heidelberg.de   # all addresses at this domain are admitted
+  allowed_emails:
+    - guest@gmail.com          # individual addresses regardless of domain
+```
+
+- **Disable auth** (make app fully public): set both lists to `[]` — the login screen disappears.
+- **Add a new domain or individual email**: edit `config.yaml`, redeploy.
+- Registered users are stored in `users.yaml` (gitignored, created at runtime). Each entry holds the email and a bcrypt-hashed password — no plaintext passwords.
+- **Password reset**: remove the student's entry from `users.yaml`; they re-register on next visit.
+- **Railway caveat**: `users.yaml` lives on the dyno filesystem and is lost on redeploy. Export it before redeploying if accounts must be preserved.
+
+```bash
+# Regenerate the JWT secret (logs out ALL active sessions)
+chainlit create-secret
+railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
+# Also update .env locally
+```
 
 ## Testing
 
