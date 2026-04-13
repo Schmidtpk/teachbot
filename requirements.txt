@@ -4,4 +4,4 @@ openai==2.31.0
 pyyaml==6.0.2
 python-dotenv==1.0.1
 gspread==6.1.4
-passlib[bcrypt]==1.7.4  # IID-AUTH-BASIC: bcrypt password hashing
+bcrypt==4.2.1  # IID-AUTH-BASIC: bcrypt password hashing

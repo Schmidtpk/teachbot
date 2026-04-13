@@ -84,12 +84,17 @@ def find_user(email: str, users: dict) -> Optional[dict]:
 
 
 # ---------------------------------------------------------------------------
-# Password helpers  (bcrypt via passlib)
+# Password helpers  (bcrypt directly — avoids passlib/bcrypt version mismatch)
 # ---------------------------------------------------------------------------
 
-def _pwd_context():
-    from passlib.context import CryptContext  # lazy import — keeps startup fast
-    return CryptContext(schemes=["bcrypt"], deprecated="auto")
+def _hash_password(password: str) -> str:
+    import bcrypt
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def _check_password(password: str, hashed: str) -> bool:
+    import bcrypt
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 def register_user(email: str, password: str) -> None:
@@ -97,7 +102,7 @@ def register_user(email: str, password: str) -> None:
     email = email.strip().lower()
     users = load_users()
     users[email] = {
-        "password_hash": _pwd_context().hash(password),
+        "password_hash": _hash_password(password),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _save_users(users)
@@ -108,4 +113,4 @@ def verify_password(email: str, password: str, users: dict) -> bool:
     user = find_user(email, users)
     if user is None:
         return False
-    return _pwd_context().verify(password, user["password_hash"])
+    return _check_password(password, user["password_hash"])
