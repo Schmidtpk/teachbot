@@ -46,6 +46,35 @@ Plan/documentation should be intention-first:
             - should name linked IID/SID and plan_name
     - Track only code and key .md files: intentions.md, CLAUDE.md, README.md, standards.md, but do not track lecture content or done plans, etc.
 
+## Deployment (Railway)
+
+- Project: `victorious-energy` on Railway, service: `teachbot`
+- Live URL: https://teachbot-production-2e85.up.railway.app
+- Deploys automatically on push to `master` via GitHub connection
+
+```bash
+# Link project (once per machine, after railway login)
+railway link --project victorious-energy
+
+# Check deployment status
+railway deployment list
+
+# Stream runtime logs
+railway logs
+
+# Stream build logs
+railway logs --build
+
+# Set/update an environment variable
+railway variables set KEY=value
+
+# Trigger a manual redeploy
+railway redeploy --yes
+```
+
+- Secrets (e.g. `OPENROUTER_API_KEY`) must be set as Railway variables — never committed to git
+- Content in `content/` is tracked in git and deployed with the app
+
 ## Stack
 
 - Python 3.11+, Chainlit 2.x (SID-STACK)
