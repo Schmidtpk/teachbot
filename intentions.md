@@ -171,6 +171,18 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 - No PII beyond message content is stored in v1 (no name, email, IP).
 **No-Goals:** Database storage, search/query UI over logs — those are v2.
 
+### IID-SHEETS-LOG
+**Lifecycle:** DONE
+**Description:** Optional persistent logging of all chat turns to a Google Sheet, surviving Railway redeploys. Supplements IID-CHAT-LOG (JSONL remains as local fallback). Each row records: timestamp, session_id, role, content. Authentication uses a service account key stored as the `GOOGLE_SERVICE_ACCOUNT_JSON` Railway environment variable. Enabled by setting `sheets_log_id` in `config.yaml`; disabled (no-op) when blank.
+**Standards:** SID-PRIVACY-DATA
+**Inputs:** Each chat turn (user message + assistant response).
+**Outputs:** Rows appended to `sheet1` of the configured Google Sheet.
+**Success criteria:**
+- Writes are non-blocking (fire-and-forget via thread executor) — no added latency to student chat.
+- Failures (network, quota) print a warning to stderr and do not crash the app.
+- Header row is auto-inserted on first write to an empty sheet.
+**No-Goals:** Reading back logs via the app, multi-sheet routing, PII enrichment.
+
 ### IID-STUDENT-FEEDBACK-STORE
 **Lifecycle:** TODO
 **Description:** Collect and store per-message student feedback events (thumbs up/down, free-text).
@@ -209,3 +221,33 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 ### IID-EXPORT-TRANSCRIPT
 **Lifecycle:** CANDO
 **Description:** Allow student to download a PDF/Markdown transcript of their chat session or of lessons learned
+
+---
+
+## Testing
+
+### IID-TEST-SMOKE
+**Lifecycle:** DONE
+**Description:** Deployment health check for the live Railway app. Two levels: (1) HTTP ping — GET the live URL and assert HTTP 2xx; (2) Playwright chat simulation — send a real question via headless browser and assert a response arrives. Level 1 runs in GitHub Actions CI on every push to master. Level 2 runs on-demand locally.
+**Inputs:** Live Railway URL (`LIVE_URL` in `tests/smoke.py`).
+**Outputs:** Exit code 0 (pass) or 1 (fail). CI job fails if the HTTP ping fails.
+**Key files:** `tests/smoke.py`, `.github/workflows/ci.yml`
+
+### IID-TEST-LLM-EVAL
+**Lifecycle:** DONE
+**Description:** Evaluate LLM pipeline quality without deployment — directly calls `src/content_loader` and `src/llm_client`, bypassing Chainlit. Test cases are defined in YAML files (`tests/cases/`) so educators can add/edit them without touching Python. An LLM-as-judge grades each response against a per-case rubric (PASS/FAIL + explanation). The judge model defaults to the same model in `config.yaml`; override with `JUDGE_MODEL` env var for a stronger grader.
+**Inputs:** `tests/cases/*.yaml` (question + rubric per case), `config.yaml`, `.env`.
+**Outputs:** PASS/FAIL verdict + explanation printed per case; full results in `reports/` via compare.py.
+**Key files:** `tests/runner.py`, `tests/judge.py`, `tests/cases/qna.yaml`, `tests/cases/behavior.yaml`
+**CLI:**
+- `python tests/runner.py --cases tests/cases/qna.yaml` — run cases, print responses
+- `python tests/runner.py --case <id> --judge` — run single case with judge verdict
+- `python tests/runner.py --dry-run` — validate config + content without LLM calls
+
+### IID-TEST-MODEL-COMPARE
+**Lifecycle:** DONE
+**Description:** Run the same test cases through multiple model/prompt variants (defined in `tests/configs/variants.yaml`) and write a side-by-side comparison table to `reports/compare_<timestamp>.md`. Variants can differ in model, temperature, max_tokens, or system prompt. Reports are gitignored and generated locally on demand.
+**Inputs:** `tests/configs/variants.yaml` (model variants), `tests/cases/*.yaml` (test cases).
+**Outputs:** `reports/compare_<timestamp>.md` — markdown table with Case, Variant, Model, Verdict, Explanation columns plus a summary of PASS rates per variant.
+**Key files:** `tests/compare.py`, `tests/configs/variants.yaml`
+**CLI:** `python tests/compare.py` (uses all default cases and variants)

@@ -11,7 +11,7 @@ import chainlit as cl
 import yaml
 from dotenv import load_dotenv
 
-from src.chat_logger import ChatLogger
+from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.llm_client import build_client, stream_response
 
@@ -50,9 +50,14 @@ async def on_chat_start() -> None:
     session_id = str(uuid.uuid4())
     logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id)
 
+    # IID-SHEETS-LOG: optional persistent Google Sheets logger (disabled when sheets_log_id is blank)
+    sheets_id = CFG.get("sheets_log_id", "")
+    sheets_logger = SheetsLogger(sheets_id, session_id) if sheets_id else None
+
     # Store in Chainlit user session
     cl.user_session.set("history", [{"role": "system", "content": SYSTEM_PROMPT}])
     cl.user_session.set("logger", logger)
+    cl.user_session.set("sheets_logger", sheets_logger)
 
     await cl.Message(
         content=(
@@ -67,10 +72,13 @@ async def on_message(message: cl.Message) -> None:
     """IID-QNA-CORE, IID-UI-RENDER: Handle student question, stream answer."""
     history: list[dict] = cl.user_session.get("history")
     logger: ChatLogger = cl.user_session.get("logger")
+    sheets_logger: SheetsLogger | None = cl.user_session.get("sheets_logger")
 
     user_text = message.content.strip()
     history.append({"role": "user", "content": user_text})
     logger.log("user", user_text)  # IID-CHAT-LOG
+    if sheets_logger:
+        sheets_logger.log("user", user_text)  # IID-SHEETS-LOG
 
     # Stream response — IID-UI-RENDER (Chainlit renders MD + LaTeX natively)
     response_msg = cl.Message(content="")
@@ -85,3 +93,5 @@ async def on_message(message: cl.Message) -> None:
 
     history.append({"role": "assistant", "content": full_response})
     logger.log("assistant", full_response)  # IID-CHAT-LOG
+    if sheets_logger:
+        sheets_logger.log("assistant", full_response)  # IID-SHEETS-LOG

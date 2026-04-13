@@ -1,5 +1,7 @@
 # Secrets and environment
 .env
+google-credentials*.json
+credentials/*.json
 
 # Runtime data
 logs/
@@ -28,3 +30,6 @@ Thumbs.db
 
 # Agent done plans (not tracked)
 agent/done/
+
+# Test reports (generated locally by tests/compare.py — IID-TEST-MODEL-COMPARE)
+reports/
