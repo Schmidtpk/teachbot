@@ -22,19 +22,19 @@ subtitle: "Introduction"
 
 ### Some predictions from the past
 
--   the end of history
+-   the end of history (Fukuyama, 1992)
 
-    -   no more conflict, uncertainty,... 
-    
+    -   no more conflict, uncertainty,...
+
 . . .
 
--   Democratization through open markets
+-   Democratization through open markets (liberal internationalists, 1990s–2000s)
 
     -   "China/Russia will become more democratic"
-    
+
 . . .
 
--   "The internet will liberate us."
+-   "The internet will liberate us." (widespread, early 2000s)
 
     -   Information $\Rightarrow$ freedom + productivity
  
@@ -68,7 +68,7 @@ Somebody (maybe Niels Bohr):
     -   If somebody says "It is unlikely". In what sense is she wrong?
     
 
--   Example: "Trump's winning odds are 53.4 percent, over Harris' 46.2 percent."
+-   Example: "Trump's winning odds are 53.4 percent, over Harris' 46.2 percent." (remainder: third-party candidates)
 
     -   Was Nate Silver's forecast right? ...good? ...helpful?
     
@@ -86,7 +86,7 @@ Somebody (maybe Niels Bohr):
 
 -   some issues are more **difficult** to predict
 
-    -   "Does the flap of a Butterflies wing cause a Tornado?"
+    -   "Does the flap of a butterfly's wing cause a tornado?"
     
     -   Chaos theory: Study of dynamic systems that are highly(!) sensitive to initial conditions
 
@@ -187,7 +187,6 @@ Predictions
 
 -   sometimes right, sometimes wrong, sometimes partly right
 
-
 -   can be based on subjective judgment (always possible) and data and algorithms (better if good data is available)
 
 
@@ -195,34 +194,47 @@ Predictions
 
 ## Formalities
 
+### Hours
 
+- 9.15 h to 11.45 h
+
+- 30 minutes break in between
+
+    - can be used for questions
+    
+- bring your laptop for programming exercises
+
+- bring your laptop for AI quizzes (mobile phone might be fine)
 
 ### Syllabus
 
 -   A comprehensive approach to predictions that spans from
 
     -   its decision-theoretic (microeconomic) foundations over
-    -   subjective judgments to
+    -   subjective judgments, economic expectation, and
+    -   prediction markets, market prices, as well as
     -   machine learning.
-
--   The focus will be on probabilistic predictions.
 
 -   15 lectures
 
-    -   will leave some for forecasting competition
-    -   optional topics on Deep Learning, AI forecasting, and Ambiguity
+    -   optional topics on language models, AI forecasting, and Ambiguity
     -   and exam preparation
 
+- spotted with Exercises
+    
+  - for quizing and learning
+  - for implementing
+  - a forecast competition
 
 ### Where is the knowledge coming from?
 
+- Statistics
 
- \hspace{1cm} Statistics \hspace{3cm} Computer Science
+- Computer Science
 
-\vspace{2cm}
+- Decision-Theory
 
- \hspace{1cm} Decision-Theory \hspace{2cm} Psychology
-
+- Psychology
 
 
 
@@ -234,7 +246,10 @@ Predictions
 -   uncertainty as probability and subjective expected utility
 -   dynamic consistency and Bayesian updating
 
-- Exercise (Pen and Paper)
+- Exercise
+
+
+----
 
 2.  Predictions and their properties
 
@@ -243,17 +258,18 @@ Predictions
 -   calibration, accuracy, sharpness
 -   Optimal predictions
 
-- Exercise: (Illustrations)
+- Exercise
 
 
-### Part 2: Predicting with subjective judgment (3 lectures)
+### Part 2: Predicting with subjective judgment (4 lectures)
 
 3.  Measurement and Elicitation
 
--   elicitation procedures
--   incentives
-
+- elicitation procedures
+- incentives
 - Exercise: Define forecast target for competition
+
+----
 
 4.  Evaluation methods
 
@@ -261,7 +277,8 @@ Predictions
 -   proper scoring rules and Diebold-Mariano Tests
 -   PIT diagram
 -   Mincer-Zarnowitz regression
--   Exercise: Empirical evaluation of predictions
+
+-   Programming Exercise: Empirical evaluation of predictions
 
 ------------------------------------------------------------------------
 
@@ -269,14 +286,19 @@ Predictions
 
 -   heuristics and biases
 -   characteristics of super forecasters
+-   Economic Expectations (Professionals, Businesses, Consumers)
 
 - Exercise: Issue judgement predictions for forecast competition
 
-6. Market-based predictions
+
+----
+
+6.  Market-based predictions 
+
 
 -   prediction markets
 -   efficient market hypothesis
-
+-   Programming Exercise
 
 ### Part 3: Statistical forecasts (4 lectures)
 
@@ -286,6 +308,10 @@ Predictions
 -   simulating random outcomes
 -   analyzing Monte-Carlo samples
 -   example: life-time saving choice as young adults
+-   Programming Exercise
+
+
+----
 
 8.  Bayesian modelling
 
@@ -294,23 +320,27 @@ Predictions
 -   Posterior samples and convergence
 -   Probabilistic programming in Stan/Jags
 -   example: Monty-Hall problem and forecast combination
+-   Programming Exercise
 
 ------------------------------------------------------------------------
 
-10.  Basics of Statistical Learning
+9.  Basics of Statistical Learning
 
 -   loss functions
 -   train, test, validate
 -   in-sample, out-of-sample, and cross-validation
 -   model complexity and the bias-variance tradeoff
+-   Programming Exercise
 
-11.  Deep learning
+
+----
+
+10.  Deep learning
 
 -   Neural networks
 -   best practices
--   Exercise: Statistical forecasts
-
-- Exercise: Issue statistical forecast for forecast competition
+-   Language models
+- Programming Exercise: Issue statistical forecast for forecast competition
 
 ### Part 4: Other
 
@@ -322,7 +352,7 @@ Predictions
 
 14. Exam Preparation
 
-15. **Exam** (last lecture)
+15. **Exam** (probably on last lecture)
 
 ### Extra lectures if time and interest allows
 
@@ -399,6 +429,59 @@ XX. Language models for judgment predictions
 
 -   try to focus on the content (not the exam)
 
+### AI chatbot
+
+- free access to a state-of-the-art language model
+  
+  - use for learning and assignments
+  - has access to lecture materials
+  - guidelines provided by me
+
+- funded by a heiSKILLS Fellowships “AI in Teaching” from University of Heidelberg
+
+- idea: Figure out how to best use AI for learning in higher-education
+
+
+
+---
+  
+- AI might be wrong
+  - you are encouraged to report fail cases
+  - extra points for errors found
+  - idea: foster critical thinking
+  
+Three extra points possible:
+
+1) reported at least one simple fail cases: login, optics, almost anything
+2) reported at least one logical mistake or unwanted behavior (okay if misleading prompts are used)
+3) reported at least one deep logical mistake for sensible prompts (hard to find)
+
+---
+
+- registration at first login
+
+  - use your uni-heidelberg mail
+  - and a password
+
+- do not share any private information
+
+- logs of chats will be saved
+
+  - used for improvements
+  - you may receive mails with corrections
+
+---
+
+<https://teachbot-production-2e85.up.railway.app/>
+
+```{r}
+#| echo: false
+#| fig-width: 2
+#| fig-height: 2
+library(qrcode)
+plot(qr_code("https://teachbot-production-2e85.up.railway.app/"))
+```
+
 ### Literature
 
 -   there is no single text-book for this lecture
@@ -409,7 +492,7 @@ Silver, N. (2012): The Signal and the Noise: Why So Many Predictions Fail-but So
 
 Tetlock, P. E., & Gardner, D. (2016). Superforecasting: The art and science of prediction. Random House.
 
-Benjamin, D. J. "Chapter 2-errors in probabilistic reasoning and judgment biases. Volume 2 of Handbook of Behavioral Economics: Applications and Foundations 1." (2019): 69-186.
+Benjamin, D. J. (2019): "Errors in Probabilistic Reasoning and Judgment Biases." Chapter 2 in *Handbook of Behavioral Economics*, Vol. 2, pp. 69–186.
 
 James, G., Witten, D., Hastie, T., Tibshirani, R., & Taylor, J. (2023). An introduction to statistical learning: with applications in R. Second Edition. Spinger.
 
@@ -452,11 +535,13 @@ with the ordinary least squares (OLS) estimator
 
 $$\hat \beta_{OLS} = \arg \min_\beta \sum (y_i-x_i'\beta)^2$$ is the workhorse of econometrics.
 
-\note{historically based on convenient computational properties that are less crucial nowadays}
-
 -   In this lecture, the linear regression will take a backseat
 
 -   but will discuss its prediction properties $$\hat y = x'\hat \beta_{OLS}$$
+
+::: {.notes}
+historically based on convenient computational properties that are less crucial nowadays
+:::
 
 ### Time series
 
