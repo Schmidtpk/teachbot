@@ -128,16 +128,19 @@ async def on_message(message: cl.Message) -> None:
         full_response += token
         await response_msg.stream_token(token)
 
-    # IID-STUDENT-FEEDBACK-STORE: attach flag button so student can report problems
-    response_msg.actions = [
-        cl.Action(name="flag", label="🚩 Flag this response", value=full_response)
-    ]
     await response_msg.update()
 
     history.append({"role": "assistant", "content": full_response})
     logger.log("assistant", full_response)  # IID-CHAT-LOG
     if sheets_logger:
         sheets_logger.log("assistant", full_response)  # IID-SHEETS-LOG
+
+    # IID-STUDENT-FEEDBACK-STORE: send flag button linked to this message
+    await cl.Action(
+        name="flag",
+        label="🚩 Flag this response",
+        payload={"flagged_message": full_response},
+    ).send(for_id=response_msg.id)
 
 
 @cl.action_callback("flag")
@@ -152,8 +155,9 @@ async def on_flag(action: cl.Action) -> None:
     ).send()
     comment = res["output"].strip() if res else "(no comment)"
 
-    logger.log_feedback(flagged_message=action.value, student_comment=comment)
+    flagged_message = action.payload.get("flagged_message", "")
+    logger.log_feedback(flagged_message=flagged_message, student_comment=comment)
     if sheets_logger:
-        sheets_logger.log_feedback(flagged_message=action.value, student_comment=comment)
+        sheets_logger.log_feedback(flagged_message=flagged_message, student_comment=comment)
 
     await cl.Message(content="Thanks — your feedback has been recorded.").send()
