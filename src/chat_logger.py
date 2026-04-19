@@ -1,8 +1,10 @@
 """
-IID-CHAT-LOG, IID-SHEETS-LOG, IID-AUTH-BASIC, SID-PRIVACY-DATA
+IID-CHAT-LOG, IID-SHEETS-LOG, IID-STUDENT-FEEDBACK-STORE, IID-AUTH-BASIC, SID-PRIVACY-DATA
 Write each chat turn to a per-session JSONL file in the logs/ directory,
 and optionally to a Google Sheet for persistent cross-deploy storage.
 When IID-AUTH-BASIC is active, user_email is included in each log entry.
+Student feedback events (IID-STUDENT-FEEDBACK-STORE) are stored in the same
+JSONL and Sheet with role='feedback' and an extra 'flagged_message' field.
 """
 
 import asyncio
@@ -35,10 +37,26 @@ class ChatLogger:
         with self._file.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
+    def log_feedback(self, flagged_message: str, student_comment: str) -> None:
+        """IID-STUDENT-FEEDBACK-STORE: append a student feedback event."""
+        entry = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "role": "feedback",
+            "content": student_comment,
+            "flagged_message": flagged_message,
+        }
+        if self._user_email:
+            entry["user_email"] = self._user_email
+        with self._file.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
-# IID-SHEETS-LOG: persistent cross-deploy logging via Google Sheets service account.
+
+# IID-SHEETS-LOG, IID-STUDENT-FEEDBACK-STORE: persistent cross-deploy logging.
+# NOTE: 'flagged_message' column was added for student feedback events. If a Sheet
+# already has rows without this column, add it manually (column F) before the next
+# feedback event — or clear the sheet to trigger auto-header re-creation.
 _SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-_HEADER_ROW = ["timestamp", "session_id", "user_email", "role", "content"]
+_HEADER_ROW = ["timestamp", "session_id", "user_email", "role", "content", "flagged_message"]
 
 
 class SheetsLogger:
@@ -70,7 +88,7 @@ class SheetsLogger:
         self._ws = gc.open_by_key(self._sheet_id).sheet1
         return self._ws
 
-    def _append(self, role: str, content: str) -> None:
+    def _append(self, role: str, content: str, flagged_message: str = "") -> None:
         """Blocking write called from a thread-pool executor."""
         try:
             ws = self._get_ws()
@@ -79,7 +97,7 @@ class SheetsLogger:
                 ws.append_row(_HEADER_ROW, value_input_option="RAW")
             ts = datetime.now(timezone.utc).isoformat()
             ws.append_row(
-                [ts, self._session_id, self._user_email or "", role, content],
+                [ts, self._session_id, self._user_email or "", role, content, flagged_message],
                 value_input_option="RAW",
                 insert_data_option="INSERT_ROWS",
             )
@@ -90,3 +108,8 @@ class SheetsLogger:
         """Fire-and-forget: dispatches write to executor so it doesn't block streaming."""
         loop = asyncio.get_event_loop()
         loop.run_in_executor(None, self._append, role, content)
+
+    def log_feedback(self, flagged_message: str, student_comment: str) -> None:
+        """IID-STUDENT-FEEDBACK-STORE: fire-and-forget feedback event write."""
+        loop = asyncio.get_event_loop()
+        loop.run_in_executor(None, self._append, "feedback", student_comment, flagged_message)

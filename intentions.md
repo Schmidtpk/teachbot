@@ -90,6 +90,8 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 ### IID-CHAT-SHELL
 **Lifecycle:** v2
 **Description:** as v1, but add feedback with widgets (e.g. thumbs up/down, free-text comment) on each bot message, and persist feedback events to a database for later analysis.
+**Partial (DONE via IID-STUDENT-FEEDBACK-STORE):** 🚩 flag button + free-text comment on each AI message, stored in JSONL + Sheets.
+**Remaining:** thumbs up/down widget, database-backed storage.
 **No-Goals:** Native mobile app.
 
 ## Core Mode: QA
@@ -184,8 +186,9 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **No-Goals:** Reading back logs via the app, multi-sheet routing, PII enrichment.
 
 ### IID-STUDENT-FEEDBACK-STORE
-**Lifecycle:** TODO
-**Description:** Collect and store per-message student feedback events (thumbs up/down, free-text).
+**Lifecycle:** DONE
+**Description:** Collect and store per-message student feedback events. A 🚩 flag button is attached to each AI response. Clicking it prompts the student for free-text feedback via `cl.AskUserMessage`. Feedback is appended to the same per-session JSONL (`logs/<session_id>.jsonl`) with `role="feedback"`, `content=<student comment>`, and `flagged_message=<AI response>`. Also appended to the Google Sheet (IID-SHEETS-LOG) as a new row with a `flagged_message` column (6th column).
+**Key files:** `app.py` (`@cl.on_action("flag")`), `src/chat_logger.py` (`log_feedback`)
 
 ## Login
 

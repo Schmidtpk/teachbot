@@ -1,5 +1,5 @@
 """
-IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC
+IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC, IID-STUDENT-FEEDBACK-STORE
 Chainlit entry point for teachbot v1.
 Run with:  chainlit run app.py
 """
@@ -128,9 +128,32 @@ async def on_message(message: cl.Message) -> None:
         full_response += token
         await response_msg.stream_token(token)
 
+    # IID-STUDENT-FEEDBACK-STORE: attach flag button so student can report problems
+    response_msg.actions = [
+        cl.Action(name="flag", label="🚩 Flag this response", value=full_response)
+    ]
     await response_msg.update()
 
     history.append({"role": "assistant", "content": full_response})
     logger.log("assistant", full_response)  # IID-CHAT-LOG
     if sheets_logger:
         sheets_logger.log("assistant", full_response)  # IID-SHEETS-LOG
+
+
+@cl.on_action("flag")
+async def on_flag(action: cl.Action) -> None:
+    """IID-STUDENT-FEEDBACK-STORE: collect and store student feedback on a flagged AI response."""
+    logger: ChatLogger = cl.user_session.get("logger")
+    sheets_logger: SheetsLogger | None = cl.user_session.get("sheets_logger")
+
+    res = await cl.AskUserMessage(
+        content="What's wrong with this response? (describe the issue)",
+        timeout=120,
+    ).send()
+    comment = res["output"].strip() if res else "(no comment)"
+
+    logger.log_feedback(flagged_message=action.value, student_comment=comment)
+    if sheets_logger:
+        sheets_logger.log_feedback(flagged_message=action.value, student_comment=comment)
+
+    await cl.Message(content="Thanks — your feedback has been recorded.").send()
