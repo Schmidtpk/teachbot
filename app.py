@@ -140,7 +140,7 @@ async def on_message(message: cl.Message) -> None:
         sheets_logger.log("assistant", full_response)  # IID-SHEETS-LOG
 
 
-@cl.on_action("flag")
+@cl.action_callback("flag")
 async def on_flag(action: cl.Action) -> None:
     """IID-STUDENT-FEEDBACK-STORE: collect and store student feedback on a flagged AI response."""
     logger: ChatLogger = cl.user_session.get("logger")
