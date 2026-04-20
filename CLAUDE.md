@@ -91,7 +91,8 @@ Place non-`_`-prefixed subfolders under `content/`. Each needs a `_meta.yaml` wi
 
 **`_meta.yaml` format:**
 ```yaml
-lecture_name: "Course Name"           # required; shown in profile chooser
+lecture_name: "Course Name"           # required; shown in profile chooser (full name, not folder name)
+order: 1                              # optional; controls sort order in chooser (default 999)
 description: "**Markdown** description"  # optional; rendered as markdown in chooser
 model: "google/gemini-3-flash-preview"   # optional LLM override
 temperature: 0.3                          # optional LLM override
