@@ -25,9 +25,10 @@ from src.content_loader import load_content
 @dataclass
 class CourseConfig:
     """IID-MULTI-COURSE: Fully-resolved configuration for one course context."""
-    course_id: str           # subfolder name, used as Chainlit profile name
+    course_id: str           # subfolder name
     lecture_name: str        # display name; substituted for {{course_name}}
     description: str         # markdown description shown in profile chooser
+    order: int               # sort order from _meta.yaml (default 999)
     content_dir: Path        # absolute path to the course subfolder
     system_prompt_path: Path # resolved: subfolder/_system_prompt.md or root fallback
     welcome_path: Path       # resolved: subfolder/_welcome.md or root fallback
@@ -94,14 +95,15 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             course_id=folder.name,
             lecture_name=meta["lecture_name"],
             description=meta.get("description", ""),
+            order=int(meta.get("order", 999)),
             content_dir=folder,
             system_prompt_path=_resolve("_system_prompt.md"),
             welcome_path=_resolve("_welcome.md"),
             llm=merged_llm,
         ))
 
-    # Sort by lecture_name for deterministic profile ordering
-    courses.sort(key=lambda c: c.lecture_name)
+    # Sort by order field (from _meta.yaml) then lecture_name for deterministic profile ordering
+    courses.sort(key=lambda c: (c.order, c.lecture_name))
     return courses
 
 

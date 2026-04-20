@@ -49,7 +49,7 @@ async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None
         return None
     return [
         cl.ChatProfile(
-            name=course.course_id,
+            name=course.lecture_name,
             markdown_description=course.description or f"**{course.lecture_name}**",
             default=(i == 0),
         )
@@ -98,7 +98,7 @@ async def on_chat_start() -> None:
     # IID-MULTI-COURSE: resolve course from selected profile, or use root content (fallback)
     if COURSES:
         profile_id = cl.user_session.get("chat_profile")
-        course = next((c for c in COURSES if c.course_id == profile_id), COURSES[0])
+        course = next((c for c in COURSES if c.lecture_name == profile_id), COURSES[0])
         system_prompt = build_system_prompt(course)
         welcome = load_course_text(course.welcome_path, course.lecture_name)
         course_llm = course.llm
