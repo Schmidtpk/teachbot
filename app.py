@@ -117,11 +117,12 @@ async def on_chat_start() -> None:
         )
         course_llm = CFG.get("llm", {})
 
-    logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id, user_email=user_email)
+    course_name = course.lecture_name if COURSES else CFG.get("course_name", "")
+    logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id, user_email=user_email, course_name=course_name)
 
     # IID-SHEETS-LOG: optional persistent Google Sheets logger (disabled when sheets_log_id is blank)
     sheets_id = CFG.get("sheets_log_id", "")
-    sheets_logger = SheetsLogger(sheets_id, session_id, user_email=user_email) if sheets_id else None
+    sheets_logger = SheetsLogger(sheets_id, session_id, user_email=user_email, course_name=course_name) if sheets_id else None
 
     # Store in Chainlit user session
     cl.user_session.set("history", [{"role": "system", "content": system_prompt}])

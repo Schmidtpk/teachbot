@@ -19,11 +19,12 @@ from typing import Optional
 class ChatLogger:
     """Append chat turns to logs/<session_id>.jsonl (IID-CHAT-LOG)."""
 
-    def __init__(self, logs_dir: str | Path, session_id: str, user_email: Optional[str] = None) -> None:
+    def __init__(self, logs_dir: str | Path, session_id: str, user_email: Optional[str] = None, course_name: Optional[str] = None) -> None:
         logs_path = Path(logs_dir)
         logs_path.mkdir(parents=True, exist_ok=True)
         self._file = logs_path / f"{session_id}.jsonl"
         self._user_email = user_email  # IID-AUTH-BASIC: None when auth is disabled
+        self._course_name = course_name  # IID-MULTI-COURSE: chat experience/profile name
 
     def log(self, role: str, content: str) -> None:
         """Append one turn. role is 'user' or 'assistant'."""
@@ -34,6 +35,8 @@ class ChatLogger:
         }
         if self._user_email:  # IID-AUTH-BASIC: include email when auth is active
             entry["user_email"] = self._user_email
+        if self._course_name:  # IID-MULTI-COURSE: include chat experience
+            entry["course"] = self._course_name
         with self._file.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -47,6 +50,8 @@ class ChatLogger:
         }
         if self._user_email:
             entry["user_email"] = self._user_email
+        if self._course_name:
+            entry["course"] = self._course_name
         with self._file.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -56,7 +61,7 @@ class ChatLogger:
 # already has rows without this column, add it manually (column F) before the next
 # feedback event — or clear the sheet to trigger auto-header re-creation.
 _SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-_HEADER_ROW = ["timestamp", "session_id", "user_email", "role", "content", "flagged_message"]
+_HEADER_ROW = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message"]
 
 
 class SheetsLogger:
@@ -68,10 +73,11 @@ class SheetsLogger:
     async Chainlit message handler.
     """
 
-    def __init__(self, sheet_id: str, session_id: str, user_email: Optional[str] = None) -> None:
+    def __init__(self, sheet_id: str, session_id: str, user_email: Optional[str] = None, course_name: Optional[str] = None) -> None:
         self._sheet_id = sheet_id
         self._session_id = session_id
         self._user_email = user_email  # IID-AUTH-BASIC: None when auth is disabled
+        self._course_name = course_name  # IID-MULTI-COURSE: chat experience/profile name
         self._ws = None  # lazily initialised on first write
 
     def _get_ws(self):
@@ -97,7 +103,7 @@ class SheetsLogger:
                 ws.append_row(_HEADER_ROW, value_input_option="RAW")
             ts = datetime.now(timezone.utc).isoformat()
             ws.append_row(
-                [ts, self._session_id, self._user_email or "", role, content, flagged_message],
+                [ts, self._session_id, self._user_email or "", self._course_name or "", role, content, flagged_message],
                 value_input_option="RAW",
                 insert_data_option="INSERT_ROWS",
             )
