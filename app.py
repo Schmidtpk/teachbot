@@ -1,5 +1,6 @@
 """
-IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC, IID-STUDENT-FEEDBACK-STORE
+IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC, IID-STUDENT-FEEDBACK-STORE,
+IID-MULTI-COURSE
 Chainlit entry point for teachbot v1.
 Run with:  chainlit run app.py
 """
@@ -15,6 +16,7 @@ from dotenv import load_dotenv
 from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
+from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_text
 from src.llm_client import build_client, stream_response
 
 # SID-API-CONFIG: load secrets from .env (never hardcoded)
@@ -25,31 +27,34 @@ _cfg_path = Path(__file__).parent / "config.yaml"
 with _cfg_path.open(encoding="utf-8") as fh:
     CFG: dict = yaml.safe_load(fh)
 
-# IID-CONTENT-INJECT: load and cache content at startup
-COURSE_CONTENT: str = load_content(CFG.get("content_dir", "content"))
-
-# IID-LLM-PROVIDER: single shared async client
+# IID-LLM-PROVIDER: single shared async client (model overrides flow through cfg, not the client)
 LLM_CLIENT = build_client(CFG)
 
-
-def _load_app_text(filename: str, cfg: dict) -> str:
-    """IID-EDUCATOR-CONFIG: Load an app-config markdown file from content/, substituting {{course_name}}."""
-    path = Path(cfg.get("content_dir", "content")) / filename
-    text = path.read_text(encoding="utf-8") if path.exists() else ""
-    return text.replace("{{course_name}}", cfg.get("course_name", "this course"))
-
-
-# IID-QNA-CORE, IID-EDUCATOR-CONFIG: load system prompt and welcome message from editable markdown files
-SYSTEM_PROMPT_INSTRUCTIONS = _load_app_text("_system_prompt.md", CFG)
-WELCOME_MESSAGE = _load_app_text("_welcome.md", CFG)
-
-SYSTEM_PROMPT = (
-    f"{SYSTEM_PROMPT_INSTRUCTIONS}\n\n"
-    f"--- LECTURE CONTENT START ---\n{COURSE_CONTENT}\n--- LECTURE CONTENT END ---\n"
-)
+# IID-MULTI-COURSE: discover course subfolders at startup; [] = single-course fallback mode
+_ROOT_CONTENT = Path(CFG.get("content_dir", "content"))
+COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
 
 
 _AUTH_CFG = CFG.get("auth", {})
+
+
+@cl.set_chat_profiles
+async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None:
+    """IID-MULTI-COURSE: Expose course subfolders as Chainlit chat profiles.
+
+    Returns None when no subfolders exist, suppressing the profile chooser and
+    preserving single-course behavior.
+    """
+    if not COURSES:
+        return None
+    return [
+        cl.ChatProfile(
+            name=course.course_id,
+            markdown_description=course.description or f"**{course.lecture_name}**",
+            default=(i == 0),
+        )
+        for i, course in enumerate(COURSES)
+    ]
 
 
 # IID-AUTH-BASIC: password-based login/registration.
@@ -83,12 +88,34 @@ if auth_enabled(_AUTH_CFG):
 
 @cl.on_chat_start
 async def on_chat_start() -> None:
-    """IID-CHAT-SHELL1, IID-AUTH-BASIC: Initialise session state."""
+    """IID-CHAT-SHELL1, IID-AUTH-BASIC, IID-MULTI-COURSE: Initialise session state."""
     session_id = str(uuid.uuid4())
 
     # IID-AUTH-BASIC: capture authenticated user email (None when auth is disabled)
     chainlit_user = cl.context.session.user
     user_email = chainlit_user.identifier if chainlit_user else None
+
+    # IID-MULTI-COURSE: resolve course from selected profile, or use root content (fallback)
+    if COURSES:
+        profile_id = cl.user_session.get("chat_profile")
+        course = next((c for c in COURSES if c.course_id == profile_id), COURSES[0])
+        system_prompt = build_system_prompt(course)
+        welcome = load_course_text(course.welcome_path, course.lecture_name)
+        course_llm = course.llm
+    else:
+        # Single-course fallback: load root content/ directly (IID-CONTENT-INJECT)
+        content = load_content(_ROOT_CONTENT)
+        instructions = load_course_text(
+            _ROOT_CONTENT / "_system_prompt.md", CFG.get("course_name", "this course")
+        )
+        welcome = load_course_text(
+            _ROOT_CONTENT / "_welcome.md", CFG.get("course_name", "this course")
+        )
+        system_prompt = (
+            f"{instructions}\n\n"
+            f"--- LECTURE CONTENT START ---\n{content}\n--- LECTURE CONTENT END ---\n"
+        )
+        course_llm = CFG.get("llm", {})
 
     logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id, user_email=user_email)
 
@@ -97,11 +124,12 @@ async def on_chat_start() -> None:
     sheets_logger = SheetsLogger(sheets_id, session_id, user_email=user_email) if sheets_id else None
 
     # Store in Chainlit user session
-    cl.user_session.set("history", [{"role": "system", "content": SYSTEM_PROMPT}])
+    cl.user_session.set("history", [{"role": "system", "content": system_prompt}])
     cl.user_session.set("logger", logger)
     cl.user_session.set("sheets_logger", sheets_logger)
+    cl.user_session.set("course_llm", course_llm)  # IID-MULTI-COURSE: per-session LLM config
 
-    await cl.Message(content=WELCOME_MESSAGE).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
+    await cl.Message(content=welcome).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
 
 
 @cl.on_message
@@ -122,7 +150,8 @@ async def on_message(message: cl.Message) -> None:
     await response_msg.send()
 
     full_response = ""
-    async for token in stream_response(LLM_CLIENT, CFG, history):
+    course_llm: dict = cl.user_session.get("course_llm")  # IID-MULTI-COURSE
+    async for token in stream_response(LLM_CLIENT, {"llm": course_llm}, history):
         full_response += token
         await response_msg.stream_token(token)
 

@@ -62,8 +62,8 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 
 ### IID-CONTENT-INJECT
 **Lifecycle:** v1
-**Description:** At app startup, read all files in `content/`, strip YAML frontmatter and Quarto-specific syntax, concatenate into a single plain-text string, and inject into the LLM system prompt (see SID-LLM-PROVIDER). No vector store or embedding; relies on the model's large context window.
-**Inputs:** `content/` folder (`.qmd` files + syllabus).
+**Description:** At app startup, read all files in the active course folder, strip YAML frontmatter and Quarto-specific syntax, concatenate into a single plain-text string, and inject into the LLM system prompt (see SID-LLM-PROVIDER). No vector store or embedding; relies on the model's large context window. In multi-course mode (IID-MULTI-COURSE), `load_content` is called with the selected course subfolder path, not the root `content/` dir.
+**Inputs:** Course content folder (`.qmd` files + syllabus) — root `content/` in single-course mode, or specific subfolder in multi-course mode.
 **Outputs:** System prompt string passed to the LLM at session start.
 **Success criteria:**
 - All content files are loaded and visible in the system prompt.
@@ -166,9 +166,34 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
     - `content/_welcome.md`: editable first chat message shown to students
     - `chainlit.md`: editable sidebar/welcome panel description (Chainlit root, not in content/)
     - convention: `_`-prefixed files in `content/` are app-config, excluded from lecture content injection
+    - multi-course: each non-`_` subfolder of `content/` is a course; `_meta.yaml` configures name, description, and optional LLM overrides (see IID-MULTI-COURSE)
 **Inputs:** Config UI or config file.
 **Outputs:** Persisted course configuration used at runtime.
 **No-Goals:** Multi-tenant SaaS management console
+
+### IID-MULTI-COURSE
+**Lifecycle:** IN_PROGRESS
+**Description:** Multi-course support via `content/` subfolders. Each non-`_`-prefixed subfolder is a separate course. `_meta.yaml` (required: `lecture_name`; optional: `description`, `model`, `temperature`, `max_tokens`) configures it. At startup, `src/course_loader.py` discovers courses; Chainlit's `@cl.set_chat_profiles` presents a profile chooser when courses exist. Falls back to existing single-course behavior when no subfolders are present.
+**Fallback chain:**
+- `_system_prompt.md`: subfolder → `content/` root
+- `_welcome.md`: subfolder → `content/` root
+- `model` / `temperature` / `max_tokens`: `_meta.yaml` → `config.yaml` llm section
+- `lecture_name` / `{{course_name}}`: `_meta.yaml.lecture_name` → `config.yaml.course_name`
+**`_meta.yaml` format:**
+```yaml
+lecture_name: "Course Name"          # required; shown in profile chooser
+description: "Markdown description"  # optional; rendered in profile chooser
+model: "google/gemini-3-flash-preview"  # optional LLM override
+temperature: 0.3                         # optional LLM override
+max_tokens: 2048                         # optional LLM override
+```
+**Success criteria:**
+- When multiple course subfolders exist, a profile chooser appears and each course loads its own content and config.
+- When no subfolders exist, behavior is identical to single-course v1 behavior.
+- Missing `_meta.yaml` or missing `lecture_name` → loud startup failure (SystemExit) naming the offending folder.
+- Missing `_system_prompt.md` or `_welcome.md` in a subfolder silently uses the root fallback.
+**Key files:** `src/course_loader.py` (new), `app.py`
+**No-Goals:** Per-course auth rules, per-course Google Sheet routing, nested course folder hierarchies.
 
 ## Data storage and management
 

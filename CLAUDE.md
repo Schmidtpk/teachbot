@@ -85,11 +85,26 @@ railway redeploy --yes
 - Config in `config.yaml` + `.env` for secrets (SID-API-CONFIG)
 - Run: `.venv\Scripts\python -m chainlit run app.py`
 
+## Multi-course mode (IID-MULTI-COURSE)
+
+Place non-`_`-prefixed subfolders under `content/`. Each needs a `_meta.yaml` with at least `lecture_name`. Optionally add `_system_prompt.md` and `_welcome.md` for per-course overrides; otherwise root `content/` versions are used as fallbacks. When no subfolders exist, the app runs in single-course mode (no profile chooser).
+
+**`_meta.yaml` format:**
+```yaml
+lecture_name: "Course Name"           # required; shown in profile chooser
+description: "**Markdown** description"  # optional; rendered as markdown in chooser
+model: "google/gemini-3-flash-preview"   # optional LLM override
+temperature: 0.3                          # optional LLM override
+max_tokens: 2048                          # optional LLM override
+```
+
+**Fallback chain:** `_system_prompt.md` / `_welcome.md`: subfolder → `content/` root. LLM settings: `_meta.yaml` → `config.yaml`. Missing `_meta.yaml` or missing `lecture_name` → startup error.
+
 ## Key files
 
 | File | IID/SID | Description |
 |------|---------|-------------|
-| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC | Chainlit entry point |
+| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC, IID-MULTI-COURSE | Chainlit entry point |
 | `config.yaml` | IID-EDUCATOR-CONFIG, SID-API-CONFIG | Course + LLM config |
 | `requirements.txt` | SID-STACK | Pinned dependencies |
 | `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
@@ -97,7 +112,8 @@ railway redeploy --yes
 | `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted at startup |
 | `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted at startup |
 | `chainlit.md` | IID-EDUCATOR-CONFIG | Editable sidebar/welcome panel (Chainlit requires it at project root) |
-| `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans `content/` folder; skips `_`-prefixed files (app-config convention) |
+| `src/course_loader.py` | IID-MULTI-COURSE | Discovers course subfolders, loads `_meta.yaml`, merges LLM config, resolves fallback paths for system prompt and welcome text |
+| `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
 | `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
