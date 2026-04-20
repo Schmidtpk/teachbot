@@ -105,6 +105,7 @@ railway redeploy --yes
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
 | `scripts/archive_sheet.py` | IID-SHEETS-LOG | Downloads Sheet → `exports/sheets_backup_<date>.csv`, then clears it |
 | `scripts/archive_sheet.bat` | IID-SHEETS-LOG | Windows Task Scheduler wrapper for the archive script |
+| `scripts/render_chats.py` | IID-CHAT-VIEW | Reads all `exports/*.csv` backups → `exports/chats.html` self-contained viewer |
 | `exports/` | IID-SHEETS-LOG | Gitignored folder for weekly CSV backups of Google Sheet |
 | `intentions.md` | — | All IIDs and their lifecycle status |
 | `standards.md` | — | All SIDs (cross-cutting standards) |

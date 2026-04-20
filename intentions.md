@@ -148,6 +148,13 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 
 ## Admin / Educator Tools
 
+### IID-CHAT-VIEW
+**Lifecycle:** DONE
+**Description:** Local HTML viewer for educator review of student sessions and feedback. Reads all `exports/sheets_backup_*.csv` files (produced by IID-SHEETS-LOG), deduplicates across files, and writes `exports/chats.html` — a single self-contained file. Left panel lists sessions (newest first) with email, turn count, and feedback badge. Right panel renders the full conversation with Markdown + LaTeX (marked.js + KaTeX via CDN). Feedback entries show the student comment and the flagged AI message (collapsible).
+**Key files:** `scripts/render_chats.py`
+**CLI:** `python scripts/render_chats.py` → `exports/chats.html`
+**No-Goals:** Live/real-time view, server-side hosting, search across sessions.
+
 ### IID-EDUCATOR-CONFIG
 **Lifecycle:** v1
 **Description:** Educator-facing configuration: 
