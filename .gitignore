@@ -8,6 +8,7 @@ users.yaml
 
 # Runtime data
 logs/
+exports/          # IID-SHEETS-LOG: weekly CSV backups of Google Sheet (student data)
 
 # Python
 __pycache__/
