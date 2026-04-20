@@ -109,8 +109,8 @@ max_tokens: 2048                          # optional LLM override
 | `requirements.txt` | SID-STACK | Pinned dependencies |
 | `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
 | `.env.example` | SID-API-CONFIG | Template for .env |
-| `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted at startup |
-| `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted at startup |
+| `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
+| `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `chainlit.md` | IID-EDUCATOR-CONFIG | Editable sidebar/welcome panel (Chainlit requires it at project root) |
 | `src/course_loader.py` | IID-MULTI-COURSE | Discovers course subfolders, loads `_meta.yaml`, merges LLM config, resolves fallback paths for system prompt and welcome text |
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
