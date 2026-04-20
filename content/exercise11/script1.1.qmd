@@ -1,0 +1,608 @@
+---
+title: "Part I: Decisions, distributions, data"
+subtitle: "Predictions: Theory and Practice"
+---
+
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+# theme_set(theme_gray(base_size = 18))
+```
+
+
+<!-- check 
+
+Stochastic choice lecture:
+https://scholar.harvard.edu/sites/scholar.harvard.edu/files/tomasz/files/manuscript_01.pdf#page=53.07
+
+ https://ocw.mit.edu/courses/14-121-microeconomic-theory-i-fall-2015/2cdfea3bb4b483f46c573a5a2ed4cc1d_MIT14_121F15_5S.pdf 
+
+http://www.econ2.jhu.edu/people/karni/savageseu.pdf
+
+for axioms and SEU:
+https://zalamsyah.staff.unja.ac.id/wp-content/uploads/sites/286/2019/11/1-Advanced-Microeconomic-Theory-3rd-Ed.-JEHLE-RENY.pdf 
+-->
+
+
+Content of Part I: Decisions, distributions, data
+
+1. decision-making under uncertainty
+  
+    - decisions should be based on probability predictions
+  
+2. optimal predictions
+  
+    - What are good predictions?
+
+
+# Decision-making under uncertainty
+
+### Goals
+
+- Understand **decision-making** under **uncertainty**
+
+- show unique role of **probabilistic predictions**
+
+- understand how to update beliefs with **Bayes rule**
+
+## Introduction
+
+### Event predictions
+
+-   We start by discussing predictions for **events**
+
+    -   events have two possible outcomes
+
+    -   here we will use 0 ("not happening") and 1 ("happening")
+
+    -   another nomenclature is event $E$ and its complement $E^c$
+    
+- Examples for events:
+
+    - "Trump will be president in 2029" 
+
+    - "It will rain tomorrow"
+    
+
+
+### Some intuition
+
+-   How can an **event prediction** look like?
+
+    -   "The event will happen."
+
+    -   "The event is likely."
+
+    -   "The event occurs with a probability of 70%"
+
+    -   "The event occurs with a probability between 50% and 90%."
+
+-   In reality you will find all those statements and more
+
+-   So what is the **optimal** way to think and communicate about uncertain events?
+
+### Deterministic Predictions
+
+-   Let's first look at predictions that communicate **certainty**
+
+    -   "The event will happen"
+    -   "The event will not happen"
+
+-   Great, if predictions are always correct.
+
+    -   But in reality (almost) nothing is certain.
+
+    -   So what do you mean, if you say "the event will happen"?
+
+---
+
+- You are actually **trading off** two things
+
+  i) being wrong [if event happens]{.red} and
+
+  ii) being wrong if [event does not happen]{.blue}
+    
+
+- Similar dynamic in **hypothesis testing**, where
+
+  - we set "being wrong [if hypothesis is true]{.red}" to significance level $\alpha$ and
+
+  - try to minimize "being wrong if [alternative is true]{.blue}"
+
+- A deterministic prediction hides where you are on this tradeoff — a **probability** makes it explicit.
+
+---
+
+-   I will argue instead that
+
+::: {.callout-tip}
+## Probabilistic predictions
+Decisions should be informed by probabilistic predictions.
+:::
+
+### Quick reminder on probabilities
+
+-   you know probabilities (from school, statistics, and econometrics)
+
+    -   why is using them a good idea?
+
+-   Properties of a probability distribution $P$ over $\{0,1\}$
+
+    -   positive and below 1, $0 \le P(1) \le 1$.
+
+    -   sums to one: $P(1) + P(0) = 1$
+
+-   distribution fully characterized by the probability of the event occurring, which we denote by $p=P(1)$
+
+### What is a probability?
+
+-   There are different ways to derive the notion of probabilities
+
+    (i) **Objective**: y has probability $p$ $\iff$ the ratio of true events approaches $p$ (if repeated infinitely often)
+
+```{r, fig.width = 5, fig.height = 3}
+n <- 1000
+p = 0.5
+set.seed(12321)
+sample <- rbinom(n,1,p)
+y <- cumsum(sample)/1:n
+plot(y, log='x',xlab = "number of draws",ylab="ratio",ylim=c(0,1), yaxt='n')
+axis(side = 2, at=c(0,0.5,1))
+abline(p,0)
+```
+
+---
+
+(ii) **Subjective**: A decision maker is willing to bet based on odds $p$
+
+![](plots/roulette.jpg){width="4cm" height="4cm" fig-align="center"}
+
+- We follow the **subjective** interpretation. It is more general and does not require repeatable experiments.
+
+<!-- ------------------------------------------------------------------- -->
+<!-- New SECTION ------------------------------------------------------- -->
+<!-- ------------------------------------------------------------------- -->
+## Subjective expected utility
+
+
+-   Probabilities are more than a mathematical toy
+
+-   We can connect them to decision-making
+
+-   Let's consider
+
+    -   an action $a$
+
+        -   Example: crossing the street, a = "cross" or a = "wait"
+
+    -   an uncertain event $y$
+
+        -   $y$ = "car" or $y$ = "no car"
+
+    -   a resulting consequence $c(a,y)$
+
+        -   c(wait, no car) = unchanged
+
+        -   c(wait, car) = unchanged
+
+        -   c(cross, no car) = success
+
+        -   c(cross, car) = injury
+
+-   How can we decide what action to take?!
+
+### Utility over consequences
+
+- First, a standard result from micro theory
+
+- Let's say you have preferences $\gtrsim$ over the consequences
+
+  - Reasonable assumption: success $\gtrsim$ unchanged $\gtrsim$ injury
+
+- If preferences are
+
+  - **complete** (of two consequences, one is (weakly) preferred)
+  - **transitive** (if $c_3$ $\gtrsim$ $c_2$ \& $c_2$ $\gtrsim$ $c_1$, then $c_3$ $\gtrsim$ $c_1$)
+  
+  there exists a utility function $u$ representing them
+  
+  $u(c_1) \ge u(c_2) \quad \iff \quad c_1 \gtrsim c_2$
+
+- utility functions can explain choices over consequences, but we want to choose between the actions "crossing" and "waiting" in the presence of uncertainty about "car" and "no car"
+
+::: {.notes}
+we look at finite number of consequences ignoring some of the technical details that otherwise arise
+:::
+
+### Utility with uncertainty: Expected utility
+
+- Now we want to extend the utility framework to include uncertainty about the state of the world (above it is uncertain if a car will come)
+
+- There are two popular ways to extend the utility framework to uncertainty
+
+  (i) subjective approach (more complicated, but arguably more general)
+  
+  (ii) objective approach (relying on the assumption that objective probabilities exist, more elegant)
+  
+- We follow the subjective approach (but leave out a lot of technical details)
+
+### Setting
+
+- There are unknown states of the world $s_1$,$s_2$,...
+
+    - in example: $s_1=$"car", $s_2$="no car"
+    
+    - events $E$ are sets of states
+
+- There are actions $f$,$g$,$h$...
+
+    - mapping each state to a consequence $f(s)=c$
+
+    - in example: crossing("car") = injury, crossing("no car") = success
+
+- Definition: $fEg$ defines action that results in $f$ if $E$ happens and in $g$ otherwise
+
+    - basically: Do f if event E and g otherwise
+
+- We want to analyse preferences (choices) over actions
+
+    - in example: crossing $\overset{?}{\gtrsim}$ waiting
+
+::: {.notes}
+Actions are often called acts in the literature.
+:::
+
+### Axioms
+
+- for preferences over actions, we consider the following axioms
+
+- **completeness** and **transitivity** 
+
+- **independence**: if actions constant on "not E", preference are independent of this part
+$$fEg \gtrsim f'Eg \iff fEg' \gtrsim f'Eg'$$
+
+
+- **state neutrality**: ranking of constant acts is independent of the event they are conditioned on
+$$c_2 \gtrsim c_1 \iff c_2Ef \gtrsim c_1Ef$$
+
+- **likelihood consistency**: the ranking of events by likelihood does not depend on which consequences are used to elicit it
+$$\text{If } c_2 \gtrsim c_1 \text{ and } c'_2 \gtrsim c'_1 \text{ then } c_1Ec_2 \gtrsim c_1Fc_2 \iff c'_1Ec'_2 \gtrsim c'_1Fc'_2$$
+
+::: {.notes}
+plus some technical axioms we omit here
+:::
+
+### Expected utility representation
+For a probability distribution $\pi$ and a utility function $u$, define the expected utility by 
+$$U_\pi^u(f)=E_{s\sim \pi}[u(f(s))]$$
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: Expected utility representation.
+
+We say that preferences $\gtrsim$ can be represented by an expected utility, if there exists a expected utility $U_\pi^u$ such that 
+$$f \gtrsim g \quad \iff \quad U_\pi^u(f) \ge U_\pi^u(g)$$
+:::
+
+
+
+### Axioms imply SEU
+
+::: {.callout-tip}
+## Theorem (Savage 1954).
+
+If the axioms above (and some technical ones) hold for preferences $\gtrsim$, the preferences $\gtrsim$ can be represented by an expected utility.
+:::
+
+- Probabilities can be derived from preferences and axioms alone!
+
+- Following the axioms is the same as 
+  (i) having a [utility]{.red} over consequences and
+  (ii) a [probability]{.blue} distribution over unknown states
+  (iii) choosing between actions based on their [expected]{.blue} [utility]{.red}
+
+
+### Remarks
+
+- Note that utility and probabilities are subjective (depend on the preferences over actions)
+
+    - you cross the street because 
+      (i) you think it is unlikely that a car comes OR(!) 
+      (ii) because you feel successfully crossing is very valuable (compared to injury)
+    
+    - subjective probabilities can be "wrong"!
+    
+- The result above is a logical connection
+
+    - can be interpreted normatively: "You should do EU!"
+    
+    - can be interpreted descriptively/positively: "People act as if EU."
+    
+- As a descriptive theory, SEU often fails
+
+    - Ellsberg[-@ellsberg1961] urn experiment for ambiguity
+    
+    - arguably: Some uncertainty cannot (should not?) be reduced to probabilities
+
+
+### Summary
+
+-   Subjective expected utility
+
+    -   every decision problem can be divided into two parts
+
+        -   1: Consequences and their utility value
+
+        -   2: probabilities over uncertain states
+
+    -   rational decision-making just means to
+
+        -   1: understand your preferences
+
+        -   2: form probability predictions
+
+    -   In this lecture, we focus on part 2 above: How should we form "good" probabilities?
+    
+      - consequences and utilities depend on the situation
+
+<!-- ------------------------------------------------------------------- -->
+<!-- New SECTION ------------------------------------------------------- -->
+<!-- ------------------------------------------------------------------- -->
+## Information and Bayesian learning
+
+- So far we looked at a static situation
+
+- What happens if we receive **new information**?
+
+    - in the example: We look and see a SUV approaching
+  
+- How should our **action depend on new information**?
+
+    - how should we change our subjective probabilities?
+  
+
+### Setting
+
+- We extend our example to one with a larger state space with 
+
+  - $s_1 = (SUV, stop)$, $s_2 = (SUV, overrun)$
+  - $s_3 = (\text{no SUV}, stop)$, $s_4 = (\text{no SUV}, overrun)$
+
+- Consider two preferences: 
+
+  - $\gtrsim$ denotes the preferences **before information**, and 
+  
+  - $\gtrsim_A$ **after observing** that true state lies in $A$.
+  
+  - in example: $A=\{s_1,s_2\}$ (it's a SUV, but unclear if stop or overrun)
+
+### Axioms
+
+
+::: {.callout-caution appearance="default" icon="false"}
+## Axiom 1 (Consequentialism).
+
+If $f = g$ on $A$, then $f \sim_A g$.
+
+:::
+
+- consequentialism: Consequences beyond $A$ do not matter after observing $A$.
+
+    - we do not care that an action would have been better for cases that cannot occure anymore
+
+---
+
+![](plots/empty_broad_cons.PNG) 
+
+
+---
+
+
+::: {.callout-caution appearance="default" icon="false"}
+## Axiom 2 (Dynamic Consistency).
+
+$f \gtrsim_A g \;\Longleftrightarrow\; fAg \gtrsim g$.
+:::
+
+
+- after receiving information A, preferences cannot change for those acts that differed only inside $A$
+
+---
+
+![](plots/empty_broad_dyn.png) 
+
+
+### Consequentialism and Dynamic consistency imply Bayesian updating
+
+Assume that both $\gtrsim$ and $\gtrsim_A$ admit expected utility representations with utility $u$ and beliefs $\pi$ and $\pi_A$, respectively.
+
+::: {.callout-tip}
+## Theorem (Bayesian updating).
+$\gtrsim_A$ and $\gtrsim$ satisfy **Consequentialism** and **Dynamic Consistency** if and only if $\pi_A(B) = \frac{\pi(A \cap B)}{\pi(A)}$.
+:::
+
+- Newer result from this century [@ghirardato2002revisiting]
+
+---
+
+- If you believe in the axioms, you have to do Bayes updating.
+
+- If you update with Bayes rule, you automatically follow the axioms.
+
+- Now we know **how to update** our probabilities/beliefs if we receive new information
+
+- We call
+
+    - $\pi$ **the prior** probability (prior to the information)
+    
+    - $\pi_A$ **the posterior** probability (after the information)
+    
+    
+- Open question: How to derive **good priors**?
+
+### Toy example for Bayes rule
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- Toy example:
+
+    - 10 states $s_i$, $i=1,\dots,10$
+    - with identical prior probability $\pi(s_i)=\frac 1 {10}$
+    - $A = \{s_1,s_2,s_3,s_4,s_5\}$
+    - $B = \{s_5\}$
+
+- Bayes rule after observing set $A$:
+$$\pi_A(B) = \frac{\pi(A \cap B)}{\pi(A)}$$
+
+
+
+
+:::
+
+::: {.column width="40%"}
+
+![](plots/empty_narrow_toybayes.png)
+:::
+
+::::
+
+
+
+---
+
+
+### Bayes rule in applications
+
+- In most applications we have
+
+  - a **prior** $P(B)$ given,
+  
+  - the **likelihood** $P(A|B)$ given, and
+  
+  - we want to compute the **posterior** $P(B|A)$
+
+- Bayes rule
+$$P(B|A) = \frac {P(A \cap B)} {P(A)}$$
+
+    - we can compute those terms with the **prior** and       the **likelihood**
+      $$P(A\cap B)= P(A|B) P(B)$$ 
+      and
+      \begin{align*}
+      P(A) &= P(A\cap B) + P(A \cap \text{not } B)\\
+      &= P(A|B) P(B) + P(A|\text{not } B) P(\text{not } B)
+      \end{align*}
+
+### Example: Monty-Hall-Problem
+
+
+![](plots/doors.png){width="200" fig-align="center"} 
+
+
+- originally solved by Selvin [-@selvin1975problem]
+
+  You're on a game show, and given the choice of three doors: Behind one door is a car; behind the others, goats. You pick a door and the host, who knows what's behind the doors, opens another door which has a goat. He then says choose again. Is it to your advantage to switch?
+
+---
+
+- After an article in Parade magazin approximately 10,000 readers, including nearly 1,000 with PhDs, wrote to the magazine, most of them calling the solution wrong
+
+- Paul Erdős, a famous mathematician, remained unconvinced until shown a computer simulation
+
+
+- shows how unintuitve Bayesian updating can be
+
+---
+
+Solution:
+
+- states: car in 1,2 or 3
+- you chose door 1 (without loss of generality)
+- host opens door 3 (without loss of generality)
+- want to know $p(\text{car 1} | \text{host 3})$
+- likelihood:
+  - $p(\text{host 3} | \text{car 1}) = 1/2$
+  - $p(\text{host 3} | \text{car 2}) = 1$
+  - $p(\text{host 3} | \text{car 3}) = 0$
+- prior: $p(\text{car i}) = \frac 1 3$
+$$\begin{align*}
+p(\text{car 1}|\text{host 3})&=\frac {p(\text{car 1, host 3}) }{ p(\text{host 3}) } = \\
+&= \frac {p(\text{host 3} | \text{car 1})* p(\text{car 1})} {\sum_i p(\text{host 3} | \text{car i})* p(\text{car i})}\\
+&= \frac {1/2 \times 1/3} {1 \times 1/3 + 1/2 \times 1/3}
+=\frac {1/2 } {1  + 1/2}=1/3
+\end{align*}$$
+
+
+
+
+### Modern Bayesian workflow
+
+- Task: Predict some outcome (e.g., needed hospital beds during Covid pandemic)
+
+- Bayesian workflow (data $D$):
+
+  (i) Define a [model]{.red} with parameter $\theta$ that implies a likelihood $P(D|\theta)$
+  (ii) Elicit prior probabilities $P(\theta)$
+  (iii) Approximate [posterior]{.blue} probability $$P(\theta|D) = \frac {P(D \cap \theta)}{P(D)}\propto  {P(D|\theta)P(\theta)}$$
+  with algorithm
+  (iv) Use [posterior]{.blue} and [model]{.red} to predict new data
+
+---
+
+- Advantage: 
+
+    - full treatment of uncertainty 
+    
+    - "rational" because Bayesian
+
+- Disadvantage: 
+
+    - often computationally complex
+    
+    - needs priors
+
+
+
+### A word on priors
+
+- controversial topic
+
+    - other estimators (like the OLS estimator for regressions) do not rely on priors
+
+    - priors are subjective (what if people disagree?)
+
+- In some technical sense: Every well-behaved estimator is the posterior to a prior (Complete class theorem)
+  - so every non-Bayesian estimator is essentially based on a prior
+
+- Applied work often relies on "uninformative priors"
+
+
+### Summary
+
+-   Under new information, updating your prior by Bayes rule is optimal (in some specific sense)
+
+    - The axioms of dynamic consistency and consequentialism imply Bayesian updating
+
+-   Remaining challenge:
+
+    - How do we get to a prior? (wait for Part II: Judgmental predictions)
+    
+    - How do we compute the Bayes posterior for complex models? (wait for Part III: Statistical predictions)
+
+-   Next, we see how good predictions look like
+
+    - We study how do probabilities look like that lead to higher utility
+
+
+# References
+
+::: {#refs}
+:::
+
+# Other stuff
+
+### Complete class theorem
+
+for every admissible decision function, there exists a prior distribution, such that the optimal decision is a bayes decision function.
+
+ML slides from Kasy [(link)](https://maxkasy.github.io/home/files/teaching/ML_Oxford_2023/decision_theory_slides.pdf)
+

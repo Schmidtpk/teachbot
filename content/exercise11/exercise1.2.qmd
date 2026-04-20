@@ -1,0 +1,283 @@
+---
+title: "Exercise: Prediction Quality in an Insurance Decision"
+subtitle: "Predictions: Theory and Practice"
+author: "Patrick Schmidt"
+institute: "University of Heidelberg"
+params:
+  show_solutions: true
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    self-contained: true
+    theme: cosmo
+  pdf:
+    documentclass: article
+    geometry: margin=2.5cm
+---
+
+```{r setup, echo=FALSE, message=FALSE}
+library(ggplot2)
+theme_set(theme_bw() + theme(text = element_text(size = 14)))
+```
+
+# Exercise
+
+## Scenario
+
+A company frequently rents cars for its employees' business trips. On each trip, the car is either returned undamaged ($y=0$) or incurs damage ($y=1$). Before each rental, the company must decide whether to purchase damage insurance.
+
+- **Insurance premium:** €500 per trip
+- **Cost of uninsured damage:** €2000 (repair costs, administrative fees)
+- **Insurance covers all damage costs** (net cost of covered damage is just the premium)
+
+A risk assessment system predicts the probability of damage before each trip. It outputs one of two values: $\hat p \in \{0.2, 0.8\}$.
+
+## The prediction space setting
+
+We model the prediction target $y$ and the prediction $\hat p$ as **random variables** with the following joint distribution:
+
+| | $y=1$ (damaged) | $y=0$ (undamaged) | $P(\hat p)$ |
+|:---|:---:|:---:|:---:|
+| $\hat p = 0.2$ (low risk) | 0.05 | 0.45 | 0.50 |
+| $\hat p = 0.8$ (high risk) | 0.35 | 0.15 | 0.50 |
+| $P(y)$ | 0.40 | 0.60 | 1.00 |
+
+
+## Questions
+
+### Part 1: Decision problem
+
+a) Define formally: the prediction target $y$, the action space, and the utility function $u(a, y)$.
+
+b) Derive the **optimal action** $a^\star(\hat p)$ as a function of the prediction. At which threshold does the decision flip?
+
+c) State the optimal action for each prediction value ($\hat p = 0.2$ and $\hat p = 0.8$).
+
+d) Compute the **expected utility** $E[u(a^\star(\hat p), y)]$ that the company achieves by following the forecasting system. Compare this to:
+
+   - always purchasing insurance (ignoring the forecast)
+   - having a perfect forecast ($\hat p = y$)
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+**a) Definitions**
+
+- Prediction target: $y \in \{0, 1\}$, where $y=1$ means "damage occurs"
+- Action space: $a \in \{\text{buy}, \text{don't buy}\}$
+- Utility function:
+
+| | $y=1$ (damage) | $y=0$ (undamaged) |
+|:---|:---:|:---:|
+| $a = \text{buy}$ | $-500$ | $-500$ |
+| $a = \text{don't}$ | $-2000$ | $0$ |
+
+
+**b) Optimal action**
+
+The expected utility of each action given belief $\hat p$:
+$$E_{\hat p}[u(\text{buy}, y)] = -500$$
+$$E_{\hat p}[u(\text{don't}, y)] = \hat p \cdot (-2000) + (1-\hat p) \cdot 0 = -2000\hat p$$
+
+The optimal action is:
+$$a^\star(\hat p) = \text{buy} \iff -500 > -2000\hat p \iff \hat p > \frac{500}{2000} = 0.25$$
+
+The decision **threshold** is $p^\star = 0.25$.
+
+
+**c) Actions for each prediction value**
+
+- $\hat p = 0.2 < 0.25$: $a^\star = \text{don't buy}$
+- $\hat p = 0.8 > 0.25$: $a^\star = \text{buy}$
+
+
+**d) Expected utility**
+
+First, we need the **true conditional probabilities** from the joint distribution:
+$$P(y=1|\hat p=0.2) = \frac{P(y=1, \hat p=0.2)}{P(\hat p=0.2)} = \frac{0.05}{0.50} = 0.10$$
+$$P(y=1|\hat p=0.8) = \frac{P(y=1, \hat p=0.8)}{P(\hat p=0.8)} = \frac{0.35}{0.50} = 0.70$$
+
+Expected utility for each prediction:
+
+- At $\hat p=0.2$ (action: don't buy):
+$$E[u(\text{don't}, y)|\hat p=0.2] = 0.10 \cdot (-2000) + 0.90 \cdot 0 = -200$$
+
+- At $\hat p=0.8$ (action: buy):
+$$E[u(\text{buy}, y)|\hat p=0.8] = -500$$
+
+Overall expected utility:
+$$E[u(a^\star(\hat p), y)] = P(\hat p=0.2)\cdot(-200) + P(\hat p=0.8)\cdot(-500) = 0.5\cdot(-200) + 0.5\cdot(-500) = \mathbf{-350}$$
+
+**Comparison:**
+
+| Strategy | Expected utility |
+|:---|---:|
+| Perfect forecast ($\hat p = y$) | $0.4\cdot(-500) + 0.6\cdot 0 = -200$ |
+| **Forecasting system** | **$-350$** |
+| Always buy (ignore forecast) | $-500$ |
+
+The forecasting system yields **€150 higher** expected utility than always buying, but €150 lower than a perfect forecast.
+:::
+
+
+### Part 2: Sharpness
+
+Compute the sharpness of the forecasting system:
+$$\text{Sharpness}(\hat p) = 1 - 4\, E[\hat p(1-\hat p)]$$
+
+Interpret: is the system making bold or cautious predictions?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+$$\text{Sharpness}(\hat p) = 1 - 4\,E[\hat p(1-\hat p)]$$
+
+Since $P(\hat p = 0.2) = P(\hat p = 0.8) = 0.5$:
+
+$$E[\hat p(1-\hat p)] = 0.5 \cdot (0.2)(0.8) + 0.5 \cdot (0.8)(0.2) = 0.5 \cdot 0.16 + 0.5 \cdot 0.16 = 0.16$$
+
+$$\boxed{\text{Sharpness} = 1 - 4 \cdot 0.16 = 0.36}$$
+
+**Interpretation:** The sharpness is moderate. The predictions (0.2 and 0.8) are spread away from 0.5, indicating the system makes reasonably bold predictions. Maximum sharpness (= 1) would require predictions at 0 or 1; minimum sharpness (= 0) corresponds to always predicting 0.5.
+:::
+
+
+### Part 3: Calibration
+
+a) Compute the **calibration function** $f(\hat p) = E[y|\hat p]$ for both prediction values.
+
+b) Is the prediction calibrated? If not, describe the pattern of miscalibration.
+
+c) Is the prediction unbiased? (Check whether $E[\hat p] = E[y]$.)
+
+d) Does the miscalibration affect the **decisions** in Part 1? Why or why not?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+**a) Calibration function**
+
+$$f(\hat p) = E[y|\hat p] = P(y=1|\hat p)$$
+
+Using Bayes' rule, $P(A|B) = \frac{P(A, B)}{P(B)}$, we can compute the conditional probabilities from the joint distribution:
+$$f(0.2) = P(y=1|\hat p=0.2) = \frac{P(y=1, \hat p=0.2)}{P(\hat p=0.2)} = \frac{0.05}{0.50} = 0.10$$
+$$f(0.8) = P(y=1|\hat p=0.8) = \frac{P(y=1, \hat p=0.8)}{P(\hat p=0.8)} = \frac{0.35}{0.50} = 0.70$$
+
+**b) Is the prediction calibrated?**
+
+Calibration requires $f(\hat p) = \hat p$ for all values of $\hat p$.
+
+- $f(0.2) = 0.10 \neq 0.20$ — **not calibrated** (overestimates damage risk by 0.10)
+- $f(0.8) = 0.70 \neq 0.80$ — **not calibrated** (overestimates damage risk by 0.10)
+
+**Pattern:** The system systematically **overestimates** damage probability. Both predictions are 0.10 higher than the true conditional rate.
+
+
+**c) Unbiasedness**
+
+$$E[\hat p] = 0.5 \cdot 0.2 + 0.5 \cdot 0.8 = 0.50$$
+$$E[y] = P(y=1) = 0.40$$
+
+Since $E[\hat p] = 0.50 \neq 0.40 = E[y]$, the prediction is **biased** (overestimates on average). This is consistent with our finding that calibration fails — recall that calibration implies unbiasedness, so a biased prediction cannot be calibrated.
+
+
+**d) Does miscalibration affect decisions?**
+
+No! The true conditional probabilities are:
+
+- $P(y=1|\hat p=0.2) = 0.10 < 0.25$ — correct decision (don't buy)
+- $P(y=1|\hat p=0.8) = 0.70 > 0.25$ — correct decision (buy)
+
+The miscalibration (predicting 0.2 instead of 0.1, and 0.8 instead of 0.7) does not flip any decision because the true probabilities remain on the **same side of the threshold** as the predictions. Miscalibration is costly only when it moves a prediction across a decision boundary.
+:::
+
+
+### Part 4: Accuracy
+
+Compute the expected quadratic scoring rule (Brier score):
+$$S(\hat p) = E[s_{qsr}(\hat p, y)] = 1 - E[(\hat p - y)^2]$$
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+$$S(\hat p) = 1 - E[(\hat p - y)^2]$$
+
+Using the joint distribution (each cell contributes its probability times the squared error):
+
+$$E[(\hat p - y)^2] = \underbrace{0.05 \cdot (0.2-1)^2}_{=0.032} + \underbrace{0.45 \cdot (0.2-0)^2}_{=0.018} + \underbrace{0.35 \cdot (0.8-1)^2}_{=0.014} + \underbrace{0.15 \cdot (0.8-0)^2}_{=0.096}$$
+
+$$= 0.032 + 0.018 + 0.014 + 0.096 = 0.16$$
+
+$$\boxed{S(\hat p) = 1 - 0.16 = 0.84}$$
+:::
+
+
+### Part 5: Score decomposition
+
+Decompose the accuracy into uncertainty (UNC), discrimination (DSC), and miscalibration (MSC):
+
+$$S(\hat p) = \underbrace{S(p_R)}_{\text{UNC}} + \underbrace{S(p_C) - S(p_R)}_{\text{DSC}} - \underbrace{S(p_C) - S(\hat p)}_{\text{MSC}}$$
+
+where $p_C = E[y|\hat p]$ is the calibrated version of $\hat p$ and $p_R = E[y]$ is the constant (uninformative) prediction.
+
+a) Compute $S(p_R)$.
+
+b) Compute $S(p_C)$.
+
+c) State MSC, DSC, UNC and verify that the decomposition holds.
+
+d) Interpret: is the forecasting system adding value? What is its main strength and weakness?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+**a) Uncertainty: $S(p_R)$**
+
+The reference prediction is the marginal rate: $p_R = E[y] = 0.40$.
+
+$$S(p_R) = 1 - E[(0.4 - y)^2] = 1 - \left[0.4 \cdot (0.4-1)^2 + 0.6 \cdot (0.4-0)^2\right]$$
+$$= 1 - [0.4 \cdot 0.36 + 0.6 \cdot 0.16] = 1 - [0.144 + 0.096] = 1 - 0.24$$
+
+$$\boxed{UNC = S(p_R) = 0.76}$$
+
+
+**b) Calibrated prediction score: $S(p_C)$**
+
+The calibrated prediction is $p_C = E[y|\hat p]$, which takes values:
+
+- $p_C = 0.10$ when $\hat p = 0.2$ (with probability 0.50)
+- $p_C = 0.70$ when $\hat p = 0.8$ (with probability 0.50)
+
+The joint distribution of $(p_C, y)$ is the same as $(\hat p, y)$ with relabeled predictions:
+
+$$E[(p_C - y)^2] = 0.05\cdot(0.1-1)^2 + 0.45\cdot(0.1-0)^2 + 0.35\cdot(0.7-1)^2 + 0.15\cdot(0.7-0)^2$$
+$$= 0.05 \cdot 0.81 + 0.45 \cdot 0.01 + 0.35 \cdot 0.09 + 0.15 \cdot 0.49$$
+$$= 0.0405 + 0.0045 + 0.0315 + 0.0735 = 0.15$$
+
+$$\boxed{S(p_C) = 1 - 0.15 = 0.85}$$
+
+
+**c) Decomposition**
+
+$$MSC = S(p_C) - S(\hat p) = 0.85 - 0.84 = 0.01$$
+$$DSC = S(p_C) - S(p_R) = 0.85 - 0.76 = 0.09$$
+$$UNC = S(p_R) = 0.76$$
+
+**Verification:**
+$$S(\hat p) = UNC + DSC - MSC = 0.76 + 0.09 - 0.01 = 0.85 - 0.01 = 0.84 \checkmark$$
+
+
+**d) Interpretation**
+
+The forecasting system improves on the naive constant prediction:
+$$S(\hat p) - S(p_R) = 0.84 - 0.76 = 0.08 = DSC - MSC = 0.09 - 0.01$$
+
+- **Discrimination** ($DSC = 0.09$): The system's main strength. It meaningfully separates high-risk trips ($p_C=0.70$) from low-risk trips ($p_C=0.10$), providing actionable information.
+
+- **Miscalibration** ($MSC = 0.01$): The system's weakness is small. Although predictions overstate risk, the calibration error costs little in terms of score.
+
+- **Key insight:** This illustrates the principle of *maximizing sharpness subject to calibration*. Even with imperfect calibration, the forecaster adds value because its ability to discriminate between risky and safe trips (DSC) far exceeds the cost of miscalibration (MSC).
+:::
+
+
