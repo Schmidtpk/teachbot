@@ -155,6 +155,10 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
     - config file for: course name, choose active mode(s), configure LLM parameters, valid login domains 
     - folder of chat history
     - folder for student feedback
+    - `content/_system_prompt.md`: editable LLM behaviour instructions (role, rules, tone)
+    - `content/_welcome.md`: editable first chat message shown to students
+    - `chainlit.md`: editable sidebar/welcome panel description (Chainlit root, not in content/)
+    - convention: `_`-prefixed files in `content/` are app-config, excluded from lecture content injection
 **Inputs:** Config UI or config file.
 **Outputs:** Persisted course configuration used at runtime.
 **No-Goals:** Multi-tenant SaaS management console

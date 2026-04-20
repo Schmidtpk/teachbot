@@ -94,14 +94,44 @@ railway redeploy --yes
 | `requirements.txt` | SID-STACK | Pinned dependencies |
 | `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
 | `.env.example` | SID-API-CONFIG | Template for .env |
-| `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans `content/` folder |
+| `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted at startup |
+| `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted at startup |
+| `chainlit.md` | IID-EDUCATOR-CONFIG | Editable sidebar/welcome panel (Chainlit requires it at project root) |
+| `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans `content/` folder; skips `_`-prefixed files (app-config convention) |
 | `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
 | `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
+| `scripts/archive_sheet.py` | IID-SHEETS-LOG | Downloads Sheet → `exports/sheets_backup_<date>.csv`, then clears it |
+| `scripts/archive_sheet.bat` | IID-SHEETS-LOG | Windows Task Scheduler wrapper for the archive script |
+| `exports/` | IID-SHEETS-LOG | Gitignored folder for weekly CSV backups of Google Sheet |
 | `intentions.md` | — | All IIDs and their lifecycle status |
 | `standards.md` | — | All SIDs (cross-cutting standards) |
+
+## Data Management (IID-SHEETS-LOG)
+
+The Google Sheet (`sheets_log_id` in `config.yaml`) accumulates one row per chat turn. To keep it lean, a weekly archive script downloads the data and clears the sheet.
+
+- **Script:** `scripts/archive_sheet.py` — downloads all rows to `exports/sheets_backup_<date>.csv`, then clears the sheet. The `SheetsLogger` auto-recreates the header on the next student interaction.
+- **Credentials:** `credentials/service_account.json` (gitignored). Extract from Railway if needed: `railway variables --json`.
+- **Backups:** `exports/` folder (gitignored — contains student data, never commit).
+
+```bash
+# Run manually
+python scripts/archive_sheet.py
+```
+
+**Automated weekly run (Windows Task Scheduler):**
+Register once in a terminal (run as Administrator or normal user):
+```bat
+schtasks /create /tn "teachbot-archive" /tr "\"C:\Users\Schmidt\Dropbox\R packages\teachbot\scripts\archive_sheet.bat\"" /sc weekly /d SUN /st 08:00
+```
+Output is appended to `exports/archive_log.txt`. To check or remove the task:
+```bat
+schtasks /query /tn "teachbot-archive"
+schtasks /delete /tn "teachbot-archive" /f
+```
 
 ## Authentication (IID-AUTH-BASIC)
 

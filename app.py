@@ -31,19 +31,22 @@ COURSE_CONTENT: str = load_content(CFG.get("content_dir", "content"))
 # IID-LLM-PROVIDER: single shared async client
 LLM_CLIENT = build_client(CFG)
 
-SYSTEM_PROMPT = f"""\
-You are a helpful teaching assistant for the course "{CFG.get('course_name', 'this course')}".
 
-Your role is to answer student questions accurately based solely on the lecture content provided below.
-- Answer in clear, concise Markdown. Use math notation ($...$ or $$...$$) where appropriate.
-- Cite or paraphrase the relevant lecture material in your answer.
-- If a question is not covered by the lecture content, say so honestly and do not invent information.
-- Politely decline requests unrelated to the course.
+def _load_app_text(filename: str, cfg: dict) -> str:
+    """IID-EDUCATOR-CONFIG: Load an app-config markdown file from content/, substituting {{course_name}}."""
+    path = Path(cfg.get("content_dir", "content")) / filename
+    text = path.read_text(encoding="utf-8") if path.exists() else ""
+    return text.replace("{{course_name}}", cfg.get("course_name", "this course"))
 
---- LECTURE CONTENT START ---
-{COURSE_CONTENT}
---- LECTURE CONTENT END ---
-"""
+
+# IID-QNA-CORE, IID-EDUCATOR-CONFIG: load system prompt and welcome message from editable markdown files
+SYSTEM_PROMPT_INSTRUCTIONS = _load_app_text("_system_prompt.md", CFG)
+WELCOME_MESSAGE = _load_app_text("_welcome.md", CFG)
+
+SYSTEM_PROMPT = (
+    f"{SYSTEM_PROMPT_INSTRUCTIONS}\n\n"
+    f"--- LECTURE CONTENT START ---\n{COURSE_CONTENT}\n--- LECTURE CONTENT END ---\n"
+)
 
 
 _AUTH_CFG = CFG.get("auth", {})
@@ -98,12 +101,7 @@ async def on_chat_start() -> None:
     cl.user_session.set("logger", logger)
     cl.user_session.set("sheets_logger", sheets_logger)
 
-    await cl.Message(
-        content=(
-            f"**Welcome to the {CFG.get('course_name', 'course')} assistant!**\n\n"
-            "Ask me anything about the lecture material."
-        )
-    ).send()
+    await cl.Message(content=WELCOME_MESSAGE).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
 
 
 @cl.on_message
