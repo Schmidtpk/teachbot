@@ -37,7 +37,7 @@ Content of Part I: Decisions, distributions, data
 
 # Decision-making under uncertainty
 
-### Goals
+## Goals
 
 - Understand **decision-making** under **uncertainty**
 
@@ -164,6 +164,7 @@ abline(p,0)
 <!-- ------------------------------------------------------------------- -->
 ## Subjective expected utility
 
+### Example
 
 -   Probabilities are more than a mathematical toy
 
@@ -273,7 +274,7 @@ plus some technical axioms we omit here
 :::
 
 ### Expected utility representation
-For a probability distribution $\pi$ and a utility function $u$, define the expected utility by 
+For a probability distribution $\pi$ (over states) and a utility function $u$ (over consequences), define the expected utility by 
 $$U_\pi^u(f)=E_{s\sim \pi}[u(f(s))]$$
 
 ::: {.callout-caution appearance="default" icon="false"}
@@ -347,7 +348,10 @@ If the axioms above (and some technical ones) hold for preferences $\gtrsim$, th
 <!-- ------------------------------------------------------------------- -->
 <!-- New SECTION ------------------------------------------------------- -->
 <!-- ------------------------------------------------------------------- -->
-## Information and Bayesian learning
+### Information and Bayesian learning
+
+
+## Introduction
 
 - So far we looked at a static situation
 
