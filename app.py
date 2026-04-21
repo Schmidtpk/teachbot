@@ -179,9 +179,11 @@ async def on_flag(action: cl.Action) -> None:
 
     res = await cl.AskUserMessage(
         content="What's wrong with this response? (describe the issue)",
-        timeout=120,
+        timeout=0,
     ).send()
-    comment = res["output"].strip() if res else "(no comment)"
+    if not res:
+        return
+    comment = res["output"].strip()
 
     flagged_message = action.payload.get("flagged_message", "")
     logger.log_feedback(flagged_message=flagged_message, student_comment=comment)
