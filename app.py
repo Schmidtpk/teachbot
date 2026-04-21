@@ -179,7 +179,7 @@ async def on_flag(action: cl.Action) -> None:
 
     res = await cl.AskUserMessage(
         content="What's wrong with this response? (describe the issue)",
-        timeout=0,
+        timeout=3600,
     ).send()
     if not res:
         return
