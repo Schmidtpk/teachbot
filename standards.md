@@ -1,4 +1,4 @@
-# standards.md — teachbot
+# standards.md — Lectos
 
 Cross-cutting standards that apply across the codebase. Each standard has a unique SID tag.
 Reference SIDs in code comments wherever a snippet must adhere to a standard. See also: intentions.md.

@@ -175,7 +175,7 @@ async def _main_async(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="teachbot LLM test runner")
+    parser = argparse.ArgumentParser(description="Lectos LLM test runner")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--cases", help="Path to YAML file with test cases")
     group.add_argument("--case", help="Single case ID to run (searches default case files)")

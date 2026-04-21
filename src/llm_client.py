@@ -16,7 +16,7 @@ def build_client(cfg: dict[str, Any]) -> AsyncOpenAI:
     api_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not api_key:
         raise RuntimeError(
-            "[teachbot] OPENROUTER_API_KEY is not set. "
+            "[Lectos] OPENROUTER_API_KEY is not set. "
             "Copy .env.example to .env and add your key."
         )
     llm_cfg = cfg.get("llm", {})

@@ -138,7 +138,7 @@ async def _run_compare(cases_paths: list[str], variants_path: str) -> None:
     ts_file = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
     report = (
-        f"# teachbot LLM Comparison Report\n\n"
+        f"# Lectos LLM Comparison Report\n\n"
         f"Generated: {ts_iso}\n\n"
         f"## Summary\n\n"
         + ("\n".join(summary_lines) if summary_lines else "_No judged results._")
@@ -154,7 +154,7 @@ async def _run_compare(cases_paths: list[str], variants_path: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="teachbot model comparison runner")
+    parser = argparse.ArgumentParser(description="Lectos model comparison runner")
     parser.add_argument(
         "--cases",
         nargs="+",

@@ -1,6 +1,6 @@
 """
 IID-TEST-SMOKE
-Deployment health check for the live teachbot app on Railway.
+Deployment health check for the live Lectos app on Railway.
 
 HTTP check (default): GET the live URL, assert HTTP 2xx.
 Playwright chat simulation (--full): send a real message and assert a response arrives.
@@ -33,7 +33,7 @@ def check_http(url: str) -> bool:
         req = urllib.request.Request(
             url,
             method="GET",
-            headers={"User-Agent": "teachbot-smoke-test/1.0"},
+            headers={"User-Agent": "lectos-smoke-test/1.0"},
         )
         with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
             print(f"[smoke] HTTP GET {url} → {resp.status}")
@@ -117,7 +117,7 @@ def check_playwright(url: str) -> bool:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="teachbot deployment smoke test")
+    parser = argparse.ArgumentParser(description="Lectos deployment smoke test")
     parser.add_argument(
         "--full",
         action="store_true",

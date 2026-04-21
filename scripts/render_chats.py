@@ -123,7 +123,7 @@ HTML_TEMPLATE = """\
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>teachbot – Chat Viewer</title>
+<title>Lectos – Chat Viewer</title>
 <!-- KaTeX CSS (stylesheet only, load early) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 <style>
@@ -231,7 +231,7 @@ HTML_TEMPLATE = """\
 <body>
 
 <div id="sidebar">
-  <h1>teachbot · Chats</h1>
+  <h1>Lectos · Chats</h1>
   <div id="session-list"></div>
 </div>
 

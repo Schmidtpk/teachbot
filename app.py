@@ -1,7 +1,7 @@
 """
 IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC, IID-STUDENT-FEEDBACK-STORE,
 IID-MULTI-COURSE
-Chainlit entry point for teachbot v1.
+Chainlit entry point for Lectos v1.
 Run with:  chainlit run app.py
 """
 

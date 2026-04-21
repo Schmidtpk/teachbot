@@ -43,7 +43,7 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
     """
     root = Path(root).resolve()
     if not root.is_dir():
-        sys.exit(f"[teachbot] ERROR: content directory '{root}' not found.")
+        sys.exit(f"[Lectos] ERROR: content directory '{root}' not found.")
 
     subfolders = sorted(
         p for p in root.iterdir()
@@ -61,7 +61,7 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         # IID-MULTI-COURSE: _meta.yaml is required — fail loudly if absent
         if not meta_path.exists():
             sys.exit(
-                f"[teachbot] ERROR: course subfolder '{folder.name}' has no _meta.yaml. "
+                f"[Lectos] ERROR: course subfolder '{folder.name}' has no _meta.yaml. "
                 f"Add a _meta.yaml with at least 'lecture_name', or remove the subfolder "
                 f"from content/ if it is not a course."
             )
@@ -70,11 +70,11 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             with meta_path.open(encoding="utf-8") as fh:
                 meta: dict = yaml.safe_load(fh) or {}
         except yaml.YAMLError as exc:
-            sys.exit(f"[teachbot] ERROR: failed to parse '{meta_path}': {exc}")
+            sys.exit(f"[Lectos] ERROR: failed to parse '{meta_path}': {exc}")
 
         if not meta.get("lecture_name"):
             sys.exit(
-                f"[teachbot] ERROR: '_meta.yaml' in '{folder.name}' is missing required "
+                f"[Lectos] ERROR: '_meta.yaml' in '{folder.name}' is missing required "
                 f"field 'lecture_name'."
             )
 

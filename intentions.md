@@ -1,6 +1,6 @@
-# intentions.md — teachbot
+# intentions.md — Lectos
 
-Intended functionality of the teachbot codebase. Each intention has a unique IID tag and a lifecycle status.
+Intended functionality of the Lectos codebase. Each intention has a unique IID tag and a lifecycle status.
 Reference IIDs in code comments wherever a snippet implements an intention. See also: standards.md.
 
 ## Roles

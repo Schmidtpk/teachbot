@@ -37,14 +37,14 @@ def load_content(content_dir: str | Path) -> str:
     """
     content_path = Path(content_dir)
     if not content_path.is_dir():
-        sys.exit(f"[teachbot] ERROR: content directory '{content_dir}' not found. "
+        sys.exit(f"[Lectos] ERROR: content directory '{content_dir}' not found. "
                  "Create the folder and add at least one .qmd or .md file.")
 
     # IID-EDUCATOR-CONFIG: files prefixed with _ are app-config files, not lecture content
     files = [f for f in sorted(content_path.glob("**/*.qmd")) + sorted(content_path.glob("**/*.md"))
              if not f.name.startswith("_")]
     if not files:
-        sys.exit(f"[teachbot] ERROR: content directory '{content_dir}' is empty. "
+        sys.exit(f"[Lectos] ERROR: content directory '{content_dir}' is empty. "
                  "Add at least one .qmd or .md file.")
 
     sections: list[str] = []

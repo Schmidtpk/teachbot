@@ -126,7 +126,7 @@ async def _main_async(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="teachbot LLM-as-judge")
+    parser = argparse.ArgumentParser(description="Lectos LLM-as-judge")
     parser.add_argument("--question", required=True, help="Student question")
     parser.add_argument("--response", required=True, help="Assistant response to grade")
     parser.add_argument("--rubric", required=True, help="Grading rubric")

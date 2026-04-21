@@ -1,6 +1,6 @@
 """
 IID-AUTH-BASIC
-Email-gated authentication helpers for teachbot.
+Email-gated authentication helpers for Lectos.
 
 Flow:
   - Educator configures allowed_domains / allowed_emails in config.yaml (auth: section).
