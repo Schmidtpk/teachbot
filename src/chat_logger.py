@@ -26,7 +26,7 @@ class ChatLogger:
         self._user_email = user_email  # IID-AUTH-BASIC: None when auth is disabled
         self._course_name = course_name  # IID-MULTI-COURSE: chat experience/profile name
 
-    def log(self, role: str, content: str) -> None:
+    def log(self, role: str, content: str, model: str | None = None) -> None:
         """Append one turn. role is 'user' or 'assistant'."""
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
@@ -37,6 +37,8 @@ class ChatLogger:
             entry["user_email"] = self._user_email
         if self._course_name:  # IID-MULTI-COURSE: include chat experience
             entry["course"] = self._course_name
+        if model and role == "assistant":  # IID-STUDENT-MODEL-CHOICE: active model
+            entry["model"] = model
         with self._file.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
@@ -61,7 +63,7 @@ class ChatLogger:
 # already has rows without this column, add it manually (column F) before the next
 # feedback event — or clear the sheet to trigger auto-header re-creation.
 _SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
-_HEADER_ROW = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message"]
+_HEADER_ROW = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message", "model"]
 
 
 class SheetsLogger:
@@ -94,7 +96,7 @@ class SheetsLogger:
         self._ws = gc.open_by_key(self._sheet_id).sheet1
         return self._ws
 
-    def _append(self, role: str, content: str, flagged_message: str = "") -> None:
+    def _append(self, role: str, content: str, flagged_message: str = "", model: str = "") -> None:
         """Blocking write called from a thread-pool executor."""
         try:
             ws = self._get_ws()
@@ -103,17 +105,17 @@ class SheetsLogger:
                 ws.append_row(_HEADER_ROW, value_input_option="RAW")
             ts = datetime.now(timezone.utc).isoformat()
             ws.append_row(
-                [ts, self._session_id, self._user_email or "", self._course_name or "", role, content, flagged_message],
+                [ts, self._session_id, self._user_email or "", self._course_name or "", role, content, flagged_message, model],
                 value_input_option="RAW",
                 insert_data_option="INSERT_ROWS",
             )
         except Exception as exc:
             print(f"[SheetsLogger] WARNING: failed to write to Sheets: {exc}", file=sys.stderr)
 
-    def log(self, role: str, content: str) -> None:
+    def log(self, role: str, content: str, model: str | None = None) -> None:
         """Fire-and-forget: dispatches write to executor so it doesn't block streaming."""
         loop = asyncio.get_event_loop()
-        loop.run_in_executor(None, self._append, role, content)
+        loop.run_in_executor(None, self._append, role, content, "", model or "")  # IID-STUDENT-MODEL-CHOICE
 
     def log_feedback(self, flagged_message: str, student_comment: str) -> None:
         """IID-STUDENT-FEEDBACK-STORE: fire-and-forget feedback event write."""

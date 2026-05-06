@@ -18,20 +18,45 @@ EXPORTS_DIR = REPO_DIR / "exports"
 OUT_FILE = EXPORTS_DIR / "chats.html"
 
 KNOWN_ROLES = {"user", "assistant", "feedback", "system"}
+KNOWN_MODES = {"Q&A", "Learn", "Eval"}
 
 
 def normalize_row(row):
-    """Handle old-format rows where the user_email column holds the role value.
+    """Normalise rows across three historical column layouts.
 
-    Before user_email was added to the logger the columns were:
+    Layout A (oldest) — 5 cols, no user_email:
       timestamp, session_id, role, content, flagged_message
-    After, they became:
+
+    Layout B — 6 cols, user_email but no course:
       timestamp, session_id, user_email, role, content, flagged_message
-    Old rows parsed with the new header end up with user_email=role, role=content.
+
+    Layout C (current) — 7 cols, with course:
+      timestamp, session_id, user_email, course, role, content, flagged_message
+      BUT archived with the old 6-col header, so DictReader shifts every column:
+        header 'role'           → actually course  (e.g. "Q&A")
+        header 'content'        → actually role    (e.g. "user")
+        header 'flagged_message'→ actually content
+        extra 7th value         → actually flagged_message (stored under None key)
     """
     if row.get("role") in KNOWN_ROLES:
-        return row  # new format – correct
+        return row  # Layout B – correct
+
+    if row.get("role") not in KNOWN_ROLES and row.get("content") in KNOWN_ROLES:
+        # Layout C: course column shifted into 'role', actual role is in 'content'
+        extra = row.get(None)  # DictReader puts overflow fields under None
+        flagged = extra[0] if isinstance(extra, list) and extra else ""
+        return {
+            "timestamp": row.get("timestamp", ""),
+            "session_id": row.get("session_id", ""),
+            "user_email": row.get("user_email", ""),
+            "course": row.get("role", ""),           # actual course
+            "role": row.get("content", ""),          # actual role
+            "content": row.get("flagged_message", ""),  # actual content
+            "flagged_message": flagged,
+        }
+
     if row.get("user_email") in KNOWN_ROLES:
+        # Layout A: no user_email column, everything shifted left
         return {
             "timestamp": row.get("timestamp", ""),
             "session_id": row.get("session_id", ""),
@@ -40,6 +65,7 @@ def normalize_row(row):
             "content": row.get("role", ""),   # actual content
             "flagged_message": row.get("content", ""),
         }
+
     return row  # unknown – pass through as-is
 
 
@@ -97,18 +123,23 @@ def build_session_data(session_list):
         email = next(iter(user_emails), "anonymous")
         feedback_count = sum(1 for t in turns if t.get("role") == "feedback")
         first_ts = turns[0].get("timestamp", "") if turns else ""
+        # Pick the first non-empty course value across all turns
+        courses = [t.get("course", "") for t in turns if t.get("course")]
+        course = courses[0] if courses else ""
         result.append(
             {
                 "id": sid,
                 "email": email,
                 "timestamp": first_ts,
                 "feedback_count": feedback_count,
+                "course": course,
                 "turns": [
                     {
                         "ts": t.get("timestamp", ""),
                         "role": t.get("role", ""),
                         "content": t.get("content", ""),
                         "flagged_message": t.get("flagged_message", ""),
+                        "model": t.get("model", ""),  # IID-STUDENT-MODEL-CHOICE
                     }
                     for t in turns
                 ],
@@ -153,6 +184,10 @@ HTML_TEMPLATE = """\
   .badge   {{ background: #e53935; color: #fff; border-radius: 10px;
               font-size: 10px; padding: 1px 6px; font-weight: 700; }}
   .turns-count {{ font-size: 11px; color: #6a7a95; }}
+  .course-chip {{ font-size: 10px; color: #a0c4a0; background: #1e3a2a;
+                  border-radius: 8px; padding: 1px 7px; font-weight: 600;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                  max-width: 120px; }}
 
   /* ── Main ── */
   #main {{ flex: 1; display: flex; flex-direction: column; overflow: hidden; }}
@@ -226,6 +261,13 @@ HTML_TEMPLATE = """\
   }}
   .flagged-body p {{ margin: 0 0 .5em; }}
   .flagged-body p:last-child {{ margin-bottom: 0; }}
+
+  /* IID-STUDENT-MODEL-CHOICE */
+  .model-chip {{
+    font-size: 10px; color: #7a8a9a; background: #eef2f7;
+    border-radius: 8px; padding: 1px 7px; margin-top: 4px;
+    font-family: monospace; align-self: flex-start;
+  }}
 </style>
 </head>
 <body>
@@ -313,10 +355,12 @@ function buildSessionList() {{
     const badge = sess.feedback_count > 0
       ? `<span class="badge">&#9873; ${{sess.feedback_count}}</span>` : "";
     const turns = sess.turns.filter(t => t.role === "user" || t.role === "assistant").length;
+    const courseChip = sess.course
+      ? `<span class="course-chip">${{escHtml(sess.course)}}</span>` : "";
     el.innerHTML = `
       <div class="s-email">${{escHtml(sess.email)}}</div>
       <div class="s-date">${{fmtDate(sess.timestamp)}}</div>
-      <div class="s-meta">${{badge}}<span class="turns-count">${{turns}} turns</span></div>`;
+      <div class="s-meta">${{badge}}${{courseChip}}<span class="turns-count">${{turns}} turns</span></div>`;
     el.addEventListener("click", () => loadSession(idx, el));
     list.appendChild(el);
   }});
@@ -329,8 +373,9 @@ function loadSession(idx, el) {{
   el.classList.add("active");
 
   const sess = SESSIONS[idx];
+  const courseLabel = sess.course ? ` &middot; <span style="color:#4a8;font-weight:600">${{escHtml(sess.course)}}</span>` : "";
   document.getElementById("header-text").innerHTML =
-    `<strong>${{escHtml(sess.email)}}</strong> &mdash; ${{fmtDate(sess.timestamp)}}`;
+    `<strong>${{escHtml(sess.email)}}</strong> &mdash; ${{fmtDate(sess.timestamp)}}${{courseLabel}}`;
 
   const area = document.getElementById("chat-area");
   const empty = document.getElementById("empty-state");
@@ -378,6 +423,13 @@ function loadSession(idx, el) {{
       ts.textContent = fmtDate(turn.ts);
 
       div.appendChild(bubble);
+      // IID-STUDENT-MODEL-CHOICE: show model chip below assistant bubbles
+      if (turn.model && turn.role === "assistant") {{
+        const chip = document.createElement("div");
+        chip.className = "model-chip";
+        chip.textContent = turn.model.split("/").pop();
+        div.appendChild(chip);
+      }}
       div.appendChild(ts);
     }}
 
