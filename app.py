@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 import chainlit as cl
+from chainlit.input_widget import Select
 import yaml
 from dotenv import load_dotenv
 
@@ -119,6 +120,7 @@ async def on_chat_start() -> None:
         system_prompt = build_system_prompt(course)
         welcome = load_course_text(course.welcome_path, course.lecture_name)
         course_llm = course.llm
+        model_choices = course.student_model_choices  # IID-STUDENT-MODEL-CHOICE
     else:
         # Single-course fallback: load root content/ directly (IID-CONTENT-INJECT)
         content = load_content(_ROOT_CONTENT)
@@ -133,6 +135,7 @@ async def on_chat_start() -> None:
             f"--- LECTURE CONTENT START ---\n{content}\n--- LECTURE CONTENT END ---\n"
         )
         course_llm = CFG.get("llm", {})
+        model_choices = []  # IID-STUDENT-MODEL-CHOICE: not supported in single-course fallback
 
     course_name = course.lecture_name if COURSES else CFG.get("course_name", "")
     logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id, user_email=user_email, course_name=course_name)
@@ -141,13 +144,41 @@ async def on_chat_start() -> None:
     sheets_id = CFG.get("sheets_log_id", "")
     sheets_logger = SheetsLogger(sheets_id, session_id, user_email=user_email, course_name=course_name) if sheets_id else None
 
+    # IID-STUDENT-MODEL-CHOICE: build label→id map; empty when feature is off for this course
+    model_choice_map: dict[str, str] = {m["label"]: m["id"] for m in model_choices}
+
     # Store in Chainlit user session
     cl.user_session.set("history", [{"role": "system", "content": system_prompt}])
     cl.user_session.set("logger", logger)
     cl.user_session.set("sheets_logger", sheets_logger)
     cl.user_session.set("course_llm", course_llm)  # IID-MULTI-COURSE: per-session LLM config
+    cl.user_session.set("model_choice_map", model_choice_map)  # IID-STUDENT-MODEL-CHOICE
+
+    # IID-STUDENT-MODEL-CHOICE: show model selector when the course defines choices
+    if model_choice_map:
+        current_model = course_llm.get("model", "")
+        current_label = next(
+            (lbl for lbl, mid in model_choice_map.items() if mid == current_model),
+            next(iter(model_choice_map)),
+        )
+        await cl.ChatSettings([
+            Select(id="model", label="LLM Model",
+                   values=list(model_choice_map.keys()),
+                   initial_value=current_label)
+        ]).send()
 
     await cl.Message(content=welcome).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
+
+
+@cl.on_settings_update
+async def on_settings_update(settings: dict) -> None:
+    """IID-STUDENT-MODEL-CHOICE: Apply student-selected model to session LLM config."""
+    model_choice_map: dict = cl.user_session.get("model_choice_map", {})
+    model_id = model_choice_map.get(settings.get("model"))
+    if model_id:
+        course_llm: dict = cl.user_session.get("course_llm")
+        course_llm["model"] = model_id
+        cl.user_session.set("course_llm", course_llm)
 
 
 @cl.on_message
@@ -169,6 +200,7 @@ async def on_message(message: cl.Message) -> None:
 
     full_response = ""
     course_llm: dict = cl.user_session.get("course_llm")  # IID-MULTI-COURSE
+    active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
     async for token in stream_response(LLM_CLIENT, {"llm": course_llm}, history):
         full_response += token
         await response_msg.stream_token(token)
@@ -176,9 +208,9 @@ async def on_message(message: cl.Message) -> None:
     await response_msg.update()
 
     history.append({"role": "assistant", "content": full_response})
-    logger.log("assistant", full_response)  # IID-CHAT-LOG
+    logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG, IID-STUDENT-MODEL-CHOICE
     if sheets_logger:
-        sheets_logger.log("assistant", full_response)  # IID-SHEETS-LOG
+        sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG, IID-STUDENT-MODEL-CHOICE
 
     # IID-STUDENT-FEEDBACK-STORE: send flag button linked to this message
     await cl.Action(

@@ -189,6 +189,11 @@ temperature: 0.3                         # optional LLM override
 max_tokens: 2048                         # optional LLM override
 first_date: 2026-05-01               # optional; inclusive lower bound (server local date)
 last_date:  2026-05-15               # optional; inclusive upper bound (server local date)
+student_model_choices:               # optional; IID-STUDENT-MODEL-CHOICE
+  - id: "google/gemini-3-flash-preview"
+    label: "Gemini Flash"
+  - id: "openai/gpt-4o-mini"
+    label: "GPT-4o Mini"
 ```
 **Success criteria:**
 - When multiple course subfolders exist, a profile chooser appears and each course loads its own content and config.
@@ -199,6 +204,13 @@ last_date:  2026-05-15               # optional; inclusive upper bound (server l
 - Invalid date format or `first_date > last_date` → loud SystemExit naming the folder and field.
 **Key files:** `src/course_loader.py` (new), `app.py`
 **No-Goals:** Per-course auth rules, per-course Google Sheet routing, nested course folder hierarchies, hour/timezone-precise availability windows, per-student access overrides.
+
+### IID-STUDENT-MODEL-CHOICE
+**Lifecycle:** DONE
+**Description:** Per-course educator-defined list of LLM models students can choose from during a session. Configured via `student_model_choices` in `_meta.yaml` (list of `{id, label}` entries). When set, Chainlit's Chat Settings gear exposes a model dropdown; changes apply from the next message. The active model is stored in every assistant log entry (JSONL `model` field + Google Sheet `model` column) and displayed as a chip below assistant bubbles in the HTML chat viewer. Inactive when `student_model_choices` is absent or empty.
+**Key files:** `src/course_loader.py` (`CourseConfig` field + parsing), `src/chat_logger.py` (`model` column), `app.py` (`on_chat_start` ChatSettings + `on_settings_update`), `scripts/render_chats.py` (model chip)
+
+---
 
 ## Data storage and management
 

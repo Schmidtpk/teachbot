@@ -11,7 +11,7 @@ Fallback chain (see IID-MULTI-COURSE):
   _welcome.md       : subfolder → root content dir
   model / temperature / max_tokens : _meta.yaml → config.yaml llm section
   lecture_name / {{course_name}}   : _meta.yaml → config.yaml course_name
-  student_model_choices (IID-STUDENT-MODEL-CHOICE) : _meta.yaml only (no fallback)
+  student_model_choices (IID-STUDENT-MODEL-CHOICE) : subfolder _meta.yaml → root content/_meta.yaml
 """
 
 import sys
@@ -100,6 +100,21 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         return []
 
     base_llm = dict(base_cfg.get("llm", {}))
+
+    # IID-STUDENT-MODEL-CHOICE: load global model choices from root content/_meta.yaml
+    global_model_choices: list[dict] = []
+    root_meta_path = root / "_meta.yaml"
+    if root_meta_path.exists():
+        try:
+            with root_meta_path.open(encoding="utf-8") as fh:
+                root_meta: dict = yaml.safe_load(fh) or {}
+            global_model_choices = [
+                {"id": m["id"], "label": m.get("label", m["id"])}
+                for m in root_meta.get("student_model_choices", [])
+                if isinstance(m, dict) and "id" in m
+            ]
+        except yaml.YAMLError:
+            pass  # optional file — malformed YAML silently produces no global choices
     courses: list[CourseConfig] = []
 
     for folder in subfolders:
@@ -147,13 +162,16 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
                 f"({first_date.isoformat()}) after last_date ({last_date.isoformat()})."
             )
 
-        # IID-STUDENT-MODEL-CHOICE: optional per-course list of models students can select
+        # IID-STUDENT-MODEL-CHOICE: per-course list; falls back to root content/_meta.yaml
         raw_choices = meta.get("student_model_choices", [])
-        student_model_choices = [
-            {"id": m["id"], "label": m.get("label", m["id"])}
-            for m in raw_choices
-            if isinstance(m, dict) and "id" in m
-        ]
+        if raw_choices:
+            student_model_choices = [
+                {"id": m["id"], "label": m.get("label", m["id"])}
+                for m in raw_choices
+                if isinstance(m, dict) and "id" in m
+            ]
+        else:
+            student_model_choices = global_model_choices
 
         courses.append(CourseConfig(
             course_id=folder.name,
