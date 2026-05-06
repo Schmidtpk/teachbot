@@ -173,7 +173,7 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 
 ### IID-MULTI-COURSE
 **Lifecycle:** IN_PROGRESS
-**Description:** Multi-course support via `content/` subfolders. Each non-`_`-prefixed subfolder is a separate course. `_meta.yaml` (required: `lecture_name`; optional: `description`, `model`, `temperature`, `max_tokens`) configures it. At startup, `src/course_loader.py` discovers courses; Chainlit's `@cl.set_chat_profiles` presents a profile chooser when courses exist. Falls back to existing single-course behavior when no subfolders are present.
+**Description:** Multi-course support via `content/` subfolders. Each non-`_`-prefixed subfolder is a separate course. `_meta.yaml` (required: `lecture_name`; optional: `description`, `order`, `model`, `temperature`, `max_tokens`, `first_date`, `last_date`) configures it. At startup, `src/course_loader.py` discovers courses; Chainlit's `@cl.set_chat_profiles` presents a profile chooser when courses exist. Courses outside their availability window are hidden from the chooser. Falls back to existing single-course behavior when no subfolders are present.
 **Fallback chain:**
 - `_system_prompt.md`: subfolder → `content/` root
 - `_welcome.md`: subfolder → `content/` root
@@ -183,17 +183,22 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 ```yaml
 lecture_name: "Course Name"          # required; shown in profile chooser
 description: "Markdown description"  # optional; rendered in profile chooser
+order: 1                             # optional; sort order in chooser (default 999)
 model: "google/gemini-3-flash-preview"  # optional LLM override
 temperature: 0.3                         # optional LLM override
 max_tokens: 2048                         # optional LLM override
+first_date: 2026-05-01               # optional; inclusive lower bound (server local date)
+last_date:  2026-05-15               # optional; inclusive upper bound (server local date)
 ```
 **Success criteria:**
 - When multiple course subfolders exist, a profile chooser appears and each course loads its own content and config.
 - When no subfolders exist, behavior is identical to single-course v1 behavior.
 - Missing `_meta.yaml` or missing `lecture_name` → loud startup failure (SystemExit) naming the offending folder.
 - Missing `_system_prompt.md` or `_welcome.md` in a subfolder silently uses the root fallback.
+- A course is hidden from the profile chooser when `first_date` is in the future or `last_date` is in the past (server local date, both inclusive). When at least one date is set, an "Available …" line is appended to the course description in the chooser.
+- Invalid date format or `first_date > last_date` → loud SystemExit naming the folder and field.
 **Key files:** `src/course_loader.py` (new), `app.py`
-**No-Goals:** Per-course auth rules, per-course Google Sheet routing, nested course folder hierarchies.
+**No-Goals:** Per-course auth rules, per-course Google Sheet routing, nested course folder hierarchies, hour/timezone-precise availability windows, per-student access overrides.
 
 ## Data storage and management
 

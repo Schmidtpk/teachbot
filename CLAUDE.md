@@ -97,7 +97,11 @@ description: "**Markdown** description"  # optional; rendered as markdown in cho
 model: "google/gemini-3-flash-preview"   # optional LLM override
 temperature: 0.3                          # optional LLM override
 max_tokens: 2048                          # optional LLM override
+first_date: 2026-05-01                # optional; inclusive lower bound (server local date)
+last_date:  2026-05-15                # optional; inclusive upper bound (server local date)
 ```
+
+**Availability window:** `first_date` and `last_date` are both optional and both inclusive — omit either for an open-ended window. Comparison uses the server's local date (Railway = UTC). A course outside its window is hidden from the profile chooser; when at least one bound is set, an "Available …" line is appended to the chooser description. Invalid date or `first_date > last_date` → loud startup failure naming the folder.
 
 **Fallback chain:** `_system_prompt.md` / `_welcome.md`: subfolder → `content/` root. LLM settings: `_meta.yaml` → `config.yaml`. Missing `_meta.yaml` or missing `lecture_name` → startup error.
 

@@ -6,6 +6,7 @@ Run with:  chainlit run app.py
 """
 
 import uuid
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -43,18 +44,26 @@ async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None
     """IID-MULTI-COURSE: Expose course subfolders as Chainlit chat profiles.
 
     Returns None when no subfolders exist, suppressing the profile chooser and
-    preserving single-course behavior.
+    preserving single-course behavior. Courses outside their `first_date`/`last_date`
+    window in `_meta.yaml` are filtered out. If COURSES is non-empty but every course
+    is currently out of window, returns [] (empty chooser) rather than None — falling
+    back to single-course mode would silently load root content/, which is wrong.
     """
     if not COURSES:
         return None
-    return [
-        cl.ChatProfile(
+    today = date.today()
+    visible = [c for c in COURSES if c.is_available(today)]
+    profiles: list[cl.ChatProfile] = []
+    for i, course in enumerate(visible):
+        base_desc = course.description or f"**{course.lecture_name}**"
+        line = course.availability_line()
+        desc = f"{base_desc}\n\n{line}" if line else base_desc
+        profiles.append(cl.ChatProfile(
             name=course.lecture_name,
-            markdown_description=course.description or f"**{course.lecture_name}**",
+            markdown_description=desc,
             default=(i == 0),
-        )
-        for i, course in enumerate(COURSES)
-    ]
+        ))
+    return profiles
 
 
 # IID-AUTH-BASIC: password-based login/registration.
@@ -99,6 +108,14 @@ async def on_chat_start() -> None:
     if COURSES:
         profile_id = cl.user_session.get("chat_profile")
         course = next((c for c in COURSES if c.lecture_name == profile_id), COURSES[0])
+        # IID-MULTI-COURSE: defensive guard — chooser already filters, but a stale
+        # browser tab or out-of-window fallback could land here.
+        if not course.is_available(date.today()):
+            await cl.Message(
+                content=f"**{course.lecture_name}** is not available right now. "
+                        f"{course.availability_line()}".strip()
+            ).send()
+            return
         system_prompt = build_system_prompt(course)
         welcome = load_course_text(course.welcome_path, course.lecture_name)
         course_llm = course.llm
