@@ -9,5 +9,3 @@ student_model_choices:
     label: "Claude Sonnet 4.6"
   - id: "google/gemini-3.1-pro-preview"
     label: "Gemini 3.1 Pro"
-  - id: "anthropic/claude-opus-4-7"
-    label: "Claude Opus 4.7"
