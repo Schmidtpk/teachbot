@@ -1,0 +1,559 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part II: Subjective judgement"
+---
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+# theme_set(theme_gray(base_size = 18))
+```
+
+
+# Introduction
+
+- Judgmental prediction 
+
+    - human experts using their knowledge, experience, and intuition 
+
+    - often used in situations with limited data or high uncertainty
+    
+    - mostly focused on events
+
+- Human judgment can incorporate qualitative factors and adapt to changing circumstances
+
+    - update: So can modern language models
+    
+- This part of the lecture will also cover related topics
+
+## Outlook
+
+Part 2 will cover
+
+- 2.1 Elicitation (measurement) of predictions
+
+    - including incentives
+
+- 2.2 Evaluation/analysis of predictions
+
+    - using properties of optimal predictions (Script 1.2)
+
+- 2.3 Empirical findings: Heuristics and Biases and Superforecasters
+
+- 2.4 Economic Expectations
+
+- 2.5 Market-based predictions
+
+# Elicitation
+
+## Intro
+
+- elicitation = measurement of predictions
+
+    - we say we "elicit" a prediction
+    
+    - the word is mainly used for asking or incentivizing individuals
+    
+- We cover different approaches
+
+    - humans without incentives
+    
+    - humans with incentives
+    
+    - markets
+    
+- Data and algorithms will follow in Part III
+    
+    
+
+
+### Goals
+
+
+
+- learn how to elicit predictions
+
+    - from experts and non-specialists
+    
+    - with incentives and without
+    
+    - point and probabilistic predictions
+
+
+### Background
+
+- This part of the lecture is partly informed by
+
+    - empirical facts from the expert judgement literature 
+    
+    - game-theoretic insights on incentives
+
+
+- Context: Experts vs laypersons
+
+    - Often applied for subject-matter experts
+    
+    - Not all of those are experts in probability or statistics
+    
+    - in research and public policy also applied to representative samples (inflation expectations, IFO business monitor, ECB Survey of Consumer Expectations,...)
+
+## Targets
+
+### Target variable
+
+- Target variable needs to be [clearly defined]{.blue}
+
+    - note: This is uncommon in daily communication and even businesses
+    
+    - ambigous statements are the norm
+    
+    - [not]{.red} cleary defined:
+    "The US will set tarifs on trade."
+
+    - [clearly defined]{.blue}:
+    "Average trade tariffs (weighted by net worth) on December 31 2025 will be above 10%."
+    
+- Standard targets are
+
+    - an event
+    
+    - a real-valued outcome
+
+
+### Target property for events
+
+- for an event prediction
+
+    - we normally want to know the probability $\hat p$ of the event
+    
+    - but could also ask for point prediction: yes/no
+    
+    - or for ranges of probabilities (e.g., "30-60%")
+    
+ 
+- we have argued that **probabilities** can be connected to decision making consistently
+
+---
+
+- [point predictions]{.red} do not allow to weigh the utility differences
+
+    - in some situations the risk of being wrong is higher in one direction
+    
+- [ranges of probabilities]{.red} normally do not identify a best decision
+
+    - but decision-making with **imprecise probabilities** is also a developped field
+    
+    - called decision making under **ambiguity**
+    
+    - e.g., maxmin preferences: $$a^\star([p_l,p_h])= argmax_a \min_{p \in [p_l,p_h]} E_p[u(a,y)]$$
+    
+  
+
+    
+    
+### Target property for reals
+
+
+- for real-valued targets
+
+    - ideally we want a probability distribution
+    
+    - identified by cumulative distribution function (cdf) 
+    
+    - or by probability density function (pdf)
+    
+    - requires distributional assumptions
+    
+    - or approximations (interval probabilities or quantiles)
+
+
+
+
+---
+
+- As probability distributions for real-valued targets are complicated, we often use point predictions
+
+- How does a point prediction for a real-valued target look like?
+    
+    - "My life expectancy is 85 years."
+    
+    - "Most likely I will die with 85." 
+    
+    - $\hat y = x' \hat \beta_{OLS}= 85$ years
+    
+    - I will not live more than 85 years.
+    
+- All those statements can be connected to a probability distribution
+
+
+---
+
+- Point predictions for real-valued targets should be understood as properties of a probabilistic predictions
+    
+    - [Mean]{.blue}: "My life expectancy is 85 years."
+
+    - [Mode]{.blue}: "Most likely I will die with 85."
+
+    - [Mean (will learn later why)]{.blue}: $\hat y = x' \hat \beta_{OLS}= 85$ years
+
+    - [Maximum/Minimum]{.blue}: I will not live more than 85 years.
+
+
+- More common are unspecified point predictions:
+
+    - [Unspecified point prediction]{.red}: "I will die with 85."
+
+
+---
+
+- other typical properties of a distribution $P$
+
+    - quantile $q_\alpha$ at level $\alpha$: $$q_\alpha(P)=\{c | P(y\le c) = \alpha\}$$
+    
+    - interval probability $IP_c$ at point $c$: $$IP_c(P)=P(y \le c)$$
+    
+    - $\alpha$-confidence intervals $CI_\alpha$: $$CI_\alpha(P) = \{Interval | P(Interval) = \alpha \}$$
+
+
+### Approximating prob. distribitions
+
+
+
+
+![](plots/mpp.jpg){height="12cm" fig-align="center"}
+
+**Identifying a distribution with interval probabilities and quantiles.** Panel A: pdf, Panel B: cdf identified by interval probabilities, Panel C: cdf identified by quantiles. The gray are illustrates the bounds on the cdf.
+
+
+
+
+## Questions
+
+### Things to consider
+
+- information content of answer
+
+    - broadly: range of probabilities $>$ probability $>$ point pred
+
+    - broadly: specific target property $>$ unspecified target
+    
+- ease of use
+
+    - broadly: range of probabilities $<$ probability $<$ point pred.
+
+    - often connected to accuracy of report
+    
+    - What is better: A bad probability prediction or a good point prediction?
+
+---
+
+- bias and incentives that question generates
+
+    - suggestive questions
+    
+    - framing can change answers
+
+- heterogeneity in target population
+
+    - e.g., research in natural sciences more open to commit to probability predictions than public health experts [@morgan2014use]
+
+### Events
+
+- Probability
+
+    - *What do you think is the probability/likelihood that event happens?*
+
+    - Alternatively communicated as frequency: How often out of 100 times would you expect the event to happen?
+
+
+- Point prediction
+
+    - *What is more likely? The event or the complement?*
+
+    - less informative than probability
+
+- unspecified scales
+
+    - *How likely is the event? (likert-type scale: very likely, likely, unlikely, very unlikely)*
+    
+    - less informative than probability and vague
+    
+    - what is the probability associated with "likely"?!
+
+---
+
+![](plots/morgan_unspecific.jpeg){height="15cm" fig-align="center"}
+
+What is the meaning of non-quantitative scales to different people?  [@morgan2014use]
+
+### Real-valued targets
+
+- Point prediction:
+
+    - *What do you expect y will be?* (Mean)
+
+    - *What do you think y will be most likely?* (Mode)
+
+    - *What do you think is the highest possible value for y?* (Maximum)
+
+    - generally hard to elicit other properties (e.g., quantiles or variances) without statistical training
+    
+    
+---
+
+- probability predictions with parametric assumptions
+
+    - also requires statistical training
+    
+    - even then hard to communicate
+    
+- instead:
+
+    - elicit interval probabilities and fit distribution to them
+    
+    - Questions: *What is the probability that y is below c?*
+    
+    - e.g. ...that GDP growth is below 2%?
+    
+    
+
+
+## Procedures
+
+### 4 steps [@garthwaite2005statistical]
+
+- setup
+    
+    - who is the expert?
+    
+    - what is the appropriate target?
+    
+    - train expert in elicitation
+    
+- [elicit]{.blue}
+  
+- fit distribution
+
+    - fit a probability distribution to measured properties
+  
+- checks
+
+    - Adequate? (If no, go back to [elicit]{.blue})
+
+
+### Who is the expert?
+
+- different experts may have different opinions
+
+- sometimes subject-matter experts are bad at statistics
+
+    - a doctor in medicine
+    
+    - a business leader
+    
+- experts have specific biases
+
+    - an expert in public health probably thinks positively about public health interventions
+    
+    - an AI entrepreneur probably is optimistic about the technology
+
+### Checks
+
+- Are reports and probability distribution internally consistent?
+
+    - partitions should add up to 100%
+    
+    - if $E_1 \subset E_2$, then $P(E_1) \le P(E_2)$
+    
+- Generate statements from probabilities and check with expert
+
+    - "Is global temperature in 2030 more likely to rise above 4 degrees than to stay below 1.5 degrees compared to pre-industrial temperatures?"
+    
+    - "Do you expect a rise above 5 degrees to happen in 5 out of 100 cases?"
+    
+    - Does the temperature stay in the interval $[2,4]$ with likelihood of 50%?
+
+### Strategic thinking process
+
+- one can teach the subject-matter expert strategies that help to form better predictions
+
+  - avoid biases
+  
+  - improve information content
+
+- we will discuss such strategies at the end of part II ("superforcasting")
+
+
+- alternatively, one can take the prediction and do post-processing without the expert
+
+    - standard for models (e.g., in weather forecasting)
+    
+    - recalibration (make uncalibrated prediction calibrated)
+    
+    - forecast combination (combine multiple predictions to a single, better, one)
+
+### Confidence, Second Order Uncertainty
+
+- generally a probability distribution reflects uncertainty
+
+    - and we argued that it can/should support decisions under uncertainty
+
+- however, subjectively, experts often feel different degrees of confidence about the same probability
+
+- one famous example for second-order uncertainty is from the Intergovernmental Panel on Climate Change (IPCC)
+
+    - used several frameworks over the years to express confidence
+    
+    - switched to probabilistic framing with five qualifiers: very low, low, medium, high, and very high
+    
+    - example: "In the Northern Hemisphere, 1983–2012 was likely the warmest 30-y period of the last 1,400 years (**medium confidence**)."
+
+
+---
+
+- confidence / second-order uncertainty will also be key in model-based algorithmic forecasting (part III)
+
+    - related to "model uncertainty" and "miss-specification"
+    
+- for example a linear regression prediction:
+
+    - the model gives a prediction $\hat y$
+    
+    - model also provides confidence intervals for $y$ (aka "parameter uncertainty")
+    
+    - but if the model is misspecified this uncertainty quantification can be wrong ("model uncertainty")
+
+
+### Wisdom of the crowds
+
+- If there are multiple experts, one could elicit multiple predictions
+
+    - How to choose or construct final prediction?
+
+- Wisdom of the crowds: Empirically, we often observe that the **average of all predictions** outperforms most individual predictions
+
+- Important caveats:
+
+  - not always true (small crowd of superforecasters outperforms general crowd)
+  
+  - if performance of predictions is known, can be better to choose good performing predictions
+  
+## Summary: Elicitation
+
+- Judgement predictions can be elicited from 
+
+    - human experts
+  
+   - human laypersons ("experts" on public opinion or individual-specific matters)
+
+  
+- elicitation mechanisms differ in
+
+    - information content about uncertainty
+  
+   - ease of use
+  
+
+- Next we look at 
+
+    - incentives in predictions
+
+
+
+# Incentives
+
+
+## Scoring rules
+
+- so far we have taken expert opinion as given
+
+    - expert may have the option to gather information and improve prediction
+
+    - expert may not report truthfully
+
+- Solution: good incentives.
+
+    - what payment structure is a good idea?
+
+
+### Payment with proper scoring rules
+
+- Consider the following contract structure
+
+    - expert issues prediciton $\hat p$
+
+    - target outcome $y$ realizes
+
+    - expert receives bonus $s(\hat p, y)$
+
+
+- What is a good choice for the payment function $s$?
+
+    - proper scoring rules!
+
+
+- If
+
+    - expert **maximizes expected payout** and
+
+    - $s$ is a **proper scoring rule**,
+
+  then the expert issues their true belief $p$.
+
+### Advantage of proper incentives
+
+- **Truthful** reporting is incentivized
+
+- Incentives reward the inclusion of additional information
+
+    - Including more information increases the expected score for ideal predictions [@holzmann2014role]
+    
+    - Formally: For two ideal predictions $\hat p_1 = E[y|x_1]$ and $\hat p_2 = E[y|x_1, x_2]$ it holds that $$S(\hat p_1) \le S(\hat p_2)$$
+    
+    - Thus, expert has incentives to include more information in prediction
+
+
+### The problems with scoring rules
+
+- the properties above hold only under narrow circumstances
+
+
+- Requirement: Outcomes need to be observable
+
+
+- Problem: risk aversion
+
+    - if expert is risk averse, she is not maximizing expected payout, but expected utility from it
+  
+---
+
+- Problem: personal stakes
+
+    - if expert has personal stakes (e.g., hedge fund manager) can hedge with prediction (i.e., bias towards unfavorable outcomes)
+
+- Problem: reputation
+
+    - if predictive performance is public, expert has incentives to maximize reputation
+    
+    - can lead, for example, to overly extreme or confident predictions
+    
+    - media landscape favors extrem statements
+    
+    - public institutions (like professors) favor non-commited messaging
+
+
+
+<!-- ## Peer prediction -->
+
+<!-- - Short script on the topic by Waggoner: [(link)](https://www.bowaggoner.com/courses/2018/nets412/lectures/lect14.pdf) -->
+
+<!-- - situation: Scoring rules are great if outcome is observable -->
+
+<!--     - often the outcome is not public information -->
+
+<!--     - or won't be observed in the near future -->
+
+
+
+
+
+# References {.allowframebreaks}
