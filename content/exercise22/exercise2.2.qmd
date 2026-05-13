@@ -1,0 +1,331 @@
+---
+title: "Exercise: Evaluating a Probabilistic Forecaster"
+subtitle: "Predictions: Theory and Practice"
+author: "Patrick Schmidt"
+institute: "University of Heidelberg"
+params:
+  show_solutions: true
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    self-contained: true
+    theme: cosmo
+  pdf:
+    documentclass: article
+    geometry: margin=2.5cm
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(calibrationband)
+theme_set(theme_bw() + theme(text = element_text(size = 14)))
+```
+
+```{r data, echo=FALSE}
+set.seed(2026)
+n <- 2000
+political  <- rbinom(n, 1, 0.3)
+p_hat      <- runif(n, 0.05, 0.95)
+p_true_base <- plogis(0.4 * qlogis(p_hat))
+p_true     <- pmax(0.01, pmin(0.99, p_true_base - 0.10 * political))
+y          <- rbinom(n, 1, p_true)
+dat <- tibble(p_hat = p_hat, y = y, political = political)
+```
+
+## Part 1: Calibration for event probabilities
+
+A forecasting platform records $n = `r nrow(dat)`$ probabilistic predictions $\hat p$ for binary events $y \in \{0, 1\}$. Each question is labelled as *political* ($x = 1$) or non-political ($x = 0$). The data frame `dat` has the columns `p_hat`, `y`, and `political`.
+
+Your task is to evaluate the forecaster on this sample.
+
+Recall from the lecture that a prediction $\hat p$ is calibrated for $y$ if
+$$E[y \mid \hat p] = \hat p.$$
+
+We estimate the calibration curve $\hat E[y \mid \hat p]$ together with a 90% confidence band using the `calibrationband` package.
+
+```{r calibration, echo=TRUE, message=FALSE, warning=FALSE, fig.height=5, fig.width=5, fig.align="center"}
+plot(calibration_bands(x = dat$p_hat, y = dat$y,
+                        alpha = 0.10, method = "round", digits = 2))
+```
+
+The diagonal is the reference line of perfect calibration. The shaded area is the 90% confidence band for $E[y \mid \hat p]$.
+
+
+
+#### (a) Describe the deviation from calibration.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+The empirical calibration curve has an **S-shape**:
+
+- for small $\hat p$ (e.g. $\hat p < 0.3$) the curve lies **above** the diagonal — the realised event rate is higher than predicted;
+- for large $\hat p$ (e.g. $\hat p > 0.7$) the curve lies **below** the diagonal — the realised event rate is lower than predicted;
+- near $\hat p = 0.5$ the curve is close to the diagonal.
+
+The 90% confidence band excludes the diagonal at both ends, so the miscalibration is statistically significant.
+
+(The pattern can be described as **overconfidence**: extreme predictions are too extreme. The forecaster pushes probabilities further away from $0.5$ than is justified by the data.)
+:::
+
+
+#### (b) Describe the evidence against calibration for $\hat p = 0.50$.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution 
+
+(exact numbers not important, direction should be right)
+
+Near $\hat p = 0.50$ the empirical curve sits at roughly $0.42$, slightly below the diagonal — a hint that the forecaster over-predicts in the middle of the scale. The 90% confidence band, however, covers approximately $[0.34, 0.58]$ and therefore **contains the diagonal** at this point.
+
+The data thus provide **no significant evidence** against calibration at $\hat p = 0.50$: the band is wide enough that the apparent gap to the diagonal can be explained by sampling variation. The clear miscalibration we identified in (a) is concentrated at the extremes, not in the middle.
+:::
+
+
+#### (c) Recalibrate a new prediction
+
+The forecaster issues a new prediction of $\hat p = 0.75$. How would you recalibrate it? Read the answer off the plot, including a rough uncertainty range from the 90% band.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution 
+
+(exact numbers not important, direction should be right)
+
+At $\hat p = 0.75$ the empirical calibration curve sits at roughly $0.58$, with the 90% band covering approximately $0.42$–$0.73$. The diagonal lies (just) outside the band, so the data do reject calibration at this point — a recalibration is warranted.
+
+A reasonable recalibrated prediction is therefore
+$$\hat p' \approx 0.58,$$
+with residual uncertainty of order $\pm 0.15$.
+
+The forecaster's $0.75$ should be communicated as "closer to 60%, not 75%".
+:::
+
+#### (d) Subgroup bias: political vs. non-political
+
+To check whether the bias differs across question types, we run a linear regression of the prediction error $y - \hat p$ on the political indicator $x$:
+$$y - \hat p = \beta_0 + \beta_1 \cdot x + \varepsilon, \qquad x = \mathbb{1}\{\text{political question}\}.$$
+
+```{r mz, echo=TRUE}
+fit <- lm(I(y - p_hat) ~ political, data = dat)
+round(summary(fit)$coefficients,digits = 3)
+```
+
+Interpret the estimates of $\beta_0$ and $\beta_1$. Be precise about what each coefficient measures and how it relates to (mis-)calibration.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+**Reading the output.** 
+
+- $\hat\beta_0 = -0.005$ with $p = 0.723$ (not significant) 
+- $\hat\beta_1 = -0.104$ with $p \approx 0$ (highly significant).
+
+**$\hat\beta_0 = -0.005$: non-political questions are unbiased on average.**
+
+- The intercept estimates $E[y - \hat p \mid x = 0]$, the average prediction error on non-political questions. It is essentially zero, so the forecaster is *unbiased on average* on this subgroup.
+
+- (This is **not** the same as being calibrated: from part (a) we know the curve is S-shaped on the whole sample, so the *conditional* error $E[y - \hat p \mid \hat p]$ varies with $\hat p$. Over- and under-prediction at the two ends of $\hat p$ roughly cancel out when we average, leaving $\hat\beta_0 \approx 0$.)
+
+**$\hat\beta_1 = -0.104$: on political questions the forecaster systematically overstates event probabilities.**
+
+- The slope estimates the *difference* in average prediction error between political and non-political questions:
+$$\hat\beta_1 \;\approx\; E[y - \hat p \mid x = 1] - E[y - \hat p \mid x = 0].$$
+
+- A value of $-0.104$ means that on political questions the realised rate is about 10 percentage points *lower* than predicted, beyond what we see on non-political ones. The forecaster overestimates the chance that political events occur.
+
+:::
+
+
+## Part 2: Calibration for real-valued targets
+
+```{r data2, echo=FALSE}
+set.seed(2026)
+n2       <- 500
+y_real   <- rnorm(n2, mean = 0, sd = 1)
+mu_pred  <- 0.4
+sig_pred <- 0.6
+dat2 <- tibble(y = y_real, mu = mu_pred, sigma = sig_pred)
+dat2$pit <- pnorm(dat2$y, mean = dat2$mu, sd = dat2$sigma)
+```
+
+A second forecaster issues **probabilistic predictions for a real-valued target** $y$ (e.g. next quarter's GDP growth, in percent). For each observation $i$ the forecaster reports a predictive distribution
+$\hat P_i$.
+We have $n_2 = `r nrow(dat2)`$ such forecasts in the data frame.
+
+### (a) Compute a single PIT value
+
+For the first observation, the prediction was a uniform distribution with support $[0,4]$, $$\hat P_1 = U[0,4],$$ and the observed value was $y_1=2$.
+
+Compute the PIT value $PIT(y_1,\hat P_1)=F_{\hat P_1}(y_1)$. What does it mean?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+For a uniform distribution $U[a,b]$ the CDF is $F(y) = (y-a)/(b-a)$ on $[a,b]$. For $\hat P_1 = U[0,4]$ and $y_1 = 2$:
+$$\text{PIT}_1 \;=\; F_{\hat P_1}(y_1) \;=\; \frac{2 - 0}{4 - 0} \;=\; 0.5.$$
+
+**Meaning.** The observation lies exactly at the **median** of the predicted distribution: 50% of the predicted probability mass is below $y_1$, 50% above. This is the most "central" PIT value possible — completely compatible with a calibrated forecast.
+
+A single observation can never confirm or reject calibration on its own, but this particular value does not provide any evidence against it.
+:::
+
+
+### (b) Compute a single PIT value
+
+For the second observation, the prediction was a uniform distribution with support $[0,3]$ ($\hat P_2 = U[0,3]$) and the observed value was $y_2=0$.
+
+Compute the PIT value. What does it mean?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+For $\hat P_2 = U[0,3]$ and $y_2 = 0$:
+$$\text{PIT}_2 \;=\; F_{\hat P_2}(y_2) \;=\; \frac{0 - 0}{3 - 0} \;=\; 0.$$
+
+**Meaning.** The observation sits at the **lower boundary** of the predicted support: the forecaster placed no probability mass below $0$, and the realisation came in right at that edge. PIT values close to $0$ (or $1$) are the most extreme possible.
+
+If such extreme values *systematically* accumulate near $0$, the forecaster is either
+- located too high (predicted mean above the true mean), or
+- too narrow (predicted spread smaller than the truth),
+- or both (cf. part c).
+
+Again, a single observation is not enough to conclude miscalibration, but PIT $\approx 0$ is the kind of value that would be rare under a calibrated forecast.
+:::
+
+
+### (c) Interpret the PIT histogram
+
+Recall from the lecture that if the prediction is calibrated, the Probability Integral Transform
+$$\text{PIT}_i \;=\; F_{\hat P_i}(y_i)$$
+is uniformly distributed on $[0,1]$. We compute the PIT values and plot their histogram (the dashed line shows the uniform reference level):
+
+```{r pit, echo=FALSE, fig.height=3.5, fig.width=6, fig.align="center"}
+ggplot(dat2, aes(x = pit)) +
+  geom_histogram(bins = 20, fill = "skyblue", color = "black", boundary = 0) +
+  geom_hline(yintercept = nrow(dat2) / 20, linetype = "dashed") +
+  labs(x = "PIT", y = "Count")
+```
+
+Describe the pattern of miscalibration visible in the histogram. What does it tell you about *where* the forecaster's predictive distribution is wrong — in its **location** (mean), in its **spread** (variance), or both? In which direction?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+The histogram is far from uniform, so the predictions are **not calibrated**. Two features stand out:
+
+1. **Strong asymmetry — left-heavy.** The bin near $\text{PIT} = 0$ is far above the uniform reference line, while the right half of the histogram is thinner. Low PIT values mean that the observed $y$ lies in the **lower tail** of the predicted distribution $\hat P$. This happens systematically when the predicted **mean is too high** — the forecaster *over-predicts* the value of $y$. This is the "**bias in location**" failure mode (overoptimistic in the lecture's terminology).
+
+2. **Extra mass at both ends — U-shape on top of the asymmetry.** Both end-bins ($\text{PIT} < 0.05$ and $\text{PIT} > 0.95$) are clearly above the reference. This U-shape says that the realised $y$ falls in the tails of $\hat P$ more often than the predictive distribution allows — the predicted **spread is too small**. This is the "**overconfidence**" failure mode (overprecise in the lecture's terminology: predicted $\hat\sigma$ smaller than the actual standard deviation of $y$).
+
+**Combined diagnosis.** The forecaster's predictive distribution is both **shifted to the right** of the true distribution and **too narrow**. To fix the forecaster one would lower the predicted mean *and* widen the predicted standard deviation.
+:::
+
+
+## Part 3: Comparing two forecasters
+
+```{r data3, echo=FALSE}
+set.seed(99)
+n3 <- 2000
+political3 <- rbinom(n3, 1, 0.3)
+base_prob3 <- runif(n3, 0.2, 0.8)
+p_true3    <- pmax(0.05, pmin(0.95, base_prob3 - 0.2 * political3))
+y3         <- rbinom(n3, 1, p_true3)
+# Forecaster A: unbiased for non-political, slight upward bias for political
+p_A3 <- pmax(0.05, pmin(0.95, p_true3 + 0.10 * political3 + rnorm(n3, 0, 0.05)))
+# Forecaster B: large upward bias for non-political, nearly unbiased for political
+p_B3 <- pmax(0.05, pmin(0.95, p_true3 + 0.20 * (1 - political3) - 0.03 * political3 + rnorm(n3, 0, 0.05)))
+dat3 <- tibble(y = y3, p_A = p_A3, p_B = p_B3, political = political3) %>%
+  mutate(
+    score_A = 1 - (y - p_A)^2,
+    score_B = 1 - (y - p_B)^2,
+    diff    = score_A - score_B
+  )
+```
+
+A forecasting platform records $n = `r nrow(dat3)`$ probabilistic predictions from **two forecasters, A and B**, for binary events $y \in \{0,1\}$. Each question is again labelled *political* ($\texttt{political} = 1$) or non-political ($\texttt{political} = 0$).
+
+### (a) Realized quadratic scores
+
+The **realized quadratic score** for a single prediction is
+$$s_i(\hat p) = 1 - (y_i - \hat p_i)^2.$$
+
+For the single observation $y = 1$, $\hat p^A = 0.1$, $\hat p^B = 0.5$, compute the score for each forecaster by hand.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+$$s^A = 1 - (1 - 0.1)^2 = 1 - 0.81 = 0.19, \qquad s^B = 1 - (1 - 0.5)^2 = 1 - 0.25 = 0.75.$$
+
+**B scores higher.** The event occurred ($y=1$), so the forecaster who predicted it more confidently is rewarded — B's prediction of 0.5 is much closer to 1 than A's 0.1.
+:::
+
+
+### (b) Score-difference plot with confidence interval — full sample
+
+The plot below shows the **average score difference** $\bar\Delta = \frac{1}{n}\sum_i(s_i^A - s_i^B)$ with $s_i = 1-(y_i-\hat p_i)^2$, together with a **90% confidence interval**.
+
+```{r plot_full3, echo=FALSE, fig.height=2.2, fig.width=6, fig.align="center"}
+ci_df <- function(data, label) {
+  m  <- mean(data$diff)
+  se <- sd(data$diff) / sqrt(nrow(data))
+  tibble(label = label, mean = m,
+         lo = m - qnorm(0.95) * se,
+         hi = m + qnorm(0.95) * se)
+}
+
+full_ci <- ci_df(dat3, "All questions")
+
+ggplot(full_ci, aes(x = label, y = mean, ymin = lo, ymax = hi)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "firebrick") +
+  geom_pointrange(linewidth = 0.8) +
+  coord_flip() +
+  labs(x = NULL, y = "Avg. score difference  (A \u2212 B)",
+       title = "90% CI for mean score difference")
+```
+
+Based on the plot, which forecaster is more accurate? Is the result statistically significant?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+
+- **Direction:** Forecaster A obtains a higher average quadratic score, so **A is more accurate** overall.
+- **Significance:** Because the CI excludes $0$, we reject $H_0 : E[s^A] = E[s^B]$ at the 10% level. The advantage of A is statistically significant.
+:::
+
+
+### (c) Score-difference plot — political questions only
+
+The same analysis restricted to **political questions** only:
+
+```{r plot_pol3, echo=FALSE, fig.height=2.2, fig.width=6, fig.align="center"}
+pol_ci <- ci_df(dplyr::filter(dat3, political == 1), "Political questions")
+
+ggplot(pol_ci, aes(x = label, y = mean, ymin = lo, ymax = hi)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "firebrick") +
+  geom_pointrange(linewidth = 0.8) +
+  coord_flip() +
+  labs(x = NULL, y = "Avg. score difference  (A \u2212 B)",
+       title = "90% CI for mean score difference")
+```
+
+Who appears more accurate on political questions? What does the confidence interval tell you about the strength of the evidence?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+For the political sub-sample ($n \approx 600$) the point estimate $\bar\Delta \approx -0.005 < 0$: **B appears slightly more accurate** on political questions (a negative score difference means B's score is higher on average).
+
+However, the **90% CI contains the zero**.
+
+- **Significance:** We **cannot reject** $H_0 : E[s^A] = E[s^B]$ at the 10% level for this sub-sample. 
+
+- The advantage of B on political questions could be due to sampling variation.
+
+This illustrates a general insight: 
+
+- **sub-group comparisons have less power** than full-sample comparisons
+- an effect that appears in one direction overall may reverse in a sub-group 
+:::

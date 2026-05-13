@@ -1,0 +1,586 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part II: Subjective judgement"
+---
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+# theme_set(theme_gray(base_size = 18))
+```
+
+
+# Evaluation
+
+## Intro
+
+### Goals
+
+- learn how to test and compare prediction based on observed outcomes
+
+- understand calibration diagrams
+
+- comparing predictions (experts or models) with realized scores
+
+- understand inference (confidence intervals and tests) for those tools
+
+### Setting
+
+- we now observe a sample of 
+
+  - outcomes $y$
+  
+  - predictions $\hat p$ (or $\hat y$)
+  
+    - sometimes multiple predictions
+  
+  - and potentially some information $x$
+  
+
+- we want to test properties like
+
+  - is a prediction calibrated
+  
+  - is a prediction better/worse than another?
+  
+  - is a prediction using information $x$ or not
+
+
+
+### Recap: optimal predictions
+
+- **sharpness**: Concentration/boldness of prediction
+
+- **calibration**: Consistency of prediction with realized propbabilities
+
+- **accurcacy**: expected score for proper scoring rules
+
+    - tightly connected to optimal (expected utility maximizing) decision making
+    
+
+- **idealness** with respect to information $x$: using information $x$ correctly
+
+    - implies calibration
+    
+    - ideal prediction is the most accurate of all predictions that are based on info $x$
+
+
+- we discussed those properties only for event predictions
+
+  - here we will also look at real-valued targets
+
+### from theory to empirics
+
+- all properties were discussed as theoretical properties of the random variables $y$ and $\hat p$/$\hat y$
+
+- now we have a sample $\large((y_1,\hat p_1),\dots,(y_n,\hat p_n)\large)$
+
+- to test a theoretical property like
+
+    $$E[y-\hat p] = 0$$
+    
+  on a sample one approach is to substitute expectations ($E[\dots]$) by their empirical analogon, averages $\frac 1 n \sum_i[\dots]$
+  
+  $$\frac 1 n \sum_i (y_i - \hat p_i)$$ 
+
+
+## Calibration
+
+
+### Calibration
+
+- calibration of $\hat p$ for $y$:
+
+$$E[y| \hat p]=\hat p$$
+
+- can be judged by looking at calibration curve $E[y| \hat p]$
+
+- for a set of predictions and target outcomes
+
+  - $(y_1,\hat p_1),\dots,(y_n,\hat p_n)$
+  
+  we can compute averages of $y$ for each value of $\hat p$
+  
+  $$\text{calibration curve} (c) = \frac 1 {n_c} \sum_{\hat p_i=c} y_i$$
+  where $n_c$ denotes the number of predictions with $\hat p_i = c$.
+
+
+### Example
+
+- Let's look at two examples
+
+- Example A: 
+
+    - $\hat p$: Doctors assigning probability of pneumonia
+    
+    - $y$: radiology finds pneumonia
+    
+    - n = 1531
+    
+    
+- Example B: 
+
+    - $\hat p$: US weather forecast prediction rain 
+    
+    - $y$: actual rain that day
+    
+    - n > 100k (based on 87 different weather stations)
+    
+    
+---
+
+![](plots/morgan_cal.jpeg){height="10cm" fig-align="center"}
+
+Illustration of two extremes in expert calibration. (A) Assessment of probability of pneumonia (based on observed symptoms) in 1,531 first-time patients (B) Once-daily US Weather Service precipitation forecasts for 87 stations are compared with actual occurrence of precipitation. The small numbers adjacent to each point report the number of forecasts.  [@morgan2014use]
+
+### Inference
+
+- If we observe a certain calibration curve, we want to know how much uncertainty remains
+
+- we will not cover the statistical details
+
+- confidence intervals for $E[y | \hat p=c]$
+
+  - beware of multiple testing!
+  
+- Tests for $H_0: E[y | \hat p=c]=0$
+
+    - p-value: likelihood of observing deviation from zero if prediction calibrated
+  
+
+### Simulated example with confidence intervals
+
+```{r}
+library(calibrationband)
+library(dplyr)
+set.seed(123)
+s=.8
+n=10000
+x <- runif(n)
+p <- function(x,s){p = 1/(1+((1/x*(1-x))^(s+1)));return(p)}
+dat <- tibble::tibble(pr=x, s=s, cep = p(pr,s), y=rbinom(n,1,cep))%>% dplyr::arrange(pr)
+
+cb<-calibration_bands(x=dat$pr, y=dat$y,alpha=0.05, method = "round", digits = 3)
+plot(cb)
+```
+
+
+### ROC (sidenote)
+
+- ROC curves
+
+    - for event prediction ("classification")
+    
+    - can be used for any signal (does not need to be a probability)
+  
+  ![Some roc curves. Each curve corresponds to a prediction model](plots/roc.jpg){height="8cm" fig-align="center"}
+
+
+### Calibration for reals
+
+- Now the case with a real-valued target $y \in \mathbb{R}$
+
+- A probabilistic prediction is now a distribution $\hat P$
+
+  - could be defined by a cdf $\hat F_{\hat P}(x)=\hat P(Y\le x)$
+  
+  - or a parametric distribution (e.g., a Gaussian distribution $P=\mathcal N(0,1)$)
+
+- for simplicity we assume a continuous distribution (a smooth cdf without "jumps")
+
+### PIT 
+
+- one approach is to use the Probability Integral Transform (PIT)
+
+    - defined by the predicted probability that the target is lower than actually observed
+  $$PIT(y,\hat P)=F_{\hat P}(y)$$
+
+
+
+::: {.callout-caution appearance="default" icon="false"}
+## calibrated implies uniform PIT
+
+If a probabilistic prediction for a real-valued target $y$ is calibrated,i.e.,
+$$Y|\hat P=\hat P,$$
+then the PIT is uniformly distributed, i.e.,
+$$PIT(y, \hat P) \sim U[0,1].$$
+:::
+
+
+### PIT histograms
+
+- for a sample of predictions with real-valued targets we can 
+
+    - compute a sample of PIT values
+    
+    - plot a histogram of them
+    
+    - compare the histogram to a uniform distribution
+    
+### simulation
+
+- Let us look at a simulated pit histogram
+
+- we have $y \sim \mathcal N (0,1)$
+
+- and predictions
+
+    - calibrated $\hat P = \mathcal N(0,1)$
+    
+    - overoptimistic $\hat P = \mathcal N(\color{red}{0.5},1)$
+
+    - overprecise $\hat P = \mathcal N(0,\color{red}{.7})$
+
+    - underprecise $\hat P = \mathcal N(0,\color{red}{1.5})$
+    
+- n = 1000
+
+
+---
+```{r}
+library(ggplot2)
+library(gridExtra)
+
+set.seed(1)
+
+# Function to simulate PIT histograms for normal distribution
+simulate_pit_normal <- function(n_samples, true_mean, true_sd, predicted_mean_func, predicted_sd_func, title) {
+  
+  # Generate true outcomes from a normal distribution
+  true_outcomes <- rnorm(n_samples, true_mean, true_sd)
+  
+  # Generate predicted means and standard deviations
+  predicted_means <- predicted_mean_func(n_samples)
+  predicted_sds <- predicted_sd_func(n_samples)
+  
+  # Calculate PIT values
+  pit_values <- sapply(1:n_samples, function(i) {
+    pnorm(true_outcomes[i], predicted_means[i], predicted_sds[i])
+  })
+  
+  # Create histogram
+  plot <- ggplot(data.frame(pit = pit_values), aes(x = pit)) +
+    geom_histogram(bins = 20, fill = "skyblue", color = "black") +
+    labs(title = title, x = "PIT", y = "Frequency") +
+    theme_minimal()
+  
+  return(plot)
+}
+
+# Parameters
+n_samples <- 1000
+true_mean <- 0
+true_sd <- 1
+
+# Overoptimistic predictions (mean shifted)
+overoptimistic_mean_func <- function(n) {
+  rep(0.5,n)
+}
+overoptimistic_sd_func <- function(n){
+  rep(1, n)
+}
+
+# Overprecise predictions (smaller sd)
+overprecise_mean_func <- function(n) {
+  rep(0, n)
+}
+overprecise_sd_func <- function(n) {
+  rep(0.7,n)
+}
+
+# Underprecise predictions (larger sd)
+underprecise_mean_func <- function(n) {
+  rep(0, n)
+}
+underprecise_sd_func <- function(n) {
+  rep(1.5,n)
+}
+
+# Calibrated predictions (true distribution)
+calibrated_mean_func <- function(n) {
+  rep(0, n)
+}
+calibrated_sd_func <- function(n) {
+  rep(1, n)
+}
+
+# Generate plots
+plot_overoptimistic <- simulate_pit_normal(n_samples, true_mean, true_sd, overoptimistic_mean_func, overoptimistic_sd_func, "Overoptimistic (Mean Shifted)")
+plot_overprecise <- simulate_pit_normal(n_samples, true_mean, true_sd, overprecise_mean_func, overprecise_sd_func, "Overprecise (Smaller SD)")
+plot_underprecise <- simulate_pit_normal(n_samples, true_mean, true_sd, underprecise_mean_func, underprecise_sd_func, "Underprecise (Larger SD)")
+plot_calibrated <- simulate_pit_normal(n_samples, true_mean, true_sd, calibrated_mean_func, calibrated_sd_func, "Calibrated")
+
+# Arrange plots in a grid
+combined_plot <- grid.arrange(plot_calibrated,plot_overoptimistic, plot_overprecise, plot_underprecise, ncol = 2)
+
+
+
+```
+
+
+### Calibration of prediction intervals
+
+- probability predictions $\hat F$ can be used to construct prediction intervals
+$$[\hat F^{-1}(\alpha/2),\, \hat F^{-1}(1-\alpha/2)]$$
+
+- a prediction interval $[\hat l, \hat u]$ at level $1-\alpha$ should contain the true outcome with probability $1-\alpha$:
+$$P(y \in [\hat l, \hat u]) = 1-\alpha$$
+
+- **empirical coverage**: proportion of observations where the outcome falls inside the interval
+$$\widehat{\text{coverage}} = \frac{1}{n}\sum_{i=1}^n \mathbf{1}\{y_i \in [\hat l_i, \hat u_i]\}$$
+
+
+- deviations from the nominal level signal miscalibration:
+
+  - **undercoverage** ($\widehat{\text{coverage}} < 1-\alpha$): intervals too narrow — prediction is overprecise
+
+  - **overcoverage** ($\widehat{\text{coverage}} > 1-\alpha$): intervals too wide — prediction is underprecise
+
+
+## Accuracy
+
+
+### scoring rules
+
+- we showed that the expected score is a measure of accuracy
+
+    - if scoring rule is proper
+    
+- given a sample of predictions and target observations we can
+
+    - compute the score $s_i = s(y_i, \hat p_i)$
+    
+    - compute the average score $\frac 1 n \sum_i s_i$ to approximate $S(\hat p)$
+    
+- if we compare two predictions $\hat p_A$ and $\hat p_B$, the more accurate prediction will obtain a higher average score (in the long run)
+
+### inference
+
+- comparing the expected value / mean of two populations is a standard problem in statistics
+
+- common approaches are
+
+    - compute the two average scores with confidence intervals
+    
+    - compute the average score difference $\Delta s = s(y_i, \hat p_A) - s(y_i, \hat p_B)$
+    - test an equal means null hypothesis, $H_0: E[s(y_i, \hat p_A)]=E[s(y_i, \hat p_B)]$
+
+
+- often a prediction is compared to the **ignorant prediction** with $\hat p = 0.5$
+
+
+### Example: AI forecast bench
+
+- forecastbench is a benchmark for prediction ability of large language models [(https://www.forecastbench.org/)](https://www.forecastbench.org/)
+
+- idea:
+
+    - if models understand world, they can predict it
+
+    - benchmark is not cheatable (no training spill) as realization in future
+
+### Example: results
+
+![](plots/llm_qsr.png){width="400" fig-align="center"}
+
+
+---
+
+Sidenote on the score used above:
+
+- ranking based on the quadratic score (Brier score): $BS = \frac{1}{n}\sum_i (y_i - \hat{p}_i)^2$
+
+- FRI introduced a new index using the **square root** for better interpretability:
+$$BI = \left(1 - \sqrt{BS}\right) \times 100$$
+
+  - $BI = 70$ means $\sqrt{BS} = 0.30$, i.e. the same RMSE as a forecaster who always predicts $\hat{p}=0.70$ when $y=1$ and $\hat{p}=0.30$ when $y=0$
+
+- **Problem:** per observation, the Brier Index equals:
+$$BI_i = 1 - \sqrt{(y_i - \hat{p}_i)^2} = 1 - |y_i - \hat{p}_i|$$
+which is the **linear score** and therefore **not proper** (see script1.2).
+
+For details see their [blogpost](https://forecastingresearch.substack.com/p/introducing-the-brier-index)
+
+### Accuracy for probabilistic predictions
+
+- For real-valued targets $y \in \mathbb{R}$, proper scoring rules also exist
+
+- **Log score** (also called ignorance score):
+$$S_{log}(y, \hat{P}) = \log \hat{f}(y)$$
+where $\hat{f}$ is the density of the predicted distribution $\hat{P}$
+
+- **CRPS** (Continuous Ranked Probability Score):
+$$\text{CRPS}(y, \hat{F}) = \int_{-\infty}^{\infty} \left(\hat{F}(x) - \mathbf{1}\{y \leq x\}\right)^2 dx$$
+
+- Both are **proper scoring rules** for probabilistic predictions of real-valued targets
+
+  - higher expected score = more accurate prediction
+
+
+### CRPS: two representations
+
+- The CRPS has two useful equivalent representations
+
+- **Via quadratic (Brier) scores of events** $\{Y \leq x\}$ for all thresholds $x$:
+$$\text{CRPS}(y, \hat{F}) = \int_{-\infty}^{\infty} \underbrace{\left(\hat{F}(x) - \mathbf{1}\{y \leq x\}\right)^2}_{\text{Brier score for event } \{Y \leq x\}} dx$$
+
+- **Via quantile scores** integrated over all levels $\tau \in [0,1]$:
+$$\text{CRPS}(y, \hat{F}) = 2\int_0^1 \underbrace{\left(\mathbf{1}\{y \leq \hat{q}_\tau\} - \tau\right)\left(\hat{q}_\tau - y\right)}_{\text{quantile score at level } \tau} d\tau$$
+
+  where $\hat{q}_\tau = \hat{F}^{-1}(\tau)$ is the $\tau$-quantile of $\hat{P}$
+
+- The CRPS can be seen as an aggregate accuracy measure across all events / all quantile levels
+
+
+### accuracy for point predictions
+
+- For real-valued targets probability predictions are often too complicated
+
+- instead, we use point predictions and evaluate their accuracy via loss functions $l(y,\hat y)$
+
+    - e.g. the quadratic loss $l(y,\hat y)= (y-\hat y)^2$
+
+    - loss functions are "scoring rules for point predictions"
+
+- here we focus on mean predictions (other point predictions will be covered in Part III)
+
+    - we want to predict the mean / expected value of $P$
+
+
+### consistent loss functions
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: consistent loss function
+We say a loss function $l(y,\hat y)$ is **consistent for a mean prediction** if the mean of the true distribution minimizes the expected loss, i.e.,
+
+$$\arg\min_{\hat y} E_{y \sim P}[l(y,\hat y)] = E_{y \sim P}[y]$$
+:::
+
+
+- the quadratic loss function is **consistent for a mean prediction**
+
+    - result is derived in the same way as properness of qsr
+    
+- there also exists other consistent loss functions for the mean
+
+### target properties and loss functions
+
+- for other target properties (e.g., the median, quantiles) we need other loss functions
+
+- the property targeted by a point prediction (e.g., the mean) and the loss function should always match
+
+- **not** to do:
+
+    - estimate a mean prediction and measure accuracy with absolute loss $l(\hat y,y)=|y-\hat y|$
+
+
+### calibration of point predictions
+
+- for real-valued targets $y$ with a point prediction $\hat y$
+
+- Mincer-Zarnowitz regression
+    $$E[y-\hat y| x]=\beta_0 + \beta_1 \hat y$$
+
+    - if a point prediction is calibrated, i.e.
+    $$E[y|\hat y]=\hat y,$$ 
+    then $\beta_0=0$ and $\beta_1=0$.
+    
+    - can be tested with statistical tools from regression analysis like the $F$-test
+    
+- MZ-regressions test a form of calibration for point predictions
+
+    - "mean-calibration"
+    
+
+## Pitfalls
+
+### Extreme events
+
+-   In the evaluation of predictions, we should not condition on extreme events $y$
+
+    -   Some forecasters are famous for predicting important/extreme
+    events (financial crises, Covid pandemic,...)
+    
+    -   looking at accuracy only for extreme events makes extreme predictions look better
+    
+-   Instead, condition on extreme forecasts $x$
+
+    - such comparisons are theoretically valid [@lerch2017forecaster]
+    
+### Sample size
+
+-   small sample size and large correlation
+
+-   inference on calibration and accuracy depends on sample size and correlation
+    
+-   confidence intervals are large and tests have low power if 
+
+    - sample size is small
+
+    - observations are correlated (time series, realizations depend on same underlying circumstances)
+    
+
+### Heterogeneity
+
+-   heterogeneity in predictive properties
+
+    - e.g., a weather prediction model is better under specific atmospheric conditions
+    
+    - e.g., a stock market experts is better in low-inflation environment
+
+-   we focused on testing properties on the entire sample
+
+-   predictions may be calibrated only on subset
+    
+-   predictions may be more or less accurate under specific situations
+
+
+## Not covered
+
+- some common tools for evaluating predictions were not covered here
+
+
+- calibration tests for point predictions 
+
+    - e.g., backtesting Value-at-Risk predictions
+    
+
+
+## Summary
+
+prediction type | calibration | accuracy | 
+|----------|----------|----------|
+| event probability | calibration curve | log score, qsr |
+| prob. distribution | PIT histogram | log score, CRPS |
+| point prediction | MZ-regression | loss functions |
+
+
+
+### Summary
+
+- for **event** predictions we can
+
+  - test calibration with calibration curves 
+  
+  - compare predictive accuracy with average scores
+  
+
+- for **real-valued** targets we can
+
+  - test calibration of probabilistic predictions with PIT histograms
+
+  - compare predictive accuracy of probabilistic predictions with the log score or CRPS
+
+
+
+- for **point predictions** of real-valued targets
+
+  - we compare predictive accuracy with loss functions
+  
+  - loss functions should be consistent for the property under consideration
+
+  - the quadratic error loss is consistent for mean predictions
+
+
+- inference and sampling uncertainty is crucial
+
+# References {.allowframebreaks}
