@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Assignment Questions — Predictions 2026</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; margin: 0; padding: 1rem 2rem; color: #1a1a1a; background: #f8f9fa; }
+  h1 { font-size: 1.4rem; font-weight: 600; margin-bottom: 0.25rem; color: #1a1a1a; }
+  p.meta { color: #666; margin: 0 0 1rem; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  thead tr { background: #1e3a5f; color: #fff; }
+  thead th { padding: 10px 10px; text-align: left; font-weight: 500; font-size: 12px; white-space: nowrap; }
+  thead th.num { width: 36px; text-align: center; }
+  tbody tr { border-bottom: 1px solid #eee; }
+  tbody tr:hover { background: #f0f5ff; }
+  td { padding: 8px 10px; vertical-align: top; line-height: 1.45; }
+  td.num { text-align: center; font-weight: 700; color: #1e3a5f; white-space: nowrap; }
+  td.tag { white-space: nowrap; color: #555; font-size: 11px; }
+  td.code { font-family: monospace; font-size: 11.5px; color: #333; white-space: nowrap; }
+  /* column widths */
+  col.c-num  { width: 36px; }
+  col.c-q    { width: 18%; }
+  col.c-res  { width: 22%; }
+  col.c-bg   { width: 25%; }
+  col.c-ty   { width: 7%; }
+  col.c-tp   { width: 10%; }
+  col.c-ev   { width: 8%; }
+  col.c-pr   { width: 7%; }
+</style>
+</head>
+<body>
+<h1>Assignment Questions — Predictions: Economics, Empirics and Evaluations 2026</h1>
+<p class="meta">43 questions &nbsp;·&nbsp; Generated 2026-05-20</p>
+<table>
+  <colgroup>
+    <col class="c-num"><col class="c-q"><col class="c-res"><col class="c-bg">
+    <col class="c-ty"><col class="c-tp"><col class="c-ev"><col class="c-pr">
+  </colgroup>
+  <thead>
+    <tr>
+      <th class="num">#</th>
+      <th>Prediction Question</th>
+      <th>Exact Resolution Criteria</th>
+      <th>Background Information</th>
+      <th>Type of y</th>
+      <th>Type of Prediction</th>
+      <th>Evaluation</th>
+      <th>Process</th>
+    </tr>
+  </thead>
+  <tbody>
+  <tr>
+    <td class="num">1</td>
+    <td>Will Curaçao score at least one goal against Germany in the World Cup?</td>
+    <td>True if Curaçao's score in the FIFA World Cup group stage game against Germany on June 14th 2026 is at least 1. If the game is aborted or if it is moved to another day, the score is 0.</td>
+    <td>The prediction should not consider a potential game between Germany and Curaçao after the group stage.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">2</td>
+    <td>By how many jobs will US Nonfarm Payroll Employment change during May 2026?</td>
+    <td>The actual value for evaluation is the released value for the change in US Total Nonfarm Payroll Employment during May 2026, published in the US Bureau of Labor Statistics' Employment Situation Summary on Friday, June 5 2026, 14:30 Berlin time (8:30am ET)</td>
+    <td>Timely forecasts of the change in Nonfarm Paroll Employment you could combine and/or try to recalibrate can be found at, e. g., https://tradingeconomics.com/united-states/non-farm-payrolls, https://www.forexfactory.com/calendar/66-us-non-farm-employment-change, https://www.estimize.com/economic_indicators/united-states-us-change-in-nonfarm-payrolls (the latter requires creating an account on that website). If you want to estimate the unconditional mean, you could use https://fred.stlouisfed.org/series/PAYEMS (note that this is the level, not the change).</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">(-1)*(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">3</td>
+    <td>Will the ECB increase its deposit facility rate at the monetary policy meeting on June 11, 2026?</td>
+    <td>The event is true if the European Central Bank increases the deposit facility rate in its official monetary policy decision published on June 11, 2026. The event is false if the deposit facility rate is kept unchanged or reduced.</td>
+    <td>Relevant information includes inflation data, ECB statements, market expectations, and euro area macroeconomic conditions.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">4</td>
+    <td>How many page views will the English Wikipedia page for Heidelberg receive in June 2026?</td>
+    <td>The target resolves as the total number of page views during June 2026 of the English Wikipedia page “Heidelberg” (https://en.wikipedia.org/wiki/Heidelberg), according to the Wikipedia Pageviews Analysis tool (with the settings “All platforms” and “User” selected).</td>
+    <td>Recent daily page view data from the Wikipedia Pageviews Analysis tool shows that the English Heidelberg page generally receives around 700–900 daily views, with occasional spikes above 1,000 views.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">50000-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">5</td>
+    <td>What will Germany’s June 2026 flash inflation rate (HICP) be?<br><br>This target is not known on June 4 (the flash estimate is published at the end of June) and is resolved before July 15 (Destatis publishes the flash estimate around June 28-30).</td>
+    <td>The prediction resolves to the flash estimate of the Harmonised Index of Consumer Prices (HICP) for June 2026, as published by Destatis (the German Federal Statistical Office) in its official press release at the end of June 2026.<br>The headline inflation rate in percentage, year on year.<br>This value is public, unambiguous, published before July 15, 2026, satisfying the requirement of the assignment.</td>
+    <td>The Harmonised Index of Consumer Prices (HICP) is the standard measure of inflation across the European Union. Destatis issues a “flash estimate” at the end of each month, a provisional figure providing an early indication of inflation before the final detailed release.<br>Inflation is affected by factors such as energy prices, food prices, supply‑chain conditions and decisions on monetary policy by the European Central Bank.<br>This prediction is a point estimate and will be evaluated for accuracy using the negated squared error scoring rule.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">-(p-y)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">6</td>
+    <td>What will be the Nasdaq-100 closing value on 23 June 2026, as listed on Nasdaq’s NDX historical data page? </td>
+    <td>The close price is the final value of the index at the end of the trading day. Regular closing time of the Nasdaq-100 (NDX) is 4pm ET. </td>
+    <td>You can view historical data about the Nasdaq 100 on Nasdaq.com (NDX - Histroical Data) </td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100000-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">7</td>
+    <td>What will the maximum temperature in Heidelberg be on June 12, 2026? (real-valued)</td>
+    <td><br>The official daily maximum temperature (in °C) recorded at the Heidelberg weather station on June 12, 2026. Resolution source: https://www.wetterkontor.de/de/wetter/deutschland/rueckblick.asp?id=111, checked on June 13, 2026.</td>
+    <td>There are three major numerical weather models — GFS (American), ECMWF (European), and ICON (German) and most smartphone weather apps rely on one of them for forecasting. For predictions more than 5 days ahead, these models can diverge by a considerable margin.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">8</td>
+    <td>How many goals will Germany score in the group-stage at the 2026 FIFA World Cup?</td>
+    <td>The target y is the total number of goals officially credited to Germany in its three FIFA World Cup 2026 group-stage matches, excluding penalty shootouts. Own goals by opponents count if they are officially recorded as goals for Germany in the match score. If Germany does not play all three group-stage matches, only officially completed group-stage matches count.</td>
+    <td>Germany will play Curaçao, Côte d’Ivoire, and Ecuador in the group stage of the 2026 FIFA World Cup. Germany has limited recent head-to-head history against these opponents. They beat Ecuador 3–0 in the 2006 World Cup and 4–2 in a 2013 friendly match. Against Côte d’Ivoire, Germany drew 2–2 in a 2009 friendly match. Germany and Curaçao have not played each other before.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">9</td>
+    <td>How many UEFA (European) countries will advance to the Knock-Out Stage of the FIFA World Cup 2026?</td>
+    <td>The number of UEFA countries that qualify for the Round of 32 (Knock-Out Stage) at the FIFA World Cup 2026. Resolution date: June 28,2026</td>
+    <td>16 UEFA countries participate in the group stage of the FIFA World Cup 2026 (out of 48 total participants), distributed across 12 groups of 4 teams each. A total of 32 teams will advance to the Knock-Out Stage.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-6.25*|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">10</td>
+    <td>Will any student ask a question during the first 20 minutes of the lecture on June 17, 2026?</td>
+    <td>True if at least one student verbally asks a question related to the course content. If the lecture is cancelled, the event is false. </td>
+    <td>In previous sessions, questions occurred in about most of lectures. The first 20 minutes usually have fewer questions than later in the lecture.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">11</td>
+    <td>Will Pete Hegseth be the United States Secretary of War on July 15, 2026?</td>
+    <td>The event resolves as true if Pete Hegseth officially holds the office of United States Secretary of Defense at 23:59 EDT on July 15, 2026.<br><br>Resolution will be determined using official announcements from the U.S. Department of War and/or the White House</td>
+    <td>War with Iran &amp; high gas prices in the US</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">12</td>
+    <td>Will the total number of goals scored in the UEFA Champions League final 2026 between Paris Saint-Germain and Arsenal be an odd number?</td>
+    <td>The event is true if the sum of all goals scored by both teams during regular time, extra time in the Champions League final is an odd number (1, 3, 5, 7, …). Only goals officially recorded by UEFA in the final match report count. If the match is cancelled or forfeited, the total is zero (which is even, so the event is false). The official UEFA match statistics are the final source of truth.</td>
+    <td>In UEFA Champions League final 2025 Paris Saint-Germain vs Inter Milan, the sum of all goals scored by both teams is 5. And in the final of 2026, Paris Saint-Germain is also going to play, and they beat Inter Milan by 5:0 last year.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">13</td>
+    <td>What will the 7-day average price of electricity per MWh be on July 1, 2026, on the EPEX power exchange?</td>
+    <td>The 7-day average price in EUR/MWh electricity on July 1, 2026. Shown at: https://www.dashboard-konjunktur.de/konjunktur/Energie/1750061370434?newRendering=true</td>
+    <td>The trend, including historical data, can be viewed here: https://www.dashboard-konjunktur.de/konjunktur/Energie/1750061370434?newRendering=true</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">14</td>
+    <td>Will Heidelberg University fall out of the global top 80 in the QS World University Rankings 2027?</td>
+    <td>True if Heidelberg University is ranked lower than 80th place in the official QS World University Rankings 2027 release. <br>Otherwise false.</td>
+    <td>Heidelberg University has gradually declined from rankings around 50th place in the early 2010s and dropped into the 80s together with many European universities following recent QS methodology changes. Although the 2026 ranking showed a recovery to 80th place, it is uncertain whether this improvement is stable.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">15</td>
+    <td>What will be the EUR/SGD exchange rate at market close on July 11, 2026?</td>
+    <td>Source: ECB Closing Rate, Metric: Units of SGD per 1 European, Ambiguity:None.</td>
+    <td>The rate has historically traded roughly in the 1.40–1.55 range, with SGD being a relatively strong and low-volatility currency. Singapore is a major trade hub; EUR/SGD is sensitive to global growth expectations and US-China trade tensions</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">16</td>
+    <td>What will be the temperature in Heidelberg at 12:00 on June 20, 2026?</td>
+    <td>The target is the air temperature in degrees Celsius measured in Heidelberg, Germany, at 12:00 local time on June 20, 2026, according to the official Deutscher Wetterdienst (DWD) weather report. If multiple measurements are available, the officially reported hourly temperature is used.</td>
+    <td>Average daytime temperatures in Heidelberg in June are typically between 20°C and 28°C, but weather conditions can vary substantially due to rain and heat waves.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">17</td>
+    <td>Will Crude Oil Jun 26 (CL=F) fall below $100 at time it closes?</td>
+    <td>True if price &lt; $100, false else, on June 26 as the future expires, no rollover. </td>
+    <td>The future price has been wobbling around $100 since Trump initiated military operation in Iran. As Trump truces, price has temporarily fallen but rose again after small-scale conflicts.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">18</td>
+    <td>What will the May 2026 headline CPI YoY print be?</td>
+    <td>The official year-over-year percentage change in the U.S. headline Consumer Price Index (CPI) for May 2026, as published by the Bureau of Labor Statistics (BLS) on June 10, 2026, at 8:30 AM ET. The exact number will be y and the forecasters prediction number will be p.</td>
+    <td>April 2026 CPI showed re-acceleration, driven by grocery prices and energy passthrough.<br>WTI crude oil is trading near $100–110/bbl with significant recent gains amid geopolitical tensions.<br>Core CPI has been accelerating (recent MoM +0.376%), and 5Y breakeven inflation rose sharply to 2.69%.<br>Strong base effects and persistent energy/food pressures suggest limited cooling in May.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-100*|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">19</td>
+    <td>Will Italy defeat Brazil in the women’s Volleyball Nations League match on 7 June 2026?</td>
+    <td>Let y=1 if the official Volleyball World result for the Brazil vs Italy Women’s VNL 2026 match (Pool 2 — Week 1 — Women #33) shows Italy as the winner. Let y=0 if Brazil is the winner. If the match is postponed, the official result will be used if the match is played and published by 15 July 2026. If the match is cancelled, abandoned without an official winner, or no official result is published by 15 July 2026, then y=0.</td>
+    <td>Italy is entering the VNL tournament as defending champion, and figures as the no.1 team in the world on the FIVB Women's Volleyball World Ranking, running on a 36-match winning streak.<br>Brazil figures as the no. 2 team on the same ranking and will be hosting the match.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">20</td>
+    <td>Will Real Madrid CF appoint José Mourinho as head coach before July 15, 2026?</td>
+    <td>The event resolves as true if Real Madrid officially announces José Mourinho as head coach/manager on its official website or official social media channels before July 15, 2026. Otherwise, the event resolves as false.</td>
+    <td>José Mourinho previously managed Real Madrid from 2010 to 2013. Real Madrid signs a new manager after a season without trophies. </td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">21</td>
+    <td>How many Flammkuchen will be on the fresh bakery shelf at Rewe Fahrtgasse 18 on June 13, 2026, at 8:00 PM?</td>
+    <td>Location: Rewe supermarket at Fahrtgasse 18, 69117 Heidelberg. <br>Time: June 13, 2026 (Saturday), 20:00.<br>Target: Fresh bakery section, the shelf displaying baked Flammkuchen (not frozen or ready-to-bake). <br>Count: Total number of complete Flammkuchen pieces available for purchase on the shelf, excluding damaged items or those held by customers. <br>Verification: I will count in person and take a photo as evidence. <br>Special case: If the product is completely sold out or the shelf is empty, the count is 0.</td>
+    <td>The Rewe at Fahrtgasse 18 has a fresh bakery section that sells freshly baked Flammkuchen. This product is very popular and tends to sell out quickly. Based on my regular shopping experience, evening stock rarely exceeds 3 pieces, and stockouts are common. June 13 is a Saturday, the busiest shopping day of the week in Germany since most supermarkets are closed on Sundays. By 8:00 PM, after a full day of heavy customer traffic and four hours before closing, the bakery section has typically been depleted. Restocking at this hour is highly unlikely.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">22</td>
+    <td>How many articles will the English Wikipedia contain on July 10, 2026?</td>
+    <td><br>The total number of articles in the English Wikipedia as recorded in the Internet Archive of https://en.wikipedia.org/wiki/Special:Statistics at 12:00 CEST on July 10, 2026</td>
+    <td>As of May 13, 2026 (end of day), the English Wikipedia contains almost exactly 7,182,000 articles. According to Wikipedia, the encyclopedia grows at approximately 15,000 new articles per month, as of July 2024 (https://en.wikipedia.org/wiki/Wikipedia:Size_of_Wikipedia). </td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">10000-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">23</td>
+    <td>How many days will the Lufthansa crew strike between June 5th and July 15th?</td>
+    <td>The number of days that the Lufthansa crew (either cabin or cockpit crew) will strike between June 5th and July 15th. Included are only strikes at Lufthansa and Lufthansa Cargo, but not any other airlines from the Lufthansa Group (strikes at Lufthansa CityAirlines are also not included).</td>
+    <td>As of 13 May, after several strikes in recent months, the crew unions have not announced any new strikes.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">24</td>
+    <td>Will NVIDIA remain the company with the highest market capitalization among the Magnificent Seven on July 1, 2026?</td>
+    <td>The event is true if NVIDIA has the highest market capitalization among Apple, Microsoft, NVIDIA, Amazon, Meta, Alphabet, and Tesla at the close of U.S. stock markets on July 1, 2026. Market capitalization values will be taken from publicly available financial data sources such as Yahoo Finance or CompaniesMarketCap.</td>
+    <td>The “Magnificent Seven” refers to seven dominant U.S. technology firms that account for a large share of recent stock market growth. NVIDIA recently became the world’s most valuable company due to strong investor expectations surrounding artificial intelligence and semiconductor demand. However, competition from firms such as Microsoft and Apple could challenge this position.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">25</td>
+    <td>Will the European Central Bank reduce its deposit facility rate at least once at the June 2026 Governing Council monetary policy meeting?</td>
+    <td>The event resolves as true (y=1) if the ECB officially announces a reduction of the ECB deposit facility rate at the Governing Council monetary policy meeting scheduled for June 10–11, 2026, compared with the rate in effect immediately before the announcement. False (y=0) if the deposit facility rate is unchanged, increased or no official rate decision is announced.</td>
+    <td>Eurozone inflation has recently declined, while economic growth remains weak. Financial markets currently expect possible monetary easing during 2026.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">26</td>
+    <td>Will turnout for the Maine 2nd Congressional District Republican primary on July 9th exceed 80,000?</td>
+    <td>True if at least 80,001 primary voters cast a ballot across all candidates. If the turnout is 80,000 or below, the event is false.</td>
+    <td>In previous midterm election cycle, according to mean and median turnout of &quot;House Races At-A-Glance,&quot; September 2022, the mean turnout was 89,886 and the median turnout was 83,382. Kalshi (an American prediction site) gives KY-04 (a similarly competitive election albeit with a Republican incumbent as a 69% chance of a +70,000 turnout (as of 13/5/2026), as even though there is an established front-runner the median from prior cycles suggests that turnout for up and down ballet races will inflate numbers (there are senate races in both Maine and Kentucky in 2026). Therefore p turnout= .65 due to median turnout from prior midterm election cycle and slightly lower national attention on the race, though the prior median heavily rated in the prediction analysis.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">27</td>
+    <td>Will the ECB reference exchange rate for EUR 1 in USD be above 1.20 on 10 June 2026?</td>
+    <td>The event is True if the daily European Central Bank (ECB) euro foreign exchange reference rate for EUR 1 against the US dollar, as published for 10 June 2026, is strictly greater than 1.2000.<br>The value is taken from the ECB’s official page:<br>https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html<br>and retrieved at 14:00 UTC on 11 June 2026.<br>If 10 June is a European bank holiday and no rate is published for that date, the next available daily rate (for the following business day) is used, and the threshold comparison is still applied.<br>If the ECB website is permanently unavailable and no other official ECB archive can be accessed, the event resolves as False.</td>
+    <td>The EUR/USD exchange rate is a key barometer of the relative strength of the eurozone and US economies. In recent months, the euro has traded firmly, oscillating mainly in a range between 1.15 and 1.19. As of mid-May 2026, it sits near the upper end of this band at around 1.17. The key debate driving the outlook is whether it can break above the 1.20 threshold.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">28</td>
+    <td>Will the Boston Red Sox win 10 or more games from June 4 through the end of June?</td>
+    <td>True if the Boston Red Sox win at least 10 games from the starting date through the end of June.</td>
+    <td>17 scheduled games for this period. 9 home games. Winning Percentage as of 14 May, 2026 is .415 (17-24).</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">29</td>
+    <td>Will Jannik Sinner win the Wimbledon 2026 men's single title?</td>
+    <td>The event resolves as TRUE if Jannik Sinner is officially recorded as the winner of Wimbledon 2026 men's single championship (final on July 12). FALSE otherwise.  </td>
+    <td>Together with Carlos Alcaraz, Sinner is among the top favorites. Sinner is the defending Wimbledon champion - won 2025 against Alcaraz - but in total Alcaraz won the last 10 out of 17 games against Sinner. Alcaraz currently has a hand injury. Betting odds and ATP rankings might also help. </td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">30</td>
+    <td>Will the word “sustainable” appear in the European Central Bank “Monetary policy statement (with Q&amp;A)” associated with the June 2026 monetary policy meeting?</td>
+    <td>The event resolves as True if the exact word “sustainable” appears at least once in the official English-language ECB document “Monetary policy statement (with Q&amp;A)” published on the ECB website for the June 2026 monetary policy meeting (which is currently scheduled for June 10 and 11, 2026). In all other cases, the event resolves as False. <br>The entire published text counts, including headings, introductory remarks, prepared statements, and questions and answers. <br>The document should be available after the meeting on the following link: https://www.ecb.europa.eu/press/press_conference/monetary-policy-statement/html/index.en.html</td>
+    <td>The ECB holds monetary policy meetings approximately every six weeks and publishes a “Monetary policy statement (with Q&amp;A)” after each meeting. The word “sustainable” appeared twice in the December 2025 statement, once in the February 2026 statement, zero times in the March 2026 statement, and twice in the April 2026 statement.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">31</td>
+    <td>Will the average Google Trends search interest for “Claude” in Germany reach at least 31.25% of the average Google Trends search interest for “ChatGPT” between June 5 and June 30, 2026?</td>
+    <td>The event resolves as true if, for Germany, Google Trends reports that the average search interest value for the search term “Claude” is at least 31.25% of the average search interest value for the search term “ChatGPT” over the period from June 5, 2026 to June 30, 2026, inclusive.<br><br>The comparison will use Google Trends with the following settings: Germany, web search, all categories, custom time range June 5, 2026 to June 30, 2026. The values for both terms will be exported or read from Google Trends after the period has ended. Let C be the average Google Trends value for “Claude” and G the average Google Trends value for “ChatGPT.” The event is true if<br><br>C/G ≥ 0.3125<br><br>and false otherwise.</td>
+    <td>Claude is an AI assistant developed by Anthropic and a relevant competitor to ChatGPT in the market for large language models. In recent comparable periods, the ratio of average Google Trends search interest for “Claude” to average Google Trends search interest for “ChatGPT” was:<br><br>05.04.2026 - 05.05.2026: 20/67 = 0.2985<br>05.03.2026 - 05.04.2026: 20/70 = 0.2597<br>05.02.2026 - 05.03.2026: 12/79 = 0.1518<br><br>This target measures relative Google search interest, not actual use of the AI tools. Direct use through apps, bookmarks, browser shortcuts, desktop shortcuts, or taskbar links is not counted unless it involves a Google search.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">32</td>
+    <td>Will the Canadian government decide on who will win the contract for replacing their submarine fleet before July 15th.</td>
+    <td>True if the Canadian government accepts the existing bid from ThyssenKrupp Marine Systems or Hanwha Ocean for replacing the Victoria class submarine by July 15th.</td>
+    <td>The Canadian government is looking to purchase 12 new submarines for their navy with only ThyssenKrupp Marine Systems and Hanwha Ocean with bids being currently considered. both bids were finalized at the end of this April and are currently being considered.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">33</td>
+    <td>According to ICE Futures Europe: Will the official settlement price of Brent crude oil futures for August 2026 exceed 95 USD per barrel on June 8, 2026?</td>
+    <td>The event resolves TRUE, if the daily official ICE settlement price of the August 2026 Brent crude oil futures contract is strictly greater than 95.00 USD per barrel on June 8, 2026 UTC.<br><br>Report available at June 9, 2026 on following website: https://www.ice.com/report/10 (Select Contract B-Brent Crude Future). </td>
+    <td>Brent crude oil is one of the most important global benchmarks for oil prices and is strongly influenced by geopolitical developments. Brent crude oil futures can traditionally be utilized to safeguard future oilprices but are nowadays most often used to speculate or hedge in energy markets. The settlement price is the official end-of-day price determined by the Intercontinental Exchange (ICE). <br><br></td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">34</td>
+    <td>How many goals will the German National Team score in the World Cup until the resolution date?</td>
+    <td>The number of regular goals scored by the German national team, based on the match results. Opponents’ own goals are included; German own goals are not. All goals scored between the first match on June 14 and the potential first semifinal on July 14 are counted.</td>
+    <td>The German national team will play a minimum of three and up to seven matches within this timeframe. The three confirmed fixtures are against Curaçao, Côte d’Ivoire, and Ecuador. A potential final, third-place match, or second semifinal fixture is not included, as these would take place outside of the timeframe.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">100-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">35</td>
+    <td>Will Germany reach the 2026 FIFA World Cup quarterfinals?</td>
+    <td>The target resolves as 1 if Germany reaches the quarterfinals of the 2026 FIFA World Cup before July 15, 2026, and 0 otherwise. Official FIFA records will be used.</td>
+    <td>Germany is historically a strong national team, but recent tournament performances have been mixed. Squad quality and tournament form may affect the outcome.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">36</td>
+    <td>How many goals will be scored in the 2026 world cup match of the Democratic Republic of the Congo versus Uzbekistan?</td>
+    <td>The number of goals scored during the world cup match between Uzbekistan and the Democratic Republic of the Congo which takes place on June 28th at 1:30 Am (Central European time).</td>
+    <td>Game is expected to be highly competitive, with no strong outright favorite. Uzbekistan has averaged 2 goals/ game and conceded .6 goals/ game in their last 8 matches while DRC has been averaging 1.2 goals per game and .4 goals conceded per game.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">10-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">37</td>
+    <td>How many sockeye salmon will be caught commercially in the Bristol Bay, Alaska, USA, commercial fishery from June 8, 2026, until July 10th, 2026?</td>
+    <td>The cumulative number of sockeye salmon caught commercially in Bristol Bay, Alaska, from June 8-July 10, 2026, as reported by the Alaska Department of Fish and Game (ADF&amp;G). The ADF&amp;G reports commercial harvest and escapement numbers daily during the summer season. </td>
+    <td>Bristol Bay, Alaska, is the world's largest producer of sockeye salmon, supporting an astonishing 57% of global supply. The fishery is valued at over $2.2 billion annually and employs roughly 2,000 fishing vessels and over 12,000 fishermen each summer. Bristol Bay's dependence on 9 major river systems as well as (rising) ocean temperatures makes for significant variability in salmon harvest and thus an interesting prediction challenge. NOTE: y and y^ measured in millions of salmon, ie: y^ = 1 --&gt;  prediction of 1,000,000 salmon.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-(|p-y|)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">38</td>
+    <td>Will at least one direct train from Frankfurt(Main) Hbf to Heidelberg Hbf on June 15, 2026 arrive more than 10 minutes late?</td>
+    <td>The event is true if at least one train from Frankfurt(Main) Hbf to Heidelberg Hbf arrives at least 10 minutes late on June 15, 2026. Cancelled trains will be counted as arriving more than 10 minutes late. The scheduled arrival times and the time when the trains actually arrive will be checked from DB’s recorded arrival information. Connecting journeys are excluded. Cancelled direct trains will be counted as arriving more than 10 minutes late. </td>
+    <td>There are approximately 20 direct trains from Frankfurt(Main) Hbf to Heidelberg Hbf on a typical day. Since the event considers all direct trains on June 15, 2026, the probability of at least one train being delayed by more than 10 minutes may be higher than the probability of a single specific train being delayed.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">39</td>
+    <td>How many total vehicular traffic fatalities will occur in the city of Austin, Texas on June 13th? </td>
+    <td>How many reports of traffic fatalities (involving pedestrians, bicyclists, motorists, motorcyclists, and e-scooter riders) occurred within the city limits of Austin, Texas on June 13th?</td>
+    <td>Data on traffic fatalities can be found here: https://data.austintexas.gov/Transportation-and-Mobility/Austin-Crash-Report-Data-Crash-Victim-Demographic-/xecs-rpy9/about_data </td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">1000-|y-p|</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">40</td>
+    <td>Will at least one named tropical cyclone form in the Atlantic Ocean before July 15, 2026?</td>
+    <td>Use the official National Hurricane Center (NHC) Atlantic storm database. The event is true if at least one tropical or subtropical cyclone in the Atlantic basin receives an official name at any time before July 15, 2026 (00:00 UTC on July 15). Otherwise, the event is false.</td>
+    <td>The Atlantic hurricane season officially starts on June 1 each year, but the timing of the first named storm varies considerably across seasons. Atmospheric conditions, sea surface temperatures, and wind shear all influence whether a tropical cyclone develops early in the season. Some years produce named storms in June, while other seasons remain inactive until later in the summer.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">41</td>
+    <td>What is the Real GDP growth rate (Provisional Estimate) of India for FY 25-26 accurate to 1 decimal place?</td>
+    <td>Based on the figure published by Government Of India Ministry of Statistics and Programme Implementation (https://www.mospi.gov.in/). Under: What's new &gt; Press Releases. The figures are scheduled to be published on 7th June.</td>
+    <td>For any financial year, the Government of India publishes the following figures of Real GDP: &quot;1st Advance Estimate&quot; in Jan, &quot;2nd Advance Estimate&quot; in Feb, &quot;Provisional Estimate&quot; in June. Further, &quot;Revised Estimates&quot; are published in Jan of following year and later. The target focuses on the &quot;Provisional estimate.&quot; The past figures and &quot;Advanced Estimates&quot; for current FY can be found on same website.</td>
+    <td class="tag">real-valued</td>
+    <td class="tag">point prediction (for real)</td>
+    <td class="code">100-|y-p|*20</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">42</td>
+    <td>Will the European Central Bank lower its deposit facility rate at its monetary policy meeting on June 11, 2026?</td>
+    <td>True if the European Central Bank announces on June 11, 2026 that it lowers the deposit facility rate compared with the rate in effect immediately before that monetary policy meeting. False if the deposit facility rate is left unchanged, increased, or if no cut to the deposit facility rate is announced at that meeting.</td>
+    <td>The deposit facility rate is one of the ECB's key policy rates. It is the rate banks receive when depositing funds overnight with the ECB. The ECB's monetary policy decision on June 11, 2026 will determine whether this rate is lowered, left unchanged, or increased.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  <tr>
+    <td class="num">43</td>
+    <td>Will the total sum of &quot;User&quot; agent pageviews for the English Wikipedia article &quot;2026_FIFA_World_Cup&quot; be strictly greater than 42,500,000 during the inclusive period of June 11, 2026, to July 12, 2026?</td>
+    <td>Resolution via Wikimedia Pageviews Analysis API (pageviews.wmcloud.org) for article &quot;2026_FIFA_World_Cup&quot; on en.wikipedia.org. Date range: June 1 to July 12, 2026, inclusive. Agent: &quot;User&quot; only. Platform: &quot;All Access&quot;. Resolves Yes if sum &gt;= 42,500,001; No if sum &lt;= 42,500,000. Data retrieved July 14, 2026 at 12:00 UTC.</td>
+    <td>The 2022 FIFA World Cup generated about 33.89 million Wikipedia pageviews during the core period (Nov 20 to Dec 18) across 64 games. The 2026 tournament expands to 104 matches, projecting roughly 55 million views (33.89M * 104/64 = 55.07M). The forecasting window (June 11 to July 12) captures 32 of 39 days (82%), excluding the World Cup Final on July 19. Taking 82% of 55 million yields an expected value of about 45 million views.</td>
+    <td class="tag">event</td>
+    <td class="tag">probability (for event)</td>
+    <td class="code">1-(y-p)^2</td>
+    <td class="tag"></td>
+  </tr>
+  </tbody>
+</table>
+</body>
+</html>

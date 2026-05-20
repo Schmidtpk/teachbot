@@ -1,0 +1,841 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part II: Subjective judgement"
+---
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+# theme_set(theme_gray(base_size = 18))
+```
+
+
+# Heuristics and Biases
+
+## Introduction
+
+- Terminology
+
+    -   Heuristics: Mental shortcuts.
+  
+    -   Biases: Systematic deviations from rationality.
+
+- Evolutionary perspective
+
+    - human perception and decision process adapted to certain environment
+    
+    - heuristics for forming beliefs developed
+    
+    - but those heuristics can be wrong for other environments
+    
+- nature vs nurture?
+
+    - always hard to tell
+    
+    - but also culture subject to survival of the fittest
+    
+    - biases remain relevant irrespective of origin
+
+### Bias
+
+- belief biases as short-hand for “errors in probabilistic reasoning.”
+
+    - deviation in probabilities 
+    
+    - or from Bayesian updating
+    
+- two possible origins
+
+    - imperfect compliance to probability theory
+    
+    - mental model that is not accurate for reality 
+    
+- identifying heuristics and biases from experiments and examples is difficult
+
+    - many of the presented conclusions are contested or not universal
+    
+    - you should be aware that the biases might be relevant
+    
+
+
+### Goals
+
+- learn common heuristics in belief formation
+
+- learn about biases arising from them
+
+
+### Literature
+
+- partly based on Benjamin [-@benjamin2019errors]
+
+- original research program by Kahnemann and Tversky
+
+    - see [@tversky1974judgment,@kahneman1982judgment]
+    
+    - set of experiments that reveals common patterns in belief formation and decision making
+
+- behavioral economics more focused on irrational decisions
+
+    - irrational decisions follow from irrational predictions
+
+<!-- covered: gambler’s fallacy, hot hand fallacy, base rate neglect, confirmation bias, law of small numbers, hindsight bias, conjunction fallacy | remaining: non-belief in the law of large numbers -->
+
+
+## Biases on samples
+
+### Partition dependence
+
+- $P(A) < P(A \cap B) + P(A \cap B^c)$
+
+- people assign greater total probability to an event when it is described as the union of subevents
+
+Examples: 
+
+- What is the probability that the next person coming through the door is 
+
+    - ... a lawyer?
+
+    - ... a lawyer and wears a suit?
+    
+
+- What is your probability of a
+
+  (i) cardiovascular disease
+  (ii) heart attack
+  (iii) stroke
+
+
+### Sample-size neglect
+
+- Law of large numbers: For $y_i \sim_{iid} B(p)$, it holds that 
+$$\frac 1 n \sum y_i \to_p p$$
+    - puts more mass around the probability, the larger the sample size
+
+- **sample-size neglect**: sample size not sufficiently accounted for
+
+Example:
+
+- What is the distribution of the ratio of girls among 4 babies?
+
+  - ...among 10 babies?
+
+  - ...among 100 babies?
+
+### Simulation: True distribution of sample average
+
+```{r}
+# Set parameters
+n_samples <- 1000 # Number of samples for each sample size
+probability <- 0.5 # Probability of success
+n_draws_values <- c(4,10, 100, 1000) # Varying sample sizes
+
+# Create a list to store the results
+results <- list()
+
+# Simulate and store sample averages for each sample size
+for (n_draws in n_draws_values) {
+  # Simulate repeated draws
+  samples <- replicate(n_samples, rbinom(n_draws, 1, probability))
+  
+  # Calculate sample averages
+  sample_averages <- colMeans(samples)
+  
+  # Store results
+  results[[as.character(n_draws)]] <- data.frame(
+    n_draws = n_draws,
+    sample_average = sample_averages
+  )
+}
+
+# Combine results into a single data frame
+library(dplyr)
+library(tidyr)
+results_df <- bind_rows(results, .id = "n_draws")
+results_df$n_draws <- factor(results_df$n_draws, levels = as.character(n_draws_values))
+
+# Plot the distributions using ggplot2
+library(ggplot2)
+
+ggplot(results_df, aes(x = sample_average, fill = n_draws)) +
+  geom_density(alpha = 0.5) +  # Use density plots with transparency
+  geom_vline(xintercept = probability, color = "red", linetype = "dashed") +
+  labs(
+    x = "Sample Average",
+    y = "Density",
+    fill = "Sample Size",
+    title = "Sampling Distribution of Sample Average for Varying Sample Sizes"
+  ) +
+  theme_minimal()+
+  facet_wrap(vars(n_draws),ncol=1, scale="free_y")
+```
+
+
+### Overconfidence
+
+-   Overestimating the accuracy of predictions 
+
+-   also called overprecision
+
+    - overconfidence used more generally for overestimating own performance (also beyond predictions)
+
+-   for real-valued targets, the prediction is too sharp
+
+    - not measurable with point forecasts alone
+    
+
+### Example: 90% Confidence Interval
+
+- Ask: give a range you are 90% sure contains the true answer
+
+    - e.g., "In what year was the Eiffel Tower built?" → [lower, upper]
+
+    - if you are well-calibrated, true values fall inside your range 90% of the time
+
+- Typical result: people are right only **40–60%** of the time
+
+    - intervals are far too narrow
+
+:::{.notes}
+eiffel tower height is now 330 meters 
+:::
+
+### Ignoring non-randomness
+
+- random samples are commonly the basis in statistics
+
+- but non-random samples are everywhere
+
+    -   running a race / driving on the street
+
+    - number of friends
+
+    - communication on positive / negative aspects
+
+    - number of students in class
+
+    - time series data
+
+
+## Biases on sequences
+
+
+### Gambler's fallacy
+
+- "Observing one event reduces the likelihood of observing it again"
+
+- wrong for independent samples
+
+- especially wrong for independent identically distributed samples, where $p$ is unknown
+
+    - after observing the event, you update $p$ to a higher posterior value
+
+- Examples:
+
+    - In gambling: "I lost the last rounds, now I am more likely to win."
+    
+    - coin tosses: "After observing four times head, the next toss is more likely tails."
+    
+    - "They had three boys in a row. The fourth child will probably be a girl."
+
+
+### Hot Hand Fallacy
+
+- "A streak of successes increases the probability of the next success"
+
+- Opposite error to the gambler's fallacy
+
+- Original example: basketball
+
+    - after several consecutive made shots, the next shot "feels" more likely to go in
+
+- Also appears in: investment returns, creative output, sports performance
+
+
+### Law of Small Numbers (LSN)
+
+  - "a small sample should look representative of the population"
+
+      - people expect even short sequences to mirror the long-run frequency
+
+  - Example: a fair coin flipped 6 times
+
+      - sequence H-H-H-T-T-T feels *less* random than H-T-H-T-H-T, even though both are equally likely
+
+      - sequence H-H-H-H-H-H feels *suspicious*, as if a correction is due
+
+  - **Connection to gambler's fallacy:** LSN is the root cause
+
+      - if you believe small samples must be representative, then after too many heads you expect the sequence to "self-correct"
+
+
+## Biases in updating
+
+- consider Bayes updating with states A and B of the world and a signal S
+
+$$P(A|S) = \frac{P(S \& A)}{P(S)}$$
+
+- Or in its **posterior-odds** form
+
+$$\frac{P(A|S)}{P(B|S)} = \frac{P(S\&A)}{P(S\&B)}= \frac{P(S|A)}{P(S|B)} \cdot \frac{P(A)}{P(B)}$$
+
+
+- P(S|A) is the likelihood of signal S given state A.
+- P(A) is the prior probability of state A.
+
+
+### Experimental setting
+
+- a typical experiment would look like this
+
+    - two urns named A and B with red and blue balls
+    
+    - urn A: 90% red and 10% blue
+    
+    - urn B: 10% red and 90% blue
+    
+    - unknown which type of urn this is
+    
+    - signal S = the result of some draws from the urn (balls are returned after each draw)
+    
+- What do we learn from a signal S = RRBR?
+
+    - more red, more likely to be urn A
+    
+    - what is your probability prediction for it being urn A?
+    
+- Bayes solution
+
+    - $p(A), p(B) = 0.5$ (if urn randomly chosen)
+    - $p(S=RRBR|A) = 0.9^3 \times 0.1^1$
+
+### Experiment Analysis
+
+- Bayes solution can be computed for
+$$\frac{P(A|S)}{P(B|S)} = \underbrace{\frac{P(S|A)}{P(S|B)}}_{\text{likelihood ratio}} \cdot \underbrace{\frac{P(A)}{P(B)}}_{\text{prior ratio}}$$
+
+- but hard to do in your head (participants normally don't do it)
+
+- How can we anlayse deviations from Bayesian updating?
+
+  - take log of equation to linearize
+  
+  $$log(\frac{P(A|S)}{P(B|S)}) = log (\frac{P(S|A)}{P(S|B)}) + log (\frac{P(A)}{P(B)})$$
+  
+  - posterior ratio we measure
+  
+  - likelihood ratio we can compute
+  
+  - prior ratio we can experimentally control
+  
+### Empirical findings
+
+- If we analyze the equation 
+$$log(\frac{P(A|S)}{P(B|S)}) = log (\frac{P(S|A)}{P(S|B)}) + log (\frac{P(A)}{P(B)})$$
+in experiments we find:
+
+- underinference is common (effect of likelihood ratio is smaller)
+
+- underinference is larger if sample size is large
+
+    - participants learn not enough from observing one signal
+    
+    - but discrepancy is even worse for multiple signals
+    
+- base rate neglect is common (effect of prior ratio is smaller)
+
+
+
+### Anchoring
+
+-   Initial information (anchor) influences judgments
+
+  -   even when the anchor is irrelevant
+
+- Example:
+
+  - Write the last two digits of your social security number down
+
+  - What would you pay for getting this chocolat bar?
+
+  - Result: Offers more than 60% higher if social security number is high
+  
+  
+### Motivated beliefs
+
+The standard model postulates a separation of preferences (utility function) and beliefs (probabilities)
+
+- but empirically this separation is consistently violated
+
+- holding a belief can provide direct utility
+
+  - ego protection
+  - identity
+  - wishful thinking 
+
+### Example: Partisan inflation expectations
+
+![](plots/inflation_partisan.jpg){width="70%,height=100%"}
+
+### Example: Scams
+
+- online scams often start with small money amounts and escalate later
+
+- why? Let's think about the probability that a request is a scam.
+
+  - unknown persons asks for money $\Rightarrow$ probably scam
+  
+  - unknown persons asks for more money after I already gave some $\Rightarrow$ even higher probability of scam, but acknowledgement would hurt.
+
+
+
+### Confirmation Bias
+
+-   Confirmation bias is the tendency to search for, interpret, focus on and remember information in a way that confirms one's preconceptions.
+
+  - Seeking/interpreting confirming information.
+
+  - Ignoring contradictory evidence.
+
+  - "Echo chambers"
+
+-   Affects information search and interpretation, leading to biased (and overprecise) predictions.
+
+
+### Hindsight Bias
+
+- "I knew it all along": after learning an outcome, people believe they had predicted it all along
+
+    - memory of prior beliefs is distorted toward the observed outcome
+
+- Undermines learning from experience
+
+    - if you remember predicting correctly, you don't update your method
+
+
+
+## Heuristics
+
+
+### Availability Heuristic
+
+-   Ease of recall influences probability judgments ($\hat p$)
+
+    - recall more available, higher prediction $\hat p$
+    
+    - e.g., vividness distorts predictions of rare but salient events such that $E[y|\hat p]<\hat p$
+    
+-   Examples:
+
+    -   Plane crashes (vivid)
+    
+    -   car accidents (less vivid, but more dangerous)
+    
+    -   terror attacks (vivid)
+    
+    -   obesity (less vivid, but more casualties)
+    
+### Example: 9/11 terrorist attacks made risk of flying more salient
+
+"In the aftermath of the terrorist attacks on September 11 (9/11), 2001, from October 2001 to September 2002, there were approximately 1,600 more traffic fatalities in the United States than would normally be expected." [@gaissmaier20129]
+
+- Idea:
+
+    - perceived risk of flying increases
+    
+    - people fly less, some drive instead
+    
+    - driving is risky (in fact, 30 minutes taxi ride to airport more risk than a 5 hours flight)
+    
+    - indirect effect: more traffic accidents
+
+
+### Representativeness Heuristic
+
+-   Judging probability based on similarity to a prototype.
+
+    - entails Base-rate neglect.
+
+-   Example: a person who is dressed in eccentric clothes and reading a poetry book.
+    
+    - poet or accountant?
+    
+    - looks like a typical poet
+    
+    - but many more people are accountants than poets
+
+
+
+## Biases in decisions
+
+- Ambiguity aversion and probability weighting originate in decision theory
+
+- connection between reported probability prediction and decisions often not investigated in literature
+
+- human participants act as if they have these predictions
+
+### Ambiguity Aversion
+
+-   Preference for known risks over unknown risks.
+
+-   Affects mostly decisions in high uncertainty
+
+-   Not necessarily a bias
+
+    - can be understood as more general decision-theory
+
+-   Connection to prediction performance unclear
+
+### Probability Weighting Function
+
+-   Distorting probabilities, especially small and large.
+
+-   Inverse S-shape.
+
+  -   Small probabilities overweighted.
+
+  -   Large probabilities underweighted.
+
+  -   discrimination between probabilities imperfect
+  
+- really strong probability weighting:
+
+  - differentiate only between yes, no, maybe
+  
+  - no difference between $p = 0.3$ and $p = 0.7$
+  
+### Prob weighting function
+
+
+![](plots/prob weighting.jpg){width="70%,height=100%"}
+
+
+## From Problems to Solutions
+
+- We have seen many systematic ways human judgment fails:
+
+    - biases on samples and sequences (sample-size neglect, overconfidence, gambler's fallacy, hot hand fallacy)
+
+    - biases in updating (base rate neglect, anchoring, motivated beliefs, confirmation bias, hindsight bias)
+
+    - biases in decisions (ambiguity aversion, probability weighting)
+
+    - heuristics that distort probability judgments (availability, representativeness, conjunction fallacy)
+
+- **Key question:** Are these failures inevitable, or can they be overcome?
+
+- The superforecaster research program asks: what do the *best* human forecasters do differently?
+
+
+# Superforecasters
+
+
+## Introduction
+
+- What characterizes good human judgement?
+
+- based on the research program by Tetlock and coauthors [@mellers2015psychology;@tetlock2016superforecasting]
+
+    - initially funded by the U.S. intelligence community.
+    
+    - "superforecasters": ordinary people who consistently outperformed intelligence analysts with access to classified information.
+
+- focused almost exclusively on event predictions
+
+    - performance criterium: Quadratic score (Brier score)
+
+
+### You can participate, too!
+
+- popular options
+
+    - good judgement open (prediction polls)
+
+    - Metaculus (prediction poll)
+    
+    - PredictIt (Prediction market)
+
+- no big European alternative
+
+- our Assignment is essentially a forecasting competition
+
+  I) define targets
+  II) predict
+
+### why human judgement?
+
+- if there is data available, use statistical algorithms
+
+- human judgement is used in situations, when there is no good data
+
+- We will see with Bayesian inference: Difference vanishes to some point
+
+    - every model can be traced back to assumptions which are ultimately based on human judgement
+    
+    - every expert can use data and algorithms to inform their judgement
+
+
+
+## The Parable: The Hedgehog and the Fox
+
+::: nonincremental
+> "The fox knows many things, but the hedgehog knows one big thing."
+:::
+- the Hedgehog
+
+  * **Knows "One Big Thing":** 
+  
+  * Relates everything to it
+
+* the Fox
+
+  * **Knows "Many Little Things":** 
+  
+  * Draws on a wide variety of experiences and information
+  
+  * Tolerant of conflicting perspectives
+
+
+### Hedgehog vs. Fox: Forecasting Accuracy
+
+* Tetlock [@tetlock2016superforecasting]:
+    
+    * **Foxes consistently outperformed hedgehogs** in making accurate forecasts
+    
+    * Hedgehogs, particularly famous ones often sought by media, tended to be *less* accurate, sometimes worse than chance.
+    
+    * Overconfidence was a key factor in hedgehog inaccuracy.
+
+
+## Ingredients to super forecasting
+
+
+* Superforecasters cultivate specific habits of mind and work methods
+
+* These skills can be learned and improved
+
+* Let's look at the key characteristics...
+
+### Property: Reasoning - Numerate & Probabilistic
+
+* **Definition:** Using numbers and probabilities to express degrees of belief
+
+
+* **Why it Matters:** 
+
+    - Avoids the ambiguity of vague words ("maybe," "likely," "possible").
+
+* **How to Improve:**
+
+    * Practice translating vague feelings into specific percentages
+    
+    * Learn basic probability concepts and Bayes' Theorem (even conceptually)
+    
+    * track your probabilistic forecasts vs. outcomes
+    
+### Example: Finding Osama bin Laden
+
+- search for Osama bin Laden
+
+    - early 2011 the intelligence community was growing more confident 
+
+    - eventually communicated to President Obama
+
+    - presentations about the likelihood that Osama was indeed residing in compound in a Pakistani town
+
+- Multiple experts with probability statement between 35% to 95% 
+
+    - with a median of 75%
+    
+- President Obama:
+
+    - "Seems like it's a coin flip, 50-50."
+
+### Property: Cautious Humility
+
+::: nonincremental
+*"Beliefs are hypotheses to be tested, not treasures to be protected."*
+:::
+
+* **Definition:** Acknowledging uncertainty, the limits of one's own knowledge, and the role of chance. Understanding the world is complex and often unpredictable.
+
+* **Why it Matters:** 
+
+    - more receptive to new evidence and correction
+    
+    - reduces overconfidence (overprecision) bias
+
+
+
+### Property: Thinking Style - Actively Open-Minded & Curious
+
+* **Definition:** *Actively* seeking out perspectives and evidence that challenge one's own beliefs.
+
+* **Why it Matters:** 
+
+    - Counteracts confirmation bias and groupthink
+    
+    - Leads to more comprehensive synthesis of information
+
+* **How to Improve:**
+
+    * Deliberately seek out sources and arguments that contradict your viewpoint
+    
+    * try to understand their reasoning 
+    
+    * steel-man argument: presenting counter argument in its strongest form
+    
+    * don't straw man: missrepresenting opponent's argument
+    
+    
+
+
+### Property: Updating - Reflective & Frequent
+
+* **Definition:** Treating predictions not as final pronouncements but as dynamic states reflecting current knowledge. 
+
+* **Why it Matters:** 
+
+    - allows for improvement
+    
+    - theoretical consistent (Bayes rule)
+    
+
+### Property: Mindset - Growth Mindset
+
+* **Definition:** Believing that prediction skill that can be developed through practice (Growth Mindset). 
+
+* **Why it Matters:** 
+
+    - Motivates continuous learning and effort. 
+    
+    - Prevents discouragement from bad results
+
+
+### Add-on: Teams are superior
+
+- teams of forecasters outperformed single forecasters
+
+- discussion and social ties improved time investement and effectiveness
+
+
+
+### Quantitative estimates
+
+- concepts are strongly interconnected
+
+- difficult to measure the exact contribution of each property
+
+- next slide shows result from [@mellers2015psychology]
+
+    - participants predicted political events
+
+    - SEM (structural equation modeling)
+    
+    - structure of observed and unobserved variables
+    
+    - $A \rightarrow B$: A influences B
+    
+    - $A \leftrightarrow B$: A and B correlated
+    
+    - Directions chosen by researchers
+    
+    - AOMT: actively open-minded thinking.
+    
+
+### Structural equation result
+
+![](plots/superforecasters.jpg){width="70%,height=100%"}
+
+
+## Black swans
+
+- The **superforecaster** agenda argues
+
+  - find precise prediction targets
+  
+  - follow good prediction habits
+  
+  - you can achieve **quantification of uncertainty**
+
+
+- Now to **"black swans"**[@taleb2007black]:
+
+    - rare 
+    
+    - real
+    
+    - relavant, but ignored (!)
+    
+- black swans are everywhere and unavoidable [@taleb2007black]
+
+    - uncertainty quantification of superforecasters an illusion [@taleb2023probability]
+
+### Predictable or not?
+
+- Clearly defined events are probabilistically predictable, but ...
+
+    - real world decision making often does not depend on single event
+    
+    - calibration/performance becomes essentially unknowable for extremly unlikely events
+    
+    - adaptation to risk generates new risk (e.g., the financial system)
+    
+    - definition of appropriate events imperfect
+    
+    - world too unstable (technological progress, climate change)
+    
+### Illustration: Extremely unlikely events
+
+- Consider a prediction $\hat p = 0.001$
+
+- we conjecture that the actual probability is $p = 0$
+
+    - uncalibrated prediction
+    
+- we need to observe a lot of false event realizations to infer that kind of misscalibration
+
+
+### Illustration: Intractability of real-valued prediction targets
+
+- for risk management we are often most interested in extreme events
+
+    - heavy rain fall
+    
+    - strong dectonic movements for earthquakes
+    
+    - large losses of financial institutions
+    
+    
+- if we do statistical inference based on iid samples
+
+    - most observations are not in the tail
+    
+    - inference heavily relies on shape assumptions of the distribution
+
+
+- if implications/utility/loss scales strongly with magnitude, expected loss (or its variance) cannot be inferred from a sample of data
+
+## Conclusion
+
+- there are measures to improve predictability and appropriate reflection of uncertainty
+
+    - probabilistic thinking
+    
+    - intellectual humility
+    
+    - active open-mindedness
+    
+    - frequent and deliberate updating
+    
+    - growth mindset
+    
+    - team work
+
+- risk and uncertainty nowhere near to being defeated
+
+    - in fact, may be impossible
+
+
+
+
+# References {.allowframebreaks}
