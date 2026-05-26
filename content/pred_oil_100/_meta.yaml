@@ -1,0 +1,5 @@
+lecture_name: "Prediction: WTI Crude Oil Below $100 on June 26, 2026"
+order: 22
+description: "A live **superforecasting challenge**: Will WTI crude oil (CL=F) close below \\$100 per barrel on June 26, 2026? Read the opening reasoning trace, then try to improve the forecast."
+first_date: 2026-05-26
+last_date: 2026-06-25

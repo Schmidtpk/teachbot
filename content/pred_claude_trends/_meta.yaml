@@ -1,0 +1,5 @@
+lecture_name: "Prediction: Claude vs ChatGPT Search Interest (Germany)"
+order: 21
+description: "A live **superforecasting challenge**: Will average Google Trends search interest for \"Claude\" in Germany reach at least 31.25% of \"ChatGPT\" between June 5 and June 30, 2026? Read the opening reasoning trace, then try to improve the forecast."
+first_date: 2026-05-26
+last_date: 2026-06-04
