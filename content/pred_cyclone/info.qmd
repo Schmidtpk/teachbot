@@ -1,0 +1,93 @@
+---
+title: "Prediction Background: Atlantic Cyclone before July 15, 2026"
+---
+
+# The Prediction Question
+
+**Will at least one named tropical cyclone form in the Atlantic Ocean before July 15, 2026?**
+
+*Resolution:* The question resolves YES if the National Hurricane Center (NHC) officially designates at least one tropical or subtropical storm (receiving a name) in the Atlantic basin — including the Gulf of Mexico and Caribbean — with formation date before July 15, 2026. It resolves NO if the season remains entirely quiet through July 14.
+
+---
+
+# Historical Climatology (Base Rate)
+
+## When does the first storm typically form?
+
+- The **climatological median date** for the first Atlantic named storm is around **June 20**.
+- This means that in roughly half of all seasons, a named storm forms before June 20 — more than three weeks before the July 15 threshold.
+- Extending to July 15 captures the large majority of seasons historically.
+
+## Recent trends: earlier seasons
+
+Atlantic hurricane seasons have started earlier over recent decades:
+
+- From **2015 through 2024**, only **two** of ten seasons had no named storm before June 1.
+- Five of the past twelve seasons had a storm form as early as **May**.
+- A 2022 study in *Nature Communications* found that the threshold date for first Atlantic cyclone activity has shifted **earlier by more than five days per decade** since 1979 — a statistically significant trend attributed partly to warming sea surface temperatures.
+
+## June–July climatology
+
+- **June:** Activity occurs in roughly half of all seasons. The record (as of 2024) is three named storms in a single June. June storms typically form close to land — Gulf of Mexico or southeastern U.S. coast.
+- **July:** More than half of seasons feature at least some July activity. Since 1851, approximately 105 named storms have formed in July.
+
+**Bottom line on base rate:** Roughly **85–90% of seasons** produce at least one named storm before July 15, based on the historical record and recent trends toward earlier seasons.
+
+---
+
+# 2026 Season Forecasts
+
+## Official forecasts (as of late May 2026)
+
+| Forecaster | Named Storms | Hurricanes | Major Hurricanes |
+|---|---|---|---|
+| NOAA (May 21) | 8–14 | 3–6 | 1–3 |
+| CSU (April) | 13 | 6 | 2 |
+| Historical average | ~14 | ~7 | ~3 |
+
+NOAA assigns a **55% probability of a below-normal season**, 35% near-normal, 10% above-normal.
+
+## El Niño: the dominant suppressing factor
+
+The primary reason for the below-normal forecast is a **developing El Niño**, potentially among the strongest on record:
+
+- El Niño increases **vertical wind shear** over the tropical Atlantic — winds at upper levels blow in a different direction than at lower levels, literally tearing apart developing thunderstorm clusters that would otherwise organize into tropical storms.
+- The 2026 wind shear is projected to be the **second-highest since 1981**, surpassed only by 2015.
+- CSU describes El Niño as likely to be the **dominant suppressing force** for the 2026 season.
+
+## Partially offsetting factors
+
+- **Atlantic sea surface temperatures** (SSTs) remain near or slightly above average — warmer water provides thermodynamic fuel for storm development even under high shear.
+- El Niño suppresses overall *season totals*, but **early-season storms** (May–June) often form before El Niño's influence fully sets in and in regions (Gulf of Mexico, western Caribbean) less exposed to shear.
+
+## Season status as of May 26, 2026
+
+No named storms have formed yet. The official Atlantic hurricane season begins June 1.
+
+---
+
+# Comparable Historical Seasons
+
+El Niño years provide the best analogues for 2026. Key cases:
+
+| Year | El Niño? | Season total | First storm | Before July 15? |
+|---|---|---|---|---|
+| 2015 | Strong | 11 named | Ana (Apr 19) | **YES** |
+| 2014 | Neutral/weak | 8 named | Arthur (Jul 1) | **YES** |
+| 2013 | Neutral | 2 named | Andrea (Jun 5) | **YES** |
+| 2012 | Neutral | 19 named | Alberto (May 19) | **YES** |
+| 2009 | Moderate El Niño | 9 named | Ana (Aug 15) | **NO** |
+| 2006 | Weak El Niño | 10 named | Alberto (Jun 10) | **YES** |
+
+**Key observation:** 2009 is the clearest modern precedent for a season in which the first named storm did not form until mid-August — during a moderate El Niño year with suppressed activity. The 2026 El Niño is expected to be considerably stronger.
+
+---
+
+# Sources
+
+- [NOAA 2026 Atlantic Hurricane Season Forecast](https://www.noaa.gov/news-release/noaa-predicts-below-normal-2026-atlantic-hurricane-season)
+- [NHC Tropical Cyclone Climatology](https://www.nhc.noaa.gov/climo/)
+- [CSU 2026 Forecast — Fox Weather](https://www.foxweather.com/weather-news/2026-hurricane-season-colorado-state-university-forecast-el-nino)
+- [El Niño and 2026 Hurricane Season — CBS News](https://www.cbsnews.com/news/el-nino-2026-hurricane-season-atlantic-pacific/)
+- [Earlier onset of Atlantic hurricane season — Nature Communications (2022)](https://www.nature.com/articles/s41467-022-31821-3)
+- [When the first storm Arthur may form in 2026 — Weather.com](https://weather.com/2026/05/22/storms/hurricane/when-the-atlantic-hurricane-seasons-first-storm-arthur-may-form)

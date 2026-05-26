@@ -1,0 +1,5 @@
+lecture_name: "Prediction: Atlantic Cyclone 2026"
+order: 20
+description: "A live **superforecasting challenge**: Will a named tropical cyclone form in the Atlantic before July 15, 2026? Read the opening reasoning trace, then try to improve the forecast."
+first_date: 2026-05-27
+last_date: 2026-06-04
