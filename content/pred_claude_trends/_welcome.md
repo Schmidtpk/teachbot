@@ -67,10 +67,9 @@ $$\hat{p} = 0.55$$
 
 *55% probability that the average Germany Google Trends search-interest ratio for "Claude" relative to "ChatGPT" reaches at least 31.25% during June 5–30, 2026.*
 
-The estimate is modestly above coin-flip because the underlying brand-awareness trend is firmly upward and the noise floor reliably contributes 5–10 percentage points, leaving the AI signal needing only ~20–25 points to clear the bar.
 
 ---
 
 ## Your Turn
 
-This estimate is a starting point, not a verdict. Can you find information, analogues, or arguments that should push this probability up or down? Possible angles: actual Google Trends data you can check, upcoming Anthropic announcements, scheduled German tech events, seasonality patterns, or a sharper decomposition of the noise floor. Share your reasoning and I will evaluate it and update the forecast if warranted.
+This estimate is a starting point, not a verdict. Can you find information, analogues, or arguments that should push this probability up or down? Share your reasoning and I will evaluate it and update the forecast if warranted.

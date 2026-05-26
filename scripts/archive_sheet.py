@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SHEET_ID = "1Hg-r3cLuzGC8wAoYJFvyVlcDdLFVdDRcL77bVs5wpD8"
-HEADER = ["timestamp", "session_id", "user_email", "role", "content", "flagged_message"]
+HEADER = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message", "model"]
 EXPORTS_DIR = Path(__file__).parent.parent / "exports"
 CREDENTIALS = Path(__file__).parent.parent / "credentials" / "service_account.json"
 

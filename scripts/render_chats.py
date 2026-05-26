@@ -45,6 +45,7 @@ def normalize_row(row):
         # Layout C: course column shifted into 'role', actual role is in 'content'
         extra = row.get(None)  # DictReader puts overflow fields under None
         flagged = extra[0] if isinstance(extra, list) and extra else ""
+        model = extra[1] if isinstance(extra, list) and len(extra) > 1 else ""
         return {
             "timestamp": row.get("timestamp", ""),
             "session_id": row.get("session_id", ""),
@@ -53,6 +54,7 @@ def normalize_row(row):
             "role": row.get("content", ""),          # actual role
             "content": row.get("flagged_message", ""),  # actual content
             "flagged_message": flagged,
+            "model": model,
         }
 
     if row.get("user_email") in KNOWN_ROLES:
@@ -126,6 +128,9 @@ def build_session_data(session_list):
         # Pick the first non-empty course value across all turns
         courses = [t.get("course", "") for t in turns if t.get("course")]
         course = courses[0] if courses else ""
+        # Pick the first model seen in assistant turns (IID-STUDENT-MODEL-CHOICE)
+        models = [t.get("model", "") for t in turns if t.get("role") == "assistant" and t.get("model")]
+        model = models[0] if models else ""
         result.append(
             {
                 "id": sid,
@@ -133,6 +138,7 @@ def build_session_data(session_list):
                 "timestamp": first_ts,
                 "feedback_count": feedback_count,
                 "course": course,
+                "model": model,
                 "turns": [
                     {
                         "ts": t.get("timestamp", ""),
@@ -188,6 +194,9 @@ HTML_TEMPLATE = """\
                   border-radius: 8px; padding: 1px 7px; font-weight: 600;
                   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
                   max-width: 120px; }}
+  .model-session-chip {{ font-size: 10px; color: #8a9ab5; background: #252e42;
+                  border-radius: 8px; padding: 1px 7px;
+                  font-family: monospace; white-space: nowrap; }}
 
   /* ── Main ── */
   #main {{ flex: 1; display: flex; flex-direction: column; overflow: hidden; }}
@@ -357,10 +366,13 @@ function buildSessionList() {{
     const turns = sess.turns.filter(t => t.role === "user" || t.role === "assistant").length;
     const courseChip = sess.course
       ? `<span class="course-chip">${{escHtml(sess.course)}}</span>` : "";
+    const modelLabel = sess.model
+      ? `<span class="model-session-chip">${{escHtml(sess.model.split("/").pop())}}</span>` : "";
     el.innerHTML = `
       <div class="s-email">${{escHtml(sess.email)}}</div>
       <div class="s-date">${{fmtDate(sess.timestamp)}}</div>
-      <div class="s-meta">${{badge}}${{courseChip}}<span class="turns-count">${{turns}} turns</span></div>`;
+      <div class="s-meta">${{badge}}${{courseChip}}<span class="turns-count">${{turns}} turns</span></div>
+      ${{modelLabel ? `<div style="margin-top:3px">${{modelLabel}}</div>` : ""}}`;
     el.addEventListener("click", () => loadSession(idx, el));
     list.appendChild(el);
   }});
@@ -374,8 +386,9 @@ function loadSession(idx, el) {{
 
   const sess = SESSIONS[idx];
   const courseLabel = sess.course ? ` &middot; <span style="color:#4a8;font-weight:600">${{escHtml(sess.course)}}</span>` : "";
+  const modelLabel = sess.model ? ` &middot; <span style="color:#888;font-family:monospace;font-size:12px">${{escHtml(sess.model.split("/").pop())}}</span>` : "";
   document.getElementById("header-text").innerHTML =
-    `<strong>${{escHtml(sess.email)}}</strong> &mdash; ${{fmtDate(sess.timestamp)}}${{courseLabel}}`;
+    `<strong>${{escHtml(sess.email)}}</strong> &mdash; ${{fmtDate(sess.timestamp)}}${{courseLabel}}${{modelLabel}}`;
 
   const area = document.getElementById("chat-area");
   const empty = document.getElementById("empty-state");
