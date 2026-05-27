@@ -1,0 +1,212 @@
+---
+title: "Exercise: Market price with heterogeneous beliefs and risk aversion"
+subtitle: "Predictions: Theory and Practice"
+author: "Patrick Schmidt"
+institute: "University of Heidelberg"
+params:
+  show_solutions: true
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    self-contained: true
+    theme: cosmo
+  pdf:
+    documentclass: article
+    geometry: margin=2.5cm
+---
+
+```{r setup, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+theme_set(theme_bw() + theme(text = element_text(size = 14)))
+```
+
+## Setting
+
+An asset trades today at price $S$ and pays a random amount $Y$.
+
+There are **two traders**, $A$ and $B$, each choosing a position $q_i \in \mathbb{R}$:
+
+- $q_i > 0$: trader $i$ buys asset (pays $S$ today, receives $Y$ tomorrow)
+- $q_i < 0$: trader $i$ sells asset
+
+Each trader has **mean-variance preferences** over the position payoff $q_i(Y - S)$:
+
+$$
+U_i(q_i) \;=\; q_i \,(\mu_i - S) \;-\; \frac{\gamma_i}{2}\, q_i^{\,2}\, \sigma^2,
+$$
+
+where
+
+- $\mu_i = E_i[Y]$ is trader $i$'s **mean belief** about $Y$,
+- $\sigma^2$ is the (common) belief about the variance of $Y$,
+- $\gamma_i > 0$ is trader $i$'s **risk aversion**.
+
+$A$ expects higher returns: $\mu_A > \mu_B$.
+
+We will look for the market price $S$ in which $A$ wants to buy and $B$ wants to sell the same amount $q_i$, i.e. the market clearing price.
+
+You can assume that $S$ lies between $\mu_B$ and $\mu_A$.
+
+
+### (a) Supply by the pessimist
+
+For a given price $S > \mu_B$, derive trader $B$'s optimal position $q_B^*(S)$ and the resulting **supply** $q_B^*(S)$ to the market.
+
+How does the supply curve depend on $S$, $\gamma_B$, $\sigma^2$, and $\mu_B$?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+The first-order condition for $B$ is
+$$\frac{\partial U_B}{\partial q_B} \;=\; (\mu_B - S) - \gamma_B\, q_B\, \sigma^2 \;=\; 0
+\;\Longrightarrow\; q_B^*(S) \;=\; \frac{\mu_B - S}{\gamma_B\, \sigma^2}.$$
+
+For $S > \mu_B$ we have $q_B^* < 0$: trader $B$ goes short. The **supply** to the market is
+$$\boxed{\;\text{supply}(S) \;=\; -q_B^*(S) \;=\; \frac{S - \mu_B}{\gamma_B\, \sigma^2}\;}$$
+
+Properties:
+
+- **decreasing** in risk aversion $\gamma_B$: more risk-averse pessimist supplies less
+- **decreasing** in variance $\sigma^2$: more uncertainty → smaller short position
+- **decreasing** in $\mu_B$: a more pessimistic trader is selling more at any given $S$
+:::
+
+
+### (b) Demand by the optimist
+
+For a given price $S < \mu_A$, derive trader $A$'s optimal position $q_A^*(S)$, which gives the **demand** in the market.
+
+How does the demand curve depend on $S$, $\gamma_A$, $\sigma^2$, and $\mu_A$?
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+By symmetry with (a), the FOC for $A$ gives
+$$\boxed{\;\text{demand}(S) \;=\; q_A^*(S) \;=\; \frac{\mu_A - S}{\gamma_A\, \sigma^2}\;}$$
+
+For $S < \mu_A$ this is positive: trader $A$ buys.
+
+Properties:
+
+- linear and **decreasing** in $S$
+- **decreasing** in risk aversion $\gamma_A$: more risk-averse optimist buys less
+- **decreasing** in variance $\sigma^2$
+- **increasing** in $\mu_A$: the more optimistic the trader, the more aggressively she buys
+:::
+
+
+### (c) Equilibrium price
+
+Solve for the equilibrium price $S^*$ where demand equals supply.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+Set demand equal to supply:
+$$\frac{\mu_A - S^*}{\gamma_A\, \sigma^2} \;=\; \frac{S^* - \mu_B}{\gamma_B\, \sigma^2}.$$
+
+The $\sigma^2$ cancels. Cross-multiplying:
+$$\gamma_B\,(\mu_A - S^*) \;=\; \gamma_A\,(S^* - \mu_B)$$
+$$\gamma_B\, \mu_A + \gamma_A\, \mu_B \;=\; (\gamma_A + \gamma_B)\, S^*$$
+
+$$\boxed{\; S^* \;=\; \frac{\gamma_B\, \mu_A + \gamma_A\, \mu_B}{\gamma_A + \gamma_B} \;}$$
+
+- $S^*$ is a **weighted average** of the two beliefs, where each trader's weight is inversely proportional to their own risk aversion:
+$$S^* \;=\; w_A\, \mu_A + w_B\, \mu_B, \qquad w_i \;=\; \frac{1/\gamma_i}{1/\gamma_A + 1/\gamma_B}.$$
+
+- The **less risk-averse** trader has **more influence** on the price.
+
+**Special cases.**
+
+- Equal risk aversion $\gamma_A = \gamma_B$: $\quad S^* = \tfrac{1}{2}(\mu_A + \mu_B)$ 
+
+  — simple average of beliefs.
+  
+- Trader $A$ becomes risk-neutral ($\gamma_A \to 0$): $\quad S^* \to \mu_A$ 
+
+  — the aggressive trader's belief dominates.
+  
+- Same belief $\mu_A = \mu_B$: $\quad S^* = \mu_A = \mu_B$ 
+
+  — no disagreement, no trade.
+
+Note that $\sigma^2$ does **not** appear in $S^*$: 
+
+- variance scales demand and supply by the same factor, so it cancels in equilibrium. 
+
+- It does affect the **traded quantity** (less variance → larger $q_A^* = -q_B^*$).
+
+:::
+
+
+### (d) Numerical example
+
+Take $\mu_A = 110$, $\mu_B = 90$, $\gamma_A = 1$, $\gamma_B = 2$, $\sigma^2 = 100$.
+
+- Compute $S^*$ using the formula from (c).
+- The plot below shows demand and supply.
+
+```{r demand_supply_plot, echo=FALSE, fig.height=4, fig.width=6, fig.align="center"}
+mu_A <- 110; mu_B <- 90
+gA   <- 1;   gB   <- 2
+sig2 <- 100
+
+S_eq <- (gB * mu_A + gA * mu_B) / (gA + gB)
+
+S_grid <- seq(85, 115, length.out = 200)
+dat <- tibble(
+  S      = S_grid,
+  demand = pmax(0, (mu_A - S) / (gA * sig2)),
+  supply = pmax(0, (S - mu_B) / (gB * sig2))
+)
+
+ggplot(dat, aes(x = S)) +
+  geom_line(aes(y = demand, colour = "demand"), linewidth = 1.1) +
+  geom_line(aes(y = supply, colour = "supply"), linewidth = 1.1) +
+  geom_vline(xintercept = S_eq, linetype = "dashed") +
+  annotate("text", x = S_eq + 0.3, y = 0.18,
+           label = paste0("S* = ", round(S_eq, 2)), hjust = 0) +
+  scale_colour_manual(values = c(demand = "steelblue", supply = "firebrick")) +
+  labs(x = "price S", y = "quantity", colour = NULL) +
+  theme(legend.position = "bottom")
+```
+
+Check that the formula matches the intersection on the plot.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+$$S^* \;=\; \frac{\gamma_B\, \mu_A + \gamma_A\, \mu_B}{\gamma_A + \gamma_B} \;=\; \frac{2 \cdot 110 + 1 \cdot 90}{1 + 2} \;=\; \frac{310}{3} \;\approx\; 103.33.$$
+
+The optimist $A$ carries weight $w_A = (1/1)\,/\,(1/1 + 1/2) = 2/3$, the pessimist $B$ carries $1/3$. The price sits closer to $A$'s belief because $A$ is less risk-averse.
+
+Equilibrium traded quantity:
+$$q_A^*(S^*) \;=\; \frac{\mu_A - S^*}{\gamma_A\, \sigma^2} \;=\; \frac{110 - 103.33}{1 \cdot 100} \;\approx\; 0.067.$$
+$A$ goes long $\approx 0.067$ units; $B$ goes short the same amount.
+:::
+
+
+### (e) Connection to the lecture
+
+In the lecture we wrote that the market price equals the **median** of the beliefs (or a wealth-weighted version of it). Here we obtained a **mean** of the beliefs. Explain in one or two sentences how the two statements are compatible.
+
+::: {.content-visible when-meta="params.show_solutions"}
+#### Solution
+
+Both statements say "the equilibrium price aggregates heterogeneous beliefs and sits *between* the optimists and pessimists." Which exact statistic appears depends on the model:
+
+- with **continuous** positions and mean-variance / CARA-normal preferences (this exercise) → **risk-tolerance-weighted mean** of beliefs
+- with **bounded** positions (e.g. a prediction-market contract that can be held at most once) and risk-neutral, equally wealthy traders → **median** of beliefs
+- with heterogeneous wealth → wealth-weighted version of either
+
+In all variants, traders who are **less risk-averse, wealthier, or face fewer position limits** have **more influence** on the price.
+:::
+
+
+## Aside: mean-variance utility
+
+The objective
+$$U_i(q_i) \;=\; q_i(\mu_i - S) \;-\; \tfrac{\gamma_i}{2}\, q_i^{\,2}\, \sigma^2$$
+arises from CARA utility $u_i(W) = -\exp(-\gamma_i W)$ over final wealth, plus the assumption that $Y \sim \mathcal{N}(\mu_i, \sigma^2)$ under trader $i$'s belief. Under CARA + normal, expected utility is monotone in $E_i[W] - (\gamma_i / 2)\,\mathrm{Var}_i(W)$, i.e. the mean-variance form above.

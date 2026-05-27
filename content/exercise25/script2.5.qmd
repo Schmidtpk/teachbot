@@ -1,0 +1,585 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part II: Market-based Predictions"
+---
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+```
+
+
+# Asset markets as prediction systems
+
+## Motivation
+
+### Asset prices in news
+
+- daily news routinely reports asset prices
+
+    - "the DAX closed 0.7% higher today"
+
+    - "the Euro lost ground against the Dollar"
+
+    - "Oil prices surged after Putin's interview..."
+    
+    - "OpenAI evaluated at 900bn dollars after..."
+
+- but most listeners do not actually trade these assets
+
+- they are treated as informative about the state of the world
+
+---
+
+- **market prices tell us something about the future**
+
+- we cover
+
+    - which property of the future is being predicted?
+
+    - how reliable is that prediction?
+
+
+### Which asset prices?
+
+A few examples we will keep in mind:
+
+- **stock price**: claim on future dividends (and resale value of a company)
+
+- **exchange rate**: relative value of two currencies (or the basket of goods one can buy with it)
+
+- **commodity futures**: contract for delivery of oil/wheat/... at a fixed future date
+
+- **bond price**: claim on future interest payments 
+
+---
+
+
+common structure:
+
+- a price $S_t$ observable today
+
+- a future payoff $Y$ (dividends, exchange rate, delivery price, ...)
+
+- price $S_t$ is known
+
+- $Y$ is uncertain $\Rightarrow$ predict with probability distribution
+
+- our question: which property of $Y$ does $S_t$ predict?
+
+
+## Market prices as mean predictions
+
+### From traders' beliefs to market prices
+
+- consider an asset with payoff $Y$ at $t+1$, traded at price $S_t$ today
+
+- assume for now: no time value of money, risk-neutral traders (no risk premium), homogeneous beliefs
+
+- a trader with belief $E[Y]$ about the payoff
+
+    - buys if $E[Y] > S_t$
+    - sells if $E[Y] < S_t$
+
+- market clears when supply equals demand
+
+$$\Rightarrow S_t = E[Y]$$
+
+- the market price equals the expected payoff
+
+
+### ...modulo some issues
+
+In reality, three things complicate the simple picture $S_t = E[Y]$:
+
+1. **discounting**: money tomorrow $\neq$ money today
+    $$S_t = \frac{E[Y]}{1+r}$$
+
+2. **risk premia**: investors are not risk neutral
+    $$S_t = \frac{E[Y]}{1+r+\pi}$$
+    where $\pi$ is a compensation for bearing risk
+
+3. **heterogeneity in beliefs**: Traders $i = 1,\dots$ may have different mean predictions $E_i[Y]$
+      $$S_t = \text{ median of }E_i[Y]$$
+      (or wealth weighted if heterogeneous wealth of traders)
+
+
+---
+
+- takeaway: price tracks **risk-adjusted** and **wealth-weighted** mean predictions
+
+
+## The Efficient Market Hypothesis
+
+### Definition
+
+::: {.callout-caution appearance="default" icon="false"}
+## Efficient Market Hypothesis (EMH)
+A market is **efficient with respect to an information set $\mathcal{I}$** if asset prices fully reflect that information:
+$$S_t = E[\,Y \mid \mathcal{I}\,] \;/\; (1+r+\pi)$$
+:::
+
+- equivalently: no trading strategy based on $\mathcal{I}$ earns systematic excess returns
+
+- the "fair game" property: returns conditional on $\mathcal{I}$ are unpredictable beyond the risk-adjusted required return
+
+- different choices of $\mathcal{I}$ give the three forms on the next slide
+
+### Three forms of EMH
+
+[@fama1970efficient] distinguishes three forms by the information $\mathcal{I}$ that prices reflect:
+
+- **weak form**: $\mathcal{I}$ = past prices
+
+    - implication: returns are unforecastable from past returns
+
+- **semi-strong form**: $\mathcal{I}$ = all public information
+
+    - implication: news is incorporated in prices immediately
+
+- **strong form**: $\mathcal{I}$ = all information (incl. private)
+
+    - implication: even insiders cannot earn excess returns
+
+. . .
+
+most empirical work focuses on weak and semi-strong forms.
+
+
+### The random walk model
+
+- consider a simple one-one period assett model: 
+
+  - hold today, sell tomorrow, so the payoff is $Y = S_{t+1}$
+  - no risk aversion/premium $\pi =0$
+  - no interest/time value of money $r=0$
+
+
+- EMH:
+$$S_t = E[S_{t+1} \mid \mathcal{I}_t]$$
+
+---
+
+- EMH:
+$$S_t = E[S_{t+1} \mid \mathcal{I}_t]$$
+
+- implies unpredictable errors
+$$E[S_{t+1} - S_t \mid \mathcal{I}_t] = 0$$
+
+- define returns $\varepsilon_{t+1} := S_{t+1} - S_t$
+
+- returns are unpredictable:
+$$E[\varepsilon_{t+1} \mid \mathcal{I}_t] = 0$$
+- The EMH implies the **random walk** model for prices
+$$S_{t+1} = S_t + \varepsilon_{t+1}, \qquad E[\varepsilon_{t+1} \mid \mathcal{I}_t] = 0$$
+
+. . .
+
+
+- best forecast of tomorrow's price = today's price
+
+- anything that *could* be forecast from $\mathcal{I}_t$ is already in $S_t$
+
+- with non-zero $r$ and $\pi$: similar results hold for **excess returns** $r_{t+1} - (r+\pi)$
+
+
+### Looks like a stock chart?
+
+```{r}
+#| echo: false
+#| fig-width: 9
+#| fig-height: 3.5
+set.seed(7)
+library(ggplot2)
+n  <- 500
+sim <- function(mu, sigma) 100*exp(cumsum(rnorm(n, mu, sigma)))
+df <- rbind(
+  data.frame(t=1:n, p=sim( 0.0002, 0.011), id="A"),
+  data.frame(t=1:n, p=sim(-0.0001, 0.012), id="B"),
+  data.frame(t=1:n, p=sim( 0.0004, 0.010), id="C")
+)
+ggplot(df, aes(t, p)) +
+  geom_line() +
+  facet_wrap(~id, scales = "free_y") +
+  labs(x = "day", y = "price")
+```
+
+. . . 
+
+- all three are simulated random walks
+
+- visually indistinguishable from real stock charts
+
+- humans are very good at seeing patterns where there are none
+
+- Efficient market hypothesis implies: 
+
+  - Active stock picking and market timing are generally futile
+  
+  - Theoretical basis for passive index funds
+
+## Empirical evidence
+
+### Evidence supportive of EMH
+
+- **active managers underperform**
+
+    - most actively managed equity funds are beaten by passive index benchmarks over 10+ years (after fees)
+
+- **event studies**
+
+    - prices react to earnings, M&A, macro news within minutes
+
+    - post-news returns close to zero on average
+
+- **exchange rates: the Meese-Rogoff puzzle** [@meese1983empirical]
+
+    - structural macro models cannot beat the random walk in out-of-sample FX forecasts
+
+
+### Anomalies against EMH
+
+- **post-earnings announcement drift (PEAD)** [@bernard1989post]
+
+    - after a positive earnings surprise, returns continue drifting up for 60-90 days
+
+- **momentum** [@jegadeesh1993returns]
+
+    - past 3-12 month winners keep outperforming past losers
+
+- **excess volatility** [@shiller1981stock]
+
+    - aggregate stock prices move much more than changes in expected dividends justify
+
+
+### How to read anomalies
+
+- **joint hypothesis**: Two interpretations of any anomaly:
+
+    (i) market is **inefficient** → genuine arbitrage opportunity
+
+    (ii) asset pricing **model is incomplete** → extra return is compensation for a risk factor we failed to measure
+
+- if arbitrage possible, market will probably correct after publication
+
+  - investors will seek out excess returns, price increases, escess vanishes
+
+- Second option: **inference and multiple testing**
+
+  - anomalies from EMH look like clear statistical results
+  
+  - but if many projects study different anomalies, we expect 1 in 10 to be statistically significant at 0.1 $\alpha$-level even if hypothesis true
+  
+  - if only this one study is publishes/catches our attention, inference is flawed
+
+
+### Why market prices still predict well
+
+even granting the anomalies, market prices remain remarkably hard to beat as predictions:
+
+- **selection**
+
+    - persistently bad traders lose money and exit
+
+    - the surviving population is at least somewhat accurate
+
+- **incentives**
+
+    - capital at risk is a much stronger incentive than answering a survey
+
+    - skin in the game (cf. discussion of judgment forecasts)
+
+- **information aggregation**
+
+    - many participants, diverse private signals
+
+    - prices summarise far more information than any single forecaster has
+
+
+## Beyond the mean: market-implied uncertainty
+
+### Markets price more than the mean
+
+- so far: market price $S_t \approx E[Y]$
+
+    - market gives us a **point prediction** of the future payoff
+
+- but predictions ideally come with uncertainty
+
+    - "the S&P will close near 5200" vs
+
+    - "the S&P will close near 5200, $\pm$ 80 with 68% probability"
+
+- can markets also reveal **distributional** information?
+
+    - yes with **options**
+
+### Aside: Odd Lots on the VIX
+
+- Bloomberg's *Odd Lots* podcast 
+
+  - Episode: "What Just Happened in Markets? Volatility and the Big Selloff"
+  
+  - on Spotify etc.
+
+
+
+### What is an option?
+
+- a financial contract whose payoff depends on the future price $S_T$ of an underlying asset
+
+- **European call option** with strike $K$, expiry $T$:
+
+    - right (not obligation) to **buy** the underlying at $K$ at time $T$
+
+    - payoff at $T$: $\max(S_T - K, 0)$
+
+- **European put option** with strike $K$, expiry $T$:
+
+    - right to **sell** the underlying at $K$ at time $T$
+
+    - payoff at $T$: $\max(K - S_T, 0)$
+
+- actively traded on exchanges (CBOE, Eurex, Eurex...)
+
+
+
+### Option prices reveal uncertainty
+
+
+::: {.callout-note appearance="default" icon="false"}
+## Breeden–Litzenberger (1978)
+The second derivative of the call price $C(K) with respect to strike $K$ recovers the (risk-neutral) density of $S_T$:
+$$f_{S_T}(K) = e^{rT} \frac{\partial^2 C(K)}{\partial K^2}$$
+:::
+
+- so option markets give us not just a mean, but an entire **predictive distribution**
+
+
+### The VIX: a single number for uncertainty
+
+- **Cboe Volatility Index (VIX)**
+
+    - launched 1993, current methodology since 2003
+
+    - aggregates S&P 500 option prices into one number
+
+    - reports market-implied 30-day annualised volatility of the S&P 500
+
+- often called the **"fear gauge"**
+
+    - VIX spikes in crises (2008, March 2020, August 2024)
+
+    - quoted on daily news as a macro uncertainty indicator
+
+- has become an asset class in its own right
+
+    - VIX futures, options on VIX
+
+---
+
+![VIX daily.](plots/vix.jpg){fig-align="center" height="15cm"}
+
+
+### VIX methodology (sketch)
+
+- $VIX^2$ is the fair strike of a 30-day **variance swap** on the S&P 500
+
+    - a variance swap pays realised variance over the next 30 days
+
+    - it can be replicated by a portfolio of out-of-the-money (OTM) calls and puts
+
+- approximate Cboe formula:
+$$VIX^2 \;\approx\; \frac{2}{T}\sum_i \frac{\Delta K_i}{K_i^2}\, e^{rT}\, Q(K_i)$$
+
+  where $Q(K_i)$ is the midquote of the OTM option at strike $K_i$.
+
+- key features
+
+    - **model-free**: no assumption like Black–Scholes
+
+    - **inverse-$K^2$ weighting**: equal weight per unit of variance contribution
+
+    - derivation: replicate the log-contract using options (Carr–Madan, 2001)
+
+
+### VIX as a prediction
+
+- the VIX is a (risk-adjusted) **mean prediction of realised volatility** over the next 30 days
+
+    - target $Y$ = annualised std of S&P 500 returns over $[t, t+30]$
+
+- empirical record [@bollerslev2009expected]
+
+    - VIX and subsequent realised vol are highly correlated ($\rho \approx 0.86$)
+
+    - VIX is on average **higher** than the subsequent realised vol
+
+- the gap is the **variance risk premium**
+
+    - investors pay a premium for protection against volatility spikes
+
+    - exactly the risk-premium logic we saw for stocks, now applied to volatility
+
+
+### Practical take-aways on VIX
+
+- the VIX is a useful market-based **uncertainty forecast**
+
+- but it is, again, a **risk-adjusted** prediction
+
+
+
+## Wrap-up
+
+### Take-aways
+
+- in an efficient market, the price is a (risk-adjusted) **mean prediction** of future payoffs
+
+- **changes in prices** are dominated by news → unpredictable
+
+    - basis for the random walk model
+
+- empirically:
+
+    - hard to beat market prices on average (FX random walk, fund performance)
+
+    - but well-documented anomalies (PEAD, momentum, excess volatility)
+
+- interpretation of anomalies limited by the **joint hypothesis problem** and **multiple testing**
+
+- option markets extend this: prices reveal the **risk-neutral distribution** of future outcomes
+
+    - VIX as a market-based uncertainty forecast
+
+- the next section turns to **prediction markets**
+
+  — artificial markets specifically designed to reveal predictions
+
+
+# Prediction Markets
+
+## Prediction markets
+
+<!-- ## Market-based predictions (?) -->
+
+<!-- Goals: -->
+
+<!-- - Connection between beliefs and market prices -->
+
+<!-- - rationality of market prices and predicition properties -->
+
+<!-- - prediction markets and incentives -->
+
+
+
+
+<!-- ### Prediction markets -->
+
+<!-- https://timroughgarden.org/f16/l/l18.pdf -->
+
+<!-- https://www.youtube.com/watch?v=U_0AVElZTcY&ab_channel=RajivSethi -->
+
+<!-- https://projects.iq.harvard.edu/files/yiling/files/ec-tutorial-prediction-markets-2007-1.pdf -->
+
+<!-- https://www.bowaggoner.com/courses/2018/nets412/lectures/lect15.pdf -->
+
+- prediction markets [@arrow2008promise]
+
+    - artificial markets with main purpose of revealing information
+
+    - idea: Trade contracts on free market
+
+    - contract pays depending on target variable y
+
+- contrary to standard market prices
+
+  - also reveal information
+
+  - but their primary use/goal is allocation
+
+### Example prediction market contract
+
+-  contract pays 1$ if event happens
+
+- what is its equilibrium price?
+
+- if you belief probability is $p$ you buy if
+  $$\begin{align*}
+  E_p[\text{money if buy}]&>E_p[\text{money if not buying}]\\
+  p \times 1 + (1-p) \times 0 &> price\\
+  p &> price
+  \end{align*}$$
+
+- market in equilibrium if demand and supply of contracts coincide
+
+    - need as much buyers as sellers of contract
+
+- Thus, equilibrium price connected to beliefs $p$ in market
+
+
+---
+
+- "Price in prediction market represents market belief"
+
+    - vague statement that is generally not true
+
+
+- Can be derived under simplifying assumptions about market participants
+
+    - risk neutral
+    - identical wealth
+    - heterogenous beliefs $p$
+    - then: market equilibrium price = median(p)
+
+
+- Fails under more realistic assumptions
+
+    - risk averse: participation less likely
+    - utility correlated with outcome: hedging
+    - homogenous beliefs: no liquidity on market
+    - wealth differences: weighted median
+
+### Prediction markets won't do Bayesian updating
+
+- nice example from Ottoviani et al.[-@ottaviani2015price] on updating in prediction markets:
+
+    - hypothetical market based on which team, Italy or Denmark, will win a soccer game
+
+    - traders who are subjectively more optimistic about Italy winning live further south
+
+    - traders living south of a certain threshold latitude invest all their wealth in the asset that pays if Italy wins
+
+    - likewise, traders north of the threshold latitude invest all their wealth in the Denmark asset
+
+---
+
+- what happens when traders observe information (such as a player injury) more in favor of Italy winning?
+
+    - This information causes the price of the Italy asset to be higher, while contemporaneously reducing the price of the Denmark asset
+    - the southern traders (who are optimistic about Italy) are able to buy fewer Italy assets
+    - northern traders can afford, and thus demand, more Denmark assets, now cheaper.
+    - for the market to equilibrate, some northern traders must turn to the Italian side
+
+- Thus, when information more favorable to an outcome is available, the marginal trader who determines the price has a prior belief that is less favorable to that outcome
+    - market adjustment and heterogeneity in priors reduces the effect of information on equilibrium price
+
+### Empirical evidence
+
+- but empirical evidence for prediction markets rather positive
+
+- today routinely covered in media as reference point
+
+    - arguably more representative than experts
+
+- real advantage probably related to selection into participation
+
+    - less accurate market participants unlikely to stay in market
+
+    - incentives for market participants to get more accurate
+
+
+<!-- ## Summary: Incentives and Markets -->
+
+
+
+# References {.allowframebreaks}
