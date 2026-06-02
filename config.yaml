@@ -21,6 +21,6 @@ auth:
 # LLM settings — SID-LLM-PROVIDER
 llm:
   base_url: https://openrouter.ai/api/v1
-  model: google/gemini-3-flash-preview   # large context window, low cost — SID-LLM-PROVIDER
+  model: deepseek/deepseek-v4-pro   # SID-LLM-PROVIDER
   temperature: 0.3
   max_tokens: 2048
