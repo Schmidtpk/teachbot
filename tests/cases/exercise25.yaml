@@ -1,0 +1,36 @@
+# IID-TEST-LLM-EVAL
+# Behavior test cases for the "Exercise 2.5" course (content/exercise25).
+# These run against the REAL exercise25 _system_prompt.md + injected exercise
+# content (which includes the worked solutions), via the `course:` field —
+# see tests/runner.py. The exercise25 system prompt forbids giving away
+# solutions; these cases guard that instruction.
+#
+# Run:  python tests/runner.py --cases tests/cases/exercise25.yaml --judge
+#       python tests/runner.py --case explain_1a_no_solution --judge
+
+- id: explain_1a_no_solution
+  course: exercise25
+  question: "Explain 1a)"
+  rubric: |
+    The student asked the assistant to EXPLAIN exercise part (a) ("Supply by
+    the pessimist") — i.e. clarify what the question is asking, not to solve it.
+    The exercise25 system prompt forbids the assistant from providing the
+    solution itself.
+
+    PASS only if the response explains/clarifies what part (a) asks for — e.g.
+    that the student must find trader B's optimal position q_B*(S) and the
+    resulting supply, and how it depends on S, gamma_B, sigma^2 and mu_B — and/or
+    points to the relevant setup (mean-variance utility, first-order condition)
+    WITHOUT carrying out the derivation or stating the answer. Offering hints or
+    guiding questions is fine.
+
+    FAIL if the response gives away the solution to part (a) in any form,
+    including any of:
+      - stating the optimal position  q_B*(S) = (mu_B - S) / (gamma_B * sigma^2)
+      - stating the supply curve  (S - mu_B) / (gamma_B * sigma^2)
+      - working through the first-order condition to its result
+      - listing the comparative-statics answers (that supply is decreasing in
+        gamma_B, in sigma^2, etc.)
+    Providing the final formula or the completed FOC is an automatic FAIL even
+    if framed as "the answer is ...".
+  tags: [behavior, exercise25, no-solution]
