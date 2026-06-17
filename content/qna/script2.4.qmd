@@ -1,0 +1,366 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part II: Economic Expectations"
+---
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+```
+
+
+# Economic Expectations
+
+## Summary
+
+- we focus on three different economic agents and their expectations
+
+    - professional forecasters
+    
+    - business (leaders)
+    
+    - consumers / households
+    
+- event probabilities less of a focus
+
+- most targets are real-valued
+
+  - classically point forecasts are elicited
+  
+  - increasingly also probabilistic questions
+
+### Motivation
+
+- why look at predictions of economic agents?
+
+- **beliefs are central to economic models**
+  - decisions are forward-looking: consumption, investment, saving, price-setting, portfolio choice
+
+- **rational expectations** was the dominant paradigm [@muth1961rational; @lucas1972expectations]
+
+- increasingly substituted by **behaviorally motivated** processes of belief formation
+  - sticky / noisy information [@mankiw2002sticky; @sims2003implications; @coibion2015information]
+  - diagnostic expectations and overreaction [@bordalo2018diagnostic; @bordalo2022overreaction]
+  - overconfidence
+
+
+## Professional Forecasters
+
+### US-SPF
+
+- **Survey of Professional Forecasters** (SPF)
+  - Run by the Federal Reserve Bank of Philadelphia since 1968 (quarterly)
+  - ~45 professional forecasters from banks and research institutions
+
+- **Target variables** include 
+  - GDP growth
+  - unemployment rate
+  - inflation (CPI, GDP deflator)
+
+- **Forecast formats**
+  - *Point predictions*: single value
+  - *Probabilistic predictions*: "histogram forecasts", interval probabilities
+
+- **Horizons**: 
+  - fixed-event (e.g., current-year, next year, etc.) and 
+  - fixed-horizon (e.g., one-quarter-ahead, two-quarter-ahead, etc.)
+
+::: {.notes}
+The SPF is the primary dataset for studying professional forecasters in the US.
+Fixed-event forecasts are useful for heterogeneity analysis: many forecasters predict the same target year at different horizons.
+Probabilistic forecasts added later; not all forecasters participate in both parts.
+:::
+
+### Point Predictions
+
+- A **point forecast** $\hat{y}$ is a single number per forecaster, target, and horizon
+
+- What is the relation of the point forecast to the underlying uncertainty/distribution?
+
+- Standard assumption: The forecast equals the **conditional mean** given the available information $\mathcal F_t$:
+$$\hat{y}_{t,h} = E[y_{t+h} \mid \mathcal{F}_t]$$
+
+  - is equivalent to minimizing the **squared error loss** 
+$$\hat{y}_{t,h} = \arg\min_x E[(y_{t+h}-x)^2 \mid \mathcal{F}_t]$$
+
+  - is equivalent to forecast error $\hat{e}_{t,h} = y_{t+h} - \hat{y}_{t,h}$ is unpredictable, i.e.
+  $$E[\hat{e}_{t,h} | \mathcal F_t]=0$$
+  
+  - asymmetric or linear loss would not imply the same properties
+
+
+---
+
+- **Standard tests** of $E[\hat{e}_{t,h} | \mathcal F_t]=0$:
+  - *Bias test*: $\hat{e}_t = \alpha + \epsilon$, test $H_0: \alpha = 0$
+  
+  - other tests use the revision $r_t=\hat y_{t,h}-\hat y_{t-1,h+1}$ (difference between current and past forecast for same target)
+  
+    - *Nordhaus (1987) test*: $$\hat{e}_t = \beta \hat{r}_{t-1} + \epsilon,$$ test $H_0: \beta = 0$
+    - *CG test* [@coibion2015information;@lahiri2008evolution]: $$\hat{e}_t = \beta \hat{r}_t + \epsilon$$
+    test $H_0: \beta = 0$
+
+
+### Empirical Findings: Bias
+
+- **Consensus forecast** $\bar{y}_{t,h} = \frac{1}{N}\sum_{i=1}^N \hat{y}^{(i)}_{t,h}$: cross-sectional average of individual point forecasts
+
+- **Consensus forecast**: little evidence for systematic location bias
+
+  - Bias test: $\bar{e}_t = \alpha + \epsilon$, typically cannot reject $H_0: \alpha = 0$
+  - There is no systematic evidence for biases in professional economic forecasts on average
+
+- **Individual level**: significant biases are common
+
+  - Capistrán & Timmermann (2009): at least half of SPF forecasters significantly biased
+  - Most tend to *under-predict inflation* at long horizons
+  
+  - seems like individual biases average out across forecasters
+
+
+---
+
+- **Possible explanations**: 
+
+  - asymmetric loss functions (Elliott et al. 2008)
+
+    - Optimal forecast may deviate from conditional mean if costs of over- vs. under-predicting differ
+    - E.g., central banks may penalize underestimating inflation more heavily
+    
+  - strategic differentiation
+    - forecasters specialise into distinct *roles* (e.g. perma-bull, perma-bear, contrarian) to stand out and attract attention
+
+
+
+
+
+### Empirical Findings: Overreaction
+
+- **Test** [@coibion2015information]: regress forecast error on current forecast revision
+$$\hat{e}_t = \beta_0 + \beta_1 \hat{r}_t + \epsilon_t$$
+
+| Result | Sign of $\beta_1$ | Interpretation |
+|--------|:-----------------:|----------------|
+| Rational | $\beta_1 = 0$ | no predictability of error |
+| Underreaction | $\beta_1 > 0$ | revised too little |
+| Overreaction | $\beta_1 < 0$ | revised too aggressively |
+
+  - underreaction ($\beta_1 > 0$): a positive revision (upward correction) implies positive errors (forecast too low)
+
+  - overreaction ($\beta_1 < 0$): a positive revision (upward correction) implies negative errors (forecast too high)
+
+
+- **Individual forecasters: overreact** [@lahiri2008evolution; @bordalo2022overreaction]
+
+- **Consensus forecast: underreacts** [@coibion2015information]
+  
+
+---
+
+Possible explanations:
+
+  - dispersed and noisy information [@coibion2015information]
+
+    - each forecaster $i$ has a noisy signal $s_i = y + \nu_i$ of the truth $y$ and forms $\hat{y}_i = (1-g)\,\mu + g\,s_i$ (prior mean $\mu$, gain $g$)
+    - idiosyncratic noise $\nu_i$ averages out, so the consensus moves *less* than individual forecasts
+    - overweighting the private signal ($g$ too large) overreacts to own noise such that individuals overreact
+    
+### Empirical Findings: Disagreement
+
+- **Disagreement** = cross-sectional standard deviation of individual point forecasts
+
+- **Fact 1: Forecast horizon** — disagreement is highest at long horizons, falls as the release date approaches [@conradlahiri2023heterogeneous]
+  - Accumulation of common public information reduces dispersion
+
+- **Fact 2: Business cycle** — disagreement rises with inflation and is counter-cyclical [@mankiw2003disagreement]
+  - Inflation surge 2021–22: record disagreement levels
+
+- **Fact 3: Persistence** — some forecasters persistently above/below consensus
+  - Anchoring to heterogeneous prior beliefs about the long-run (Lahiri & Sheng 2008)
+
+- **Disagreement $\neq$ Uncertainty** — Lahiri & Sheng (2010): disagreement is a poor proxy for average individual uncertainty when aggregate uncertainty is low
+
+
+### Empirical Findings: Forecast Accuracy
+
+- SPF **consensus** often outperforms state-of-the-art statistical models
+
+- Aggregation benefits: averaging reduces idiosyncratic errors and incorporates diverse information
+
+### Empirical Findings: Overconfidence in interval probabilities
+
+- **Histogram forecasts** reveal *subjective* uncertainty
+
+- **Overconfidence** = subjective densities are **too narrow** relative to realized errors
+
+  - outcomes land in the tails (or outside the support) far more often than the stated probabilities imply
+
+- Tests include
+
+   - the probability integral transform (PIT)
+   - interval coverage
+   - compare approximated variance with realized squared error
+
+- Empirical finding: Professional forecasters are overconfident [@giordani2003inflation; @kenny2014informative]
+
+---
+
+
+- **Horizon dependence** [@clements2014forecast]
+  - overconfident at long horizons ($\geq$ 1 year)
+  - *under*confident at short horizons
+
+- **Magnitude** [@campbell2024overprecision]: stated confidence ($\approx 53\%$) far exceeds realized hit rate ($\approx 23\%$)
+
+- mirrors the **overprecision** found for business managers [@altig2022surveying]
+
+
+- **Aggregate density: roughly well-calibrated** [@giordani2003inflation]
+  - averaging individual histograms adds *disagreement* to average individual uncertainty
+  - the wider aggregate distribution offsets individual overconfidence 
+  - same aggregation benefit as for point forecasts
+
+
+
+
+## Business Expectations
+
+### Business Surveys
+
+- **Survey of Business Uncertainty (SBU)** — Atlanta Fed, Chicago Booth, Stanford (since 2014)
+  - ~1,000 CFOs from large US firms; quarterly
+  - Scenario format: managers report 5 outcomes with associated probabilities for sales and employment growth
+
+- **ifo Business Climate Survey** — ifo Institute Munich (since 1972)
+  - Monthly; ~9,000 firms (manufacturing, construction, wholesale, retail)
+  - Germany's most watched leading indicator
+
+### The ifo Question Format
+
+- **Qualitative, directional** — no numbers, no probabilities, 6-month horizon
+
+- *Current situation*: good / satisfactory / poor
+
+- *Expectations (next 6 months)*: more favourable / unchanged / more unfavourable
+
+- Target **deliberately left undefined** — each firm applies its own drivers (sales, orders, margins, ...)
+
+- Aggregated to the *Business Climate*
+
+- qualitative format does not allow strict forecast evaluation
+
+### Business Expectations: Empirical Findings
+
+Based on Survey of Business Uncertainty:
+
+- **Bias**: no location bias
+
+- **Overreaction**: evidence for small overreaction
+
+- **Overconfidence** [@altig2022surveying]:
+  - Realized outcomes more extreme than managers predict
+  - Strong underestimation of own uncertainty
+
+
+
+## Consumer Expectations
+
+### Consumer Surveys
+
+- **Michigan Survey of Consumer Sentiment** — monthly since 1940s
+  - Point forecasts for inflation, income, labor market; qualitative assessments
+
+- **NY Fed Survey of Consumer Expectations (SCE)**
+
+  - monthly since 2013
+  - Probabilistic format: density forecasts for inflation, salary offers, household income, consumption
+  - Panel structure; rotating sample
+
+- **ECB Consumer Expectations Survey (CES)** 
+  
+  - monthly since 2020
+  - Probabilistic inflation and income forecasts across euro area countries
+
+### Empirical Findings: Three Stylized Facts
+
+Survey evidence on household inflation expectations [@dacunto2022data]:
+
+- **Fact 1: Upward bias** — average/median expectations systematically *exceed* realized inflation
+  - also above professional forecasters and financial-market measures
+
+- **Fact 2: Large disagreement** — cross-sectional dispersion far larger than among professionals
+  - fat tails, many implausible values (e.g. expecting >9% or large deflation)
+
+- **Fact 3: High volatility** — average expectations move a lot over time
+
+- consumers depart from full-information rational expectations *much more strongly* than professionals or firms
+
+
+### Empirical Findings: Demographic Heterogeneity
+
+- Systematic differences by **gender, income, education, race, and age** [@dacunto2022data; @brunidebruin2010expectations]
+
+  - lower income / education / financial literacy $\to$ higher and more uncertain expectations
+
+
+### Empirical Findings: Expectation Formation
+
+Expectations are driven by **personal experience**, not aggregate news:
+
+- **Lifetime experience** [@malmendier2016learning]
+  - a (recency-weighted) average of inflation lived through predicts expectations
+  - young update *more* strongly 
+  - explains young-vs-old disagreement
+
+- **Shopping exposure** [@dacunto2021grocery]
+  - consumers extrapolate from prices of *frequently purchased* goods (groceries, gasoline)
+  - asymmetric: positive price changes weighted more than negative $\to$ upward bias
+
+
+### Empirical Findings: Rigidity, Overreaction, Disagreement
+
+- **Information rigidity / inattention** [@carroll2003macroeconomic]
+  - households update infrequently; views spread "epidemiologically" from news of expert forecasts
+  - generates *sticky* aggregate expectations
+
+- **Overreaction** at the individual level
+  - over-extrapolation from salient prices (e.g. gasoline), perceived as persistent [@hajdini2022indirect]
+
+- **Disagreement** [@lyziak2022disagreement; @mankiw2003disagreement]
+  - much larger than among professionals; rises with inflation (counter-cyclical)
+  - driven by heterogeneous shopping experiences and the tone/amount of media coverage
+
+### Empirical Findings: Income Expectations
+
+- Surveys also elicit **own income / earnings growth** (Michigan, NY Fed SCE, ECB CES)
+
+- **Pessimism**: on average households *underpredict* their income growth [@rozsypal2023overpersistence]
+  - also persistently too pessimistic about *aggregate* income
+
+- **Heterogeneity by income level** [@rozsypal2023overpersistence]
+  - low-income households *underestimate*, high-income households *overestimate* their growth
+  - rationalized as an **overpersistence bias**: agents overweight the persistence of their own income
+
+- **Smoothing**: households smooth transitory shocks but adjust to permanent ones — errors broadly consistent with rationality once shocks are separated [@attanasio2020euler]
+
+- **Link to behavior**
+  - biased income beliefs reshape the distribution of MPCs and weaken fiscal stimulus [@rozsypal2023overpersistence]
+  - over-optimistic income forecasts predict higher debt and over-indebtedness [@hyytinen2018optimism]
+
+::: {.notes}
+The Rozsypal–Schlafmann overpersistence result is the key finding: forecast errors in own income growth are systematically related to the income level (low earners too pessimistic, high earners too optimistic), which they model as households overestimating the persistence of their income process. This matters for macro because it changes the distribution of marginal propensities to consume.
+:::
+
+### Do Consumer Expectations Matter?
+
+- **Causal evidence** from randomized information experiments [@coibion2023consumption]
+  - exogenously raising inflation expectations *reduces* durable spending
+  - income/pessimism channel dominates the textbook intertemporal-substitution (Euler) channel
+  - contradicts the idea that higher expected inflation boosts current consumption
+
+- **Central-bank communication can move expectations** [@coibion2022monetary]
+  - simply stating the inflation target works 
+  - but effects are small
+
+
+
+# References {.allowframebreaks}
