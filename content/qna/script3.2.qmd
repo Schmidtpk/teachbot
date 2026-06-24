@@ -1,0 +1,1467 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part III, Computational Methods"
+---
+
+
+```{r setup, echo=F,message=F, fig.align='center'}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=30)))
+
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE,message = FALSE,warning = FALSE)
+
+```
+
+
+
+# Bayesian modeling
+
+## Introduction
+
+- Bayesian modeling allows us to
+
+  - learn from data by Bayesian updating
+  
+  - predict probabilistically
+  
+  - reflect uncertainty of inputs in prediction
+  
+  
+### Framework
+
+- framework:
+
+  - Goal: predict $y$
+  
+  - potentially with some inputs $x$
+  
+  - Observed data: $D = \large ( (y_1,x_1), \dots, (y_n,x_n))$
+
+### Approach
+
+- Approach:
+
+  - formalize model with likelihood $P(y|\theta)$
+
+  - unknown parameter $\theta$
+
+  - define **prior** $P(\theta)$ that reflects our assumption/uncertainty about $\theta$ before(!) observing the data
+
+  - compute posterior for $\theta$ by Bayes
+  $$P(\theta|D)=\frac{P(\theta \& D)}{P(D)}$$
+  where $P(\theta \& D)=P(\theta)p(D|\theta)=P(\theta) \prod p(y_i|\theta)$
+
+  - predict $y$ with
+  $$P(y|D) = \int P(y|\theta) P(\theta|D) d\theta$$
+
+### Challenges
+
+- model formalization is important
+
+    - connects data to reality
+    
+    - will practice this with examples
+    
+    - highly context dependent skill
+    
+- priors are subjective
+
+    - can use elicitation from Part II of the lecture
+    
+    - can use "uninformative priors"
+    
+- computation of $P(\theta|D)$ and $P(y|D)$ can be challenging
+
+    - use algorithms (Markov-Chain Monte-Carlo, MCMC)
+
+
+### Bayes vs frequentist appraoch
+
+- the "classical" frequentist approach would be
+
+    - formalize model with likelihood $P(y|\theta)$
+  
+    - estimate $\hat \theta$ by maximum likelihood
+    $$\hat \theta = \arg\max \sum log P(Y|\theta)$$
+    
+    - establish consistency 
+    $$\hat \theta \to_p \theta_0$$
+    where $\theta_0$ is true parameter
+    
+    - predict point prediction based on $\hat \theta$ 
+    
+    - provide 90%-confidence intervals (contain true value with probability 90%)
+
+
+### Difference
+
+- Bayes has fully integrated probabilistic concept
+
+- Frequentist Confidence intervals: 
+
+    - cover true value with fixed probability
+    
+- Bayesian credible intervals
+
+    - true value is also random
+    
+    - ture value is in credible interval with fixed probability
+
+    
+### Disadvantage:
+
+- Disadvantage of the frequentist approach
+
+    - no direct reflection of uncertainty (but CI are one way to improve)
+    
+    - no reflection of initial beliefs about $\theta_0$
+    
+    - often statistical guarantees hold only for large samples
+    
+    - predictive performance can be bad in fintie samples
+    
+## MCMC
+
+### Recap: The Bayesian Goal
+
+- We want to understand the **posterior distribution**,
+$$P(\theta|D),$$
+    - represents our updated beliefs about parameters ($\theta$) after observing data ($D$)
+
+    - can subsequently used for prediction
+
+- Bayes' Rule:
+  $$P(\theta|D) = \frac{P(D| \theta) P(\theta)}{P(D)}$$
+  Where:
+    * $P(\theta|D)$: Posterior probability
+    * $P(D|\theta)$: Likelihood (probability of data given parameters)
+    * $P(\theta)$: Prior probability (belief before data)
+    * $P(D)$: Evidence or Marginal Likelihood (probability of data)
+
+### The Challenge: The Denominator
+
+- we define the likelihood $P(D|\theta)$ and prior $P(\theta)$
+
+- need to compute the **Evidence**, $P(D)$
+  $$P(D) = \int P(D|\theta) P(\theta) d\theta$$
+
+- Problem: This integral is often high-dimensional and mathematically intractable (impossible or extremely difficult to calculate analytically).
+
+- Solution:
+
+    - do not describe the posterior distribution analytically
+
+    - instead **draw sample** from it
+
+    - we can generate a sample $\theta_1, \theta_2, ..., \theta_T$ that approximates the true posterior $P(\theta|D)$
+
+### Example: Sampling a distribution
+
+```{r, echo=FALSE}
+set.seed(1)
+# Define the parameters for the true underlying distribution (e.g., Normal)
+true_mean <- 5
+true_sd <- 2
+
+# Define the number of samples to draw
+num_samples <- 500
+
+# --- Generate Samples ---
+samples <- rnorm(n = num_samples, mean = true_mean, sd = true_sd)
+
+# --- Create the Plot ---
+hist_info <- hist(samples,
+                  breaks = 30, # Suggest number of bins
+                  probability = TRUE,
+                  main = paste("Histogram of", num_samples,
+                               "Samples vs True Distribution"),
+                  xlab = "Sampled Value",
+                  ylab = "Density",
+                  col = "lightblue", # Color for histogram bars
+                  border = "white") # Color for bar borders
+
+# 2. Add the true probability density function (PDF) curve
+#    'curve()' plots a function over a range.
+#    'dnorm()' is the PDF for the normal distribution.
+#    'add = TRUE' overlays this curve on the existing plot.
+#    'lwd' sets the line width, 'col' sets the line color.
+curve(dnorm(x, mean = true_mean, sd = true_sd),
+      add = TRUE,
+      col = "darkred",
+      lwd = 2)
+
+```
+
+
+
+### MCMC idea
+
+- will not cover the technical details of MCMC
+
+- basic idea: The probability of sampling $\theta_a$ over $\theta_b$ should be $$\frac{P(\theta_a | D)}{P(\theta_b |D)}=\frac{P(\theta_a \& D)}{P(\theta_b \& D)}$$
+
+    - the evidence term P(D) cancels out
+
+### Pseudo code MCMC
+
+- Inputs:
+
+  - $\theta_0$ initial starting parameter
+
+  - $P_{proposal}$ proposal distribution given current value
+
+  - $P(\theta \& D)$ target distribution for each parameter value
+
+  - $n$ sample length
+
+- Output: A sample of parameter values $\theta$.
+
+---
+
+- Steps:
+  
+  1. Set $\theta_{last}$ = $\theta_0$
+  
+  2. For iteration from 1 to n:
+  
+      a. Propose $\theta_{next}$ by drawing from proposal distribution$P_{proposal}(\theta_{last})$.
+  
+      b. Calculate the acceptance probability $\alpha$:
+         $$\alpha = \min(1, \frac{P(\theta_{next} \& D)}{P(\theta_{last} \& D)})$$
+  
+      c. Accept the proposed state with probability $\alpha$ (set $\theta_{last} = \theta_{next}$) or stay at $\theta_{last}$
+      
+      d. Add $\theta_{last}$ to sample.
+  
+  4. Return the generated "chain" of $\theta$ values (the MCMC sample)
+
+
+
+### MCMC usage
+
+- there are multiple approaches for MCMC
+
+  - details highly technical
+
+- important for us:
+
+  - there is software implementing this
+
+- input for software normally is
+
+  - likelihood of model
+
+  - prior distributions
+
+- output of model is an MCMC sample
+
+### Burn-in / Warm-up
+
+- MCMC chains don't start by drawing from the target posterior distribution immediately.
+
+  - initially influenced by starting point
+
+- There's an initial phase, the **burn-in** or **warm-up**, where the chain moves from its starting point towards the high-probability region of the posterior.
+
+- **Burn-in:** Samples generated during the burn-in phase are ignored
+
+- Standard practice in all software implementations 
+
+    - you may need to adapt the length of the burn-in
+
+### Illustration: Converged chains
+
+$$\underbrace{\theta_1, \theta_2, \dots}_{\text{burn-in}}, \underbrace{\theta_M, \dots, \theta_{M+T}}_{\text{MCMC sample}}$$
+
+```{r, echo=F}
+#| fig-cap: "After the burn-in, the chain settles and fluctuates within the stationary region (between the black horizontal lines indicating the 90% confidence region of the true unknown posterior.)."
+set.seed(1)
+library(tidyverse)
+M <- 10
+T <- 10
+y<-numeric(M+T)
+for(t in 1:(M+T)){
+  y[t]<-max(M-t,0)+ rnorm(1)
+}
+ggplot(data.frame(x=1:(T+M),y=y) |> mutate(burnin = x<=10), aes(x,y,col=burnin))+
+  geom_point()+
+  xlab("t")+
+  ylab("theta")+
+  geom_line(alpha=.2)+
+  geom_hline(yintercept = c(-1.8,1.8))
+```
+
+### Convergence?
+
+- Situation:
+
+    - software generates MCMC sample of length $M+T$ and returns last $T$ observations
+
+    - theory guarantees that the distribution $\theta_t$ approaches posterior $P(\theta|D)$ for large $t$
+
+- However, if $M$ and $T$ are large enough depends on application
+
+    - can be slow or effectively infeasible 
+    
+### Practical aspects of convergence
+
+- In applications, we
+
+    - need to check MCMC sample for convergence
+
+- Optimize efficient sampling by
+
+    - convenient model parameterization
+
+    - efficient MCMC sampler
+
+    - efficient software implementations
+
+    - sampling long MCMC chains
+
+### Sidenote: Parallel computing
+
+- MCMC values can only be sampled one after the other
+
+- Other techniques (like neural networks) allow parallel computing
+
+    - allows much more complex models and more data to be used
+
+- complex Bayesian models often run hours or days until convergence
+
+    - not possible for all applications
+
+
+## Samplers
+
+### MCMC dilemma
+
+- There are different MCMC methods and implementations
+
+- convergence is crucial for valid inference
+
+- convergence fails if proposals never accepted
+
+    - posterior of proposal too low
+    
+    - propose closer parameters?
+    
+- convergence fails if proposals do not reach all posterior regions
+
+    - proposal too close to current value
+    
+    - propose parameters farther away?
+
+### Illustration
+
+- Check out the following link for an illustration of the samplers
+
+    - [https://chi-feng.github.io/mcmc-demo/app.html](https://chi-feng.github.io/mcmc-demo/app.html)
+    
+- MCMC samplers are different
+
+  - Gibbs sampling (JAGS)
+  
+  - Hamiltonian Monte Carlo (Stan)
+
+- Convergence depends on posterior shape 
+
+  - determined by model and data
+
+  - high correlations and multi-modality slow down convergence
+
+
+### MCMC samplers
+
+- Gibbs sampling
+
+  - updates one dimension of the parameter vector at a time
+  
+- Metropolis Hastings
+
+  - updates all dimensions simoultanously
+  
+- Hamiltonian Monte Carlo (HMC)
+
+  - uses gravity like physics for proposal
+  
+  - high posterior regions "pull in" more proposals
+
+
+
+### What's Next?
+
+- MCMC is a general *concept*
+
+- Tools like **Stan**, **JAGS**, and **pymc** implement efficient MCMC algorithms
+
+    - You only define the model (prior, likelihood)
+    
+    - Check the MCMC sample for convergence
+    
+    - Analyze MCMC sample for predictions
+    
+- So, let's see how to apply those tools
+
+
+## Example: Coin toss
+
+- let's say a friend offers us to bet on a coin toss
+
+- the friend shares that the coin was part of a magic set
+
+    - we do not know if it is a "fair" coin with $P(\text{heads})=0.5$
+
+- we observe:
+
+    - (heads, tails, heads, heads, tails, heads, tails, heads, heads, heads)
+
+- what should be our prediction for the next coin toss?
+
+### model
+
+- the model is
+$$y_i \sim bernoulli(\theta)$$
+with independent observations.
+
+- a sensible prior is
+$$p(\theta) \sim U[0,1]$$
+    - meaning all probabilities are equally likely
+
+- What is our posterior?
+
+### JAGS
+
+- [installation notes](https://gist.github.com/dennisprangle/e26923fae7477566510757ab3341f54c)
+
+- [user manual](https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf)
+
+- use R to describe model and prior
+
+  - flexible and easy to use
+
+  - limited MCMC samplers available
+
+  - outdated in comparison to Stan and pymc
+
+- simples usage in Posit Cloud (no local installation necessary)
+
+- will currently NOT work in sandboxes hosted by AI companies
+
+### Example: coin tosses
+
+- first load R package for jags
+\vspace{1cm}
+```{r}
+# Install rjags package (if not already installed)
+# install.packages("rjags")
+
+# Load the rjags package
+library(rjags)
+```
+
+---
+
+
+- define model and prior as string
+\vspace{1cm}
+```{r}
+# Define the JAGS model as a string
+model_string <- "
+  model {
+    # Likelihood
+    for (i in 1:n) {
+      y[i] ~ dbern(theta)
+    }
+
+    # Prior for the probability of success (theta)
+    theta ~ dunif(0, 1) # Uniform prior between 0 and 1
+  }
+"
+```
+
+
+---
+
+- provide data and initiate model
+
+```{r}
+# Example data: 10 observations of a Bernoulli random variable
+data <- c(1, 0, 1, 1, 0, 1, 0, 1, 1, 1)
+n <- length(data)
+
+# Prepare the data for JAGS
+jags_data <- list(y = data, n = n)
+
+# Initialize the model
+model <- jags.model(textConnection(model_string),
+                    data = jags_data,
+                    n.chains = 1)
+
+```
+
+---
+
+- sample from model
+\vspace{1cm}
+```{r}
+# Burn-in (optional but recommended)
+update(model, 100)
+
+# Sample from the posterior distribution
+samples <- coda.samples(model, variable.names = c("theta"), n.iter = 200)
+```
+
+
+---
+
+- illustrate MCMC sample
+
+```{r}
+plot(samples)
+```
+
+
+---
+
+- predict next coin toss
+\vspace{1cm}
+
+```{r}
+# extract vector of thetas
+theta <- unlist(samples)
+
+# predict y with each value of theta
+y <- rbinom(length(theta),size = 1,prob = theta)
+
+# compute probability of heads
+mean(y)
+```
+
+
+
+### Python, pymc solution
+
+- [Click here<--](https://colab.research.google.com/drive/1shN6MjGKvZNx3vpjoutljSU4CAeYoewn?usp=sharing) for pymc solutions in google colab or copy paste:
+
+https://colab.research.google.com/drive/1shN6MjGKvZNx3vpjoutljSU4CAeYoewn?usp=sharing
+
+```{python}
+#| eval: false
+
+# import packages
+import pymc as pm
+import numpy as np
+import arviz as az
+import matplotlib.pyplot as plt
+
+# 1. Data
+# Same data as in the R example
+data = np.array([1, 0, 1, 1, 0, 1, 0, 1, 1, 1])
+n = len(data)
+
+# 2. Define the PyMC Model
+with pm.Model() as coin_model:
+    theta = pm.Uniform('theta', lower=0, upper=1)
+    y = pm.Bernoulli('y', p=theta, observed=data)
+
+# 3. Sample from the posterior distribution
+# 'tune' corresponds to the burn-in phase (update in JAGS)
+# 'draws' corresponds to the number of posterior samples (n.iter in JAGS coda.samples)
+with coin_model:
+  trace = pm.sample(
+    step = pm.Metropolis(), # specifies mcmc sampler
+    draws=200,
+    tune=100,
+    chains=1,
+    return_inferencedata=True)
+
+# 4. Analyze and Plot the results using ArviZ package
+
+# Show summary statistics
+print("\nSummary Statistics for Theta:")
+summary_stats = az.summary(trace, var_names=['theta'])
+print(summary_stats)
+
+# Plot trace and posterior distribution
+az.plot_trace(trace, var_names=['theta'])
+plt.tight_layout()
+plt.show()
+
+
+```
+
+
+
+
+
+## Convergence checks
+
+- MCMC algorithms generate *samples* intended to approximate the posterior distribution $P(\theta | D)$.
+
+- **Goal:** Ensure the samples accurately represent the true target posterior distribution.
+
+- **Problems:** 
+
+    - chain might get stuck
+    
+    - mix poorly
+    
+    - be too short
+
+- **Solution:** Use diagnostic checks on MCMC sample
+
+
+
+### Visual Diagnostics: Trace Plot
+
+- Idea: A converged chain will look identicial across all parts.
+
+- Plot the sampled value of a parameter against the iteration number for each chain.
+
+- **What to look for:**
+    
+    - **Stationarity:** The chain should look at all time points similar without trends
+    
+    - **Good Mixing:** The chains should traverse the posterior space efficiently
+    
+    - like "white noise"
+
+### Visual Diagnostics: Multiple trace plots
+
+- Idea: Run multiple MCMC chains with different starting points. If all converged, they should cover the same posterior regions. 
+
+  - If different, impossible that both converged.
+
+- **What to look for:**
+    
+    - **Good Mixing:** The chains should traverse each others paths
+    
+    - **Overlap:** Multiple chains started at different points should be identical after burn-in
+
+
+
+### Quantitative Diagnostic: R-hat ($\hat{R}$)
+
+- Compares the variance *within* each chain to the variance *between* chains.
+
+- **Idea:** If chains have converged, the within-chain and between-chain variances should be similar.
+
+- **Target:** $\hat{R}$ should be close to 1.0. Common thresholds are $\hat{R} < 1.01$ or $\hat{R} < 1.05$. Values significantly > 1 indicate convergence issues.
+
+- **Requires:** At least two chains.
+
+### Quantitative Diagnostic: Effective Sample Size ($N_{eff}$ or ESS)
+
+- MCMC samples are typically *autocorrelated* (nearby samples are similar)
+
+- ESS estimates the number of *independent* samples that would contain the same amount of information as the autocorrelated MCMC samples.
+
+- **Target:** Higher is better. Need enough ESS for stable posterior estimates.
+
+    - appropriate ESS depends on target property
+    
+    - Rules of thumb: Often want $N_{eff} > 100$ for probability or average
+      
+
+### Thinning
+
+- **What:** Saving only every $k^{th}$ sample from the MCMC chain
+
+- **Original Purpose:** Reduce autocorrelation in saved samples and save disk space/memory.
+
+- **Modern View:**
+    
+    - **Often Unnecessary:** Thinning *discards* information.
+    
+    - May still be convenient sometimes
+
+### Coin toss example with jags
+
+```{r, message=FALSE}
+# Initialize the model with 2 chains
+model <- jags.model(textConnection(model_string),
+                    data = jags_data,
+                    n.chains = 2,
+                    quiet = TRUE)
+
+# Burn-in (optional but recommended)
+update(model, 100)
+
+# Sample from the posterior distribution
+samples <- coda.samples(model, variable.names = c("theta"), n.iter = 100)
+```
+
+---
+
+```{r}
+# traceplot
+plot(samples)
+```
+
+---
+
+```{r}
+# load MCMCvis library for analyzing mcmc results
+library(MCMCvis)
+
+# show summary of all variables 
+# with Rhat and effective sample size
+MCMCsummary(samples)
+```
+
+### Non-mixing and slow mixing
+
+![source: www.statlect.com by Marco Taboga](./plots/traces.png){width="300" fig-align="center"}
+
+
+
+### Summary of Convergence Checks
+
+-  Run multiple chains (e.g., 4) from dispersed starting values.
+
+-  Ensure a sufficient burn-in period
+
+-  Visually inspect trace plots of multiple chains
+
+-  Check that $\hat{R}$ is close to 1.0 (e.g., < 1.01) for all parameters.
+
+-  Ensure Effective Sample Size ($N_{eff}$) is adequate for all parameters
+
+
+
+
+
+
+## Priors
+
+- [@granger1986forecasting]: "$\dots$ in terms of **forecasting ability**, $\dots$ a **good Bayesian** will beat a **non-Bayesian**, who will do better than a **bad Bayesian**."
+
+- predictive accuracy:
+
+$$\text{good Bayesian} > \text{non-Bayesian} > \text{bad Bayesian}$$
+
+- why would a Bayes model perform better? 
+
+    - Priors inform predictions!
+
+### Example: Modeling in first wave of Covid pandemic
+
+- Bayes models were routinely used in early Covid predictions
+
+    - model parameters were uncertain, but we had some information on them
+    
+    - e.g., fatality rate, transmission rate, etc.
+
+- Could ask experts or consult estimates (with CI) from literature
+
+    - e.g., fatality rate $\sim \mathcal N(0.02, 0.01^2)$
+    
+- Alternative 1: Not using information at all
+
+    - waste of information and precision
+    
+- Alternative 2: Using point prediction of input as if certain
+
+    - e.g., using 0.02 = 2% as sure fatality rate
+    
+    - leads to overprecise predictions
+
+---
+
+- Deterministic example: [@ferguson2020report]
+
+    - used mostly a deterministic model
+    
+    - inputs where best point estimates available at the time
+    
+    - estimated 2.2 Million deaths from Covid in the US
+    
+    - actual number estimated to be around ~ 1.2 Million
+    
+
+### Priors influence posterior
+
+- prior beliefs influence the posterior
+
+    - influence stronger with few data points
+    
+    - extreme case: no data, posterior = Monte Carlo prediction
+    
+    - infinte amount of data: $$\text{posterior mode} \approx \text{Maximum Likelihood estimate}$$ 
+    
+- prior distribution can be any distribution
+
+    - main characteristics: location and scale
+    
+    - difficult to reason over shape
+
+### Typical distributions
+
+- Bernoulli
+
+    - `dbern` in JAGS
+    
+    - for events, yes/no, 0/1, two categories
+    
+    - described by probability of success/1/category 1
+
+- categorical
+
+    - `dcat` in JAGS
+    
+    - for $k$ categories, with $2<k<\infty$
+    
+    - described by vector of probabilities $(p_1,\dots,p_k)$
+
+---
+
+- uniform
+
+    - `dunif` in JAGS
+    
+    - for reals with same probability for all values
+    
+    - described by min and max value, e.g. dunif(0,1)
+    
+- Gaussian distribution
+
+    - `dnorm` in JAGS
+    
+    - aka "normal distribution", popular, arises from sum of independent parts in the limit (CLT)
+    
+    - described by mean and sd/variance/precision 
+    $$\text{precision} = \frac 1 {\text{variance}}= \frac 1 {\text{sd}^2}$$
+
+
+### Improper priors
+
+- sometimes we would like to estimate a **continuous** parameter without any specific prior
+
+- solution: improper priors
+
+    - priors that are not a "proper" distribution
+    
+    - classic: $p(\theta) \propto 1$
+    
+    - like a uniform distribution with infinite support, i.e. $$U[-c,c] \text{ with } c\to\infty$$
+    
+    - why not proper? density at any point $= 0$
+    
+- not supported in JAGS, but standard in Stan
+
+
+
+### Example: Coin toss
+
+- let us revisit the coin toss
+
+- this time we know 
+
+    - the coin is not fair
+    
+    - probability of heads or tails is 90\%
+    
+    - unclear if heads or tails has this likelihood
+    
+- we define the model in JAGS and run it with different priors
+
+
+---
+
+- define model with 
+
+    - $y \sim Bernoulli(\theta)$
+    
+    - $\theta \in \{0.1,0.9\}$
+    
+- prior on $\theta$? 
+
+    - let's start with equal weight on both values
+
+- data: 
+
+    - let's say we observe: heads, tails, heads
+
+- what is the resulting posterior?
+
+---
+
+- define jags model
+
+   - as before, but now theta is a categorical variable which obtains values from the `probabilities` vector
+   
+  - include prediction of y as `y_pred ~ dbern(theta)`
+
+\vspace{1cm}
+```{r}
+#| code-line-numbers: "4"
+model_string <- "
+  model {
+    
+    # current theta is one entry from 'probabilities'
+    theta = probabilities[cat]
+    
+    # old loop
+    for (i in 1:n) {
+      y[i] ~ dbern(theta)
+    }
+
+    # Prior over theta 
+    cat ~ dcat(p_prior) # categorical
+    
+    # output
+    
+    y_pred ~ dbern(theta)
+  }
+"
+```
+
+
+---
+
+
+
+```{r}
+#| code-line-numbers: "4"
+# define prior probabilities
+p_prior = c(0.5,0.5)
+# save possible theta values
+probabilities = c(0.9,0.1)
+
+# observations heads, tails, heads
+data <- c(1, 0, 1)
+
+# the rest is as before, we only need 
+# to give the variables to JAGS in jags_data
+n <- length(data)
+
+### rest
+
+
+# Prepare the data for JAGS
+jags_data <- list(y = data, n = n, 
+                  probabilities = probabilities, p_prior = p_prior)
+
+# Initialize the model
+model <- jags.model(textConnection(model_string),
+                    data = jags_data,n.chains = 3,quiet = TRUE)
+
+```
+
+---
+
+- sample from model and show results
+\vspace{1cm}
+```{r}
+# Burn-in (optional but recommended)
+update(model, 1000)
+# Sample from the posterior distribution
+samples <- coda.samples(model, 
+                        variable.names = c("theta","y_pred","cat"), 
+                        n.iter = 1000)
+# show results
+MCMCvis::MCMCsummary(samples)
+```
+
+- posterior prediction for heads $\approx 80\%$
+
+    - using the prior $p("heads")=50\%$ 
+    
+    - the observations ("heads","tails", "heads")
+
+---
+
+- if we redo the same thing with different priors, the posterior also changes.
+
+    - let's say we are pretty sure that tails is more likely
+    
+    - $p_\text{prior}$ assigns 90\% prior probability to tails being more likely.
+    
+
+```{r}
+#| code-line-numbers: "1"
+p_prior = c(0.1,0.9)
+```
+
+```{r, eval=FALSE}
+... re-run sampling ...
+```
+
+```{r, message=F,echo=FALSE}
+# Prepare the data for JAGS
+jags_data <- list(y = data, n = n, 
+                  probabilities = probabilities, p_prior = p_prior)
+
+# Initialize the model
+model <- jags.model(textConnection(model_string),quiet = TRUE,
+                    data = jags_data,n.chains = 2)
+
+# Burn-in (optional but recommended)
+update(model, 1000)
+# Sample from the posterior distribution
+samples <- coda.samples(model, 
+                        variable.names = c("theta","y_pred","cat"), 
+                        n.iter = 1000)
+# show results
+MCMCvis::MCMCsummary(samples)
+```
+- posterior prediction for heads $\approx 50\%$
+
+    - using the prior $p("tails")=0.9 \times 0.9 + 0.1 \times 0.1 = 0.82$ 
+    
+    - the observations ("heads","tails", "heads")
+
+
+
+
+
+
+## Stan
+
+- **Stan** 
+
+    - state-of-the-art platform for statistical modeling
+
+    - MCMC sampler is a Hamiltonian Monte Carlo 
+
+- **Own Modeling Language:**
+
+    - more difficult to learn/code than JAGS
+
+    - **Interfaces:** Accessible from various platforms including R (`rstan`, `cmdstanr`), Python (`cmdstanpy`, `pystan`)
+
+- larger and more active community than JAGS
+
+- supports improper priors
+
+- main limitation: Latent variables can only be continuous
+
+### Stan Program Structure
+
+- Stan programs are typically organized into specific **blocks**:
+
+```{r,eval=FALSE}
+// data { ... }      // Declare data passed from R/Python
+// parameters { ... } // Declare parameters to be estimated
+// model { ... }     // Define priors and likelihood
+// generated quantities { ... } // Optional: Compute derived values
+```
+
+### Example: Linear regression
+
+- use the linear regression example from [https://stan-playground.flatironinstitute.org/](https://stan-playground.flatironinstitute.org/)
+
+    - contains scripts for R and python
+
+- linear regression model $y=\alpha + \beta x + \epsilon$
+
+  - $\epsilon \sim \mathcal N(0,\sigma^2)$
+
+  - improper priors on $\alpha,\beta,\sigma$
+
+```{r}
+# if not already installed, run
+# install.packages("rstan")
+
+# Load the rstan library
+library(rstan)
+```
+
+---
+
+- define model in stan
+
+```{r}
+model_code <- '
+  data {
+    int<lower=0> N;
+    vector[N] x;
+    vector[N] y;
+  }
+  parameters {
+    real alpha;
+    real beta;
+    real<lower=0> sigma;
+  }
+  model {
+    y ~ normal(alpha + beta * x, sigma);
+  }
+ '
+```
+
+---
+
+- simulate from model with some parameters
+
+```{r}
+# "true" values of the parameters
+beta <- 1.25
+alpha <- -0.1
+sigma <- 1.6
+
+N <- 10
+
+x <- 1:N
+
+y <- rnorm(N, alpha + beta * x, sigma)
+
+data <- list(N=N, x=x, y=y)
+```
+
+
+---
+
+```{r, message = FALSE}
+ # Compile the Stan model
+ model <- stan_model(model_code = model_code)
+
+ # Demonstrate model fit
+ N = 100
+ mcmc_chain <- sampling(model, data = data)
+```
+
+---
+
+- Analyze results
+
+    - prepare 250 mcmc draws
+
+```{r}
+library(posterior)
+library(ggplot2)
+
+# load data from data.json
+x <- data$x
+y <- data$y
+
+# posterior predictive check
+alpha <- extract_variable(mcmc_chain, "alpha")
+beta <- extract_variable(mcmc_chain, "beta")
+
+# 250 random draws
+N <- 250
+idxs <- sample(length(alpha), 250)
+```
+
+---
+
+- plot regression line for each mcmc draw
+
+    - add regression line for **posterior mean**
+
+    - add [data points]{.blue}
+
+```{r}
+plot <- ggplot() +
+  geom_abline(data = data.frame(alpha=alpha[idxs], beta=beta[idxs]),
+              aes(intercept = alpha, slope = beta),
+              color = "gray", alpha = 0.1) +
+  # posterior mean
+  geom_abline(intercept = mean(alpha),
+              slope = mean(beta),
+              color = "black", linewidth = 1) +
+  # plot data
+  geom_point(data = data.frame(x = x, y = y), aes(x = x, y = y),
+             color = "steelblue", size = 2)
+```
+
+---
+
+```{r, out.width= 300}
+plot
+```
+
+### Comparison to OLS
+
+- the same model can be estimated in OLS
+
+- for infinite data, the Bayes posterior is identical to the OLS estimates
+
+- for finite data, the Bayes posterior is informed by prior distributions
+
+    - can be helpful, if you know for example that influence of $x$ is positive, i.e., $\beta >0$
+
+
+- Bayesian models allow for flexible extensions
+
+    - e.g., hierarchical modeling
+
+
+## Hierarchical Models
+
+### Motivation: Beyond Simple Models
+
+- So far, we've mostly considered models with a single set of parameters
+
+- What if our data has *structure* or *groups*?
+    
+    - house prices within cities
+    
+    - sales of products within product categories
+    
+### Modeling Options for Grouped Data
+
+1.  **Complete Pooling:** Assume all groups are identical. Estimate one single parameter set for all data combined.
+
+    - Ignores group-level variation. Potentially biased if groups differ.
+
+2.  **No Pooling:** Assume all groups are completely independent. Estimate separate parameters for each group using only that group's data.
+
+    - Ignores similarities between groups. Inefficient, especially for groups with little data. Estimates can be noisy.
+
+3.  **Hierarchical Modeling (Partial Pooling):** A compromise! Assume group parameters are related, drawn from a common *population distribution*.
+
+
+### Key Concept: Partial Pooling & Shrinkage
+
+- Hierarchical models allow groups to "borrow strength" from each other
+
+
+- **Result:** Group parameter estimates ($\theta_j$) are pulled (or "shrunk") towards the estimated population mean ($\theta$).
+
+    - Shrinkage is stronger for groups with less data or less precise estimates.
+
+    - Shrinkage is weaker for groups with more data or more precise estimates.
+
+- This leads to more stable and often more accurate predictions
+
+### Example: Hierachical linear regression
+
+- we have the standard regression data $(y,x)$
+
+- additionally, each observation has a group $g \in \{1,\dots, G\}$
+
+- we assume that within group observations share regression coefficient 
+
+    - that is distributed around an average value $\beta$:$$\beta_g \sim \mathcal N(\beta,\sigma_g^2)$$
+
+---
+
+- define model 
+
+```{r}
+model_string <- "
+  model {
+    # Likelihood
+    for (i in 1:N) {
+      y[i] ~ dnorm(alpha + beta_g[g[i]] * x[i], inv_tau)
+    }
+
+    # beta_g
+    for (g in 1:G){
+      beta_g[g] ~ dnorm(beta,inv_tau_g)
+    }
+    
+    # Priors
+    alpha ~ dnorm(0,1/100^2)
+    beta ~ dnorm(0,1/100^2)
+    inv_tau ~ dgamma(1,1)
+    inv_tau_g ~ dgamma(1,1)
+    
+    # generate prediction 
+    # for value with group g=1, and x = 50
+    y_pred ~ dnorm(alpha + beta_g[1] * 50, inv_tau)
+  }
+"
+```
+
+
+---
+
+- simulate from model with some parameters
+
+```{r}
+# "true" values of the parameters
+beta_g <- c(1,2)
+alpha <- -1
+sigma <- 2
+
+N <- 20
+x <- 1:N
+g <- sample(c(1,2),N,replace = T)
+y <- rnorm(N, alpha + beta_g[g] * x, sigma)
+
+data <- list(N=N, x=x, y=y, g=g, G=2)
+```
+
+---
+
+- sample from model
+\vspace{1cm}
+```{r}
+model <- jags.model(textConnection(model_string),
+                    data = data,
+                    n.chains = 2,
+                    quiet = TRUE)
+
+# Burn-in (optional but recommended)
+update(model, 1000)
+
+# Sample from the posterior distribution
+samples <- coda.samples(model, 
+                        variable.names = c("beta_g",
+                                           "y_pred"), 
+                        n.iter = 2000)
+```
+
+
+---
+
+- illustrate MCMC sample
+
+```{r}
+plot(samples)
+```
+
+---
+
+- issue prediction
+
+```{r}
+MCMCvis::MCMCsummary(samples)
+```
+
+- versus simulated truth
+
+    - beta_g[1] = [computed during executed run]
+    
+    - beta_g[2] = [computed during executed run]
+    
+    - y_pred = alpha + beta_g[1] * 50 = [computed during executed run]
+
+### Example: Summary
+
+- linear model uses information from group 2 observations
+
+    - but only to extent that groups are hypothesized to be similar
+    $$\beta_g \sim \mathcal N(\beta,\sigma_g^2)$$
+    
+    - prior on $\sigma_g^2$ determines influence
+    
+- Strength of association between groups is also learned from data
+
+    - if $\sigma_g$ large, no relation, effectively similar to **separate estimation**
+    
+    - if $\sigma_g$ small, strong relation, effectively similar to **pooling** all groups
+
+
+## Example: Time series forecasting with prophet
+
+- open source library available for R and python doing time series forecasting
+
+    - using stan in the background
+
+### Preparation
+
+```{r}
+# 1. Install and Load Prophet
+# install.packages("prophet") # Run once if needed
+library(prophet)
+library(dplyr)
+
+# 2. Prepare the Data
+df <- read.csv('https://raw.githubusercontent.com/facebook/prophet/main/examples/example_wp_log_peyton_manning.csv')
+
+
+# Optional: View data structure
+# head(df)
+# str(df)
+
+# 3. Create and Fit the Prophet Model
+m <- prophet(df)
+
+# 4. Create a Future Dataframe for Predictions
+future <- make_future_dataframe(m, periods = 365)
+# Optional: View future dates
+# tail(future)
+
+# 5. Make Predictions
+forecast <- predict(m, future)
+# Optional: View forecast values
+# tail(forecast[c('ds', 'yhat', 'yhat_lower', 'yhat_upper')])
+
+```
+
+### Forecast
+
+```{r}
+# 6. Plot the Forecast
+plot(m, forecast)
+```
+
+<!-- ### Components -->
+<!-- ```{r} -->
+<!-- # 7. Plot Forecast Components -->
+<!-- prophet_plot_components(m, forecast) -->
+<!-- ``` -->
+
+
+
+## Summary: Bayesian modeling
+
+Good:
+
+- theoretically sound approach
+
+- combines data and expertise (priors)
+
+- outperforms other methods if priors are good
+
+Bad:
+
+-   subjective priors can be off, which leads to bad predictive performance in finite samples
+
+-   computational requirements can be high
+
+-   hard to know if MCMC actually converged and thus posterior sample is close to true posterior distribution
+
+
+
+### Implementation summary
+
+- implementation needs
+
+    - model likelihood (stan, jags, pymc compute those from model description)
+    
+    - priors (stan assumes improper priors if no description)
+    
+- software provides mcmc samples
+
+    - explain posterior after convergence
+    
+    - convergence needs to be checked
+    
+- large data sets and complex models become computationally infeasible
+
+### Implementation options for you
+
+- install rjags locally 
+
+    - or use at [https://posit.cloud/](https://posit.cloud/)
+
+- use stan locally 
+
+    - or at [https://stan-playground.flatironinstitute.org/](https://stan-playground.flatironinstitute.org/)
+    
+    - or in [kaggle notebook](https://www.kaggle.com/code/schmidtpk/stan-kaggle-notebook)
+
+- use pymc locally 
+
+    - or in google colab
+
+    - start with my [pymc example](https://colab.research.google.com/drive/1shN6MjGKvZNx3vpjoutljSU4CAeYoewn?usp=sharing)
+
+### Further references
+
+- [A quick-start intro to Stan for Economists](https://nbviewer.org/github/QuantEcon/QuantEcon.notebooks/blob/master/IntroToStan_basics_workflow.ipynb) by Jim Savage
+
+    - stan code
+    
+    - python jupytor notebook
+
+- [Why Econometrics Should Always and Everywhere Be Bayesian](http://sims.princeton.edu/yftp/EmetSoc607/AppliedBayes.pdf) by Chris Sims
+
+    - economic perspective on the Bayesian approach
+
+# References {.allowframebreaks}
