@@ -1,0 +1,963 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part III, Computational Methods"
+author: "Patrick Schmidt (slides partly based on Predictive Modeling by Fabian Krüger and Timo Dimitriadis)"
+---
+
+
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE)
+```
+
+
+# Machine learning 
+
+## Introduction
+
+- Bayesian modeling and judgement prediction 
+
+    - ideal for situations with **high uncertainty** and **little data**
+    
+    - evaluation of proposed solution complicated (not enough data)
+    
+    - uncertainty treatment is key
+    
+    - models are **specific** to purpose
+    
+- Machine learning
+
+    - ideal for situations with **much data**
+    
+    - evaluation simple (use part of the data)
+    
+    - focus on **whatever works**
+    
+    - models are **general** (and scalable)
+    
+    - great sucess in text (language models) and vision
+
+### Summary
+
+- estimation
+
+    - models
+    
+    - loss function / scoring rules
+    
+    - optimization
+
+- in-sample vs out-of-sample
+
+    - over-fitting, bias-variance tradeoff
+
+    - train, validate/test
+
+- Example: k-nearest neighbors
+
+---
+
+- deep learning
+
+    - neural nets
+    
+    - stochastic gradient descend
+    
+    - best practices
+
+- Example: prediction with neural net
+
+- language models as next-token predictions
+    
+
+
+### Setting
+
+- here we focus on the setting, where we want to 
+
+    - predict some $y$ (normally a real or binary variable)
+    
+    - given information $x$ (normally a vector)
+    
+    - based on a sample of data $\mathcal D = \large((y_1,x_1),\dots, (y_n,x_n)\large)$
+    
+    - "supervised learning"
+    
+- we use generic models $m(x,\theta)$
+
+    - use input $x$
+    
+    - have some parameters $\theta$
+    
+    - output a prediction for $y$ 
+    
+- Approach:
+
+    - learn $\theta$ from data $\mathcal D \Rightarrow \hat \theta$
+    
+    - then predict $\hat p = m(x,\hat \theta)$
+    
+## Estimation
+
+- Estimate $\hat \theta$ with some loss function $L(y,\hat y)$ (or scoring rule)
+  $$\hat \theta = \arg\min_\theta \sum_i L(y_i,m(x_i, \theta))$$
+  
+    - for each $\theta$
+    
+    - compute **prediction** [$m(x_i,\theta)$]{.blue}
+
+    - **loss** $L(y, \color{blue}{m(x_i,\theta)})$
+    
+    - **sum** over all observations $\sum_i L(\dots)$
+    
+    - **minimize** this expression with respect to $\theta$
+
+- Also called **fitting** a parameter/model to the data
+
+### OLS comparison
+
+- the procedure above is general and includes the OLS regression if
+
+    - model is linear $m(x,\theta)=x \theta$
+    
+    - loss is the squared error $L(y,\hat y)=(y-\hat y)^2$
+    
+- in this simple case, the minimization can be solved with "ordinary" analytics
+
+- for more complex methods and different loss functions the minimization cannot be solved analytically
+
+    - need to do this computationally
+
+## In-sample versus out-of-sample
+
+- It is common to use a training data set $\mathcal{D}$ for fitting a statistical model ($x_i$ is a $p$-dim. vector of predictors) 
+
+- Training data are aka **in-sample** data
+
+- We're interested in **out-of-sample** prediction of new data point
+
+- A model that does well in-sample need not do well out-of-sample, and vice versa 
+
+
+### OLS out-of-sample
+
+- In particular, complex models tend to do well in-sample but not out-of-sample 
+
+- you may know this from OLS with increasing number of covariates
+
+    - if you have $n$ covariates (where none can be constructed by linear combination from the others) you can explain all the data
+    
+    - perfect in-sample fit
+    
+    - normally terrible out-of-sample prediction model
+
+
+### Separate Training and Testing
+
+- One solution to overfitting is **separating the data $D$** into     
+
+    - **training set $D^T$** and 
+    
+    - **validation set $D^V$**
+    
+- training set
+
+    - large proportion of data
+    
+    - used to fit the parameter
+    
+- test/validation set
+
+    - can evaluate **out-of-sample** predictive accuracy
+
+    - used to choose model, hyperparameters, or fitting procedure
+
+### In-sample versus out-of-sample 
+
+![Source: [@hastie2009elements]](plots/Fig2_11.png)
+
+::: {style="text-align: right;"}
+Source: Hastie et al. (2009)
+:::
+
+### In-sample versus out-of-sample prediction
+
+- Fitting a complex model that does poorly out-of-sample is called `overfitting' 
+
+    - See book by @silver2012signal for many good examples 
+
+- Finding an appropriate level of model complexity is a key challenge of predictive modeling
+
+    - simple model $\Rightarrow$ can't fully adjust $\Rightarrow$ bias in prediction
+    
+    - complex model $\Rightarrow$ less data per parameter $\Rightarrow$ higher (sampling) variance
+
+- Next look at this for a specific (simple) model: $k$-nearest-neighbor (KNN) regression 
+
+
+## Example: KNN regression
+
+- Notation follows @hastie2009elements, Ch. 2.3 
+
+- For a given $x$, KNN regression makes the prediction 
+$$\hat y(x) = \frac{1}{k} \sum_{i \in N_k(x)} y_i,$$
+where $N_k(x)$ denotes the $k$ nearest neighbors of $x$ in the training sample (in terms of Euclidian distance) 
+
+- the parameter of this model is $k$
+
+    - how many neighbours do I use?
+    
+    - more neighbours: more accurate, but neighbours less relevant
+    
+    - less neighbours: more noisy, but neighbours more relevant
+
+### KNN simulation
+
+- we look at a simple model with univariate real-valued $x$ and $$y \sim \mathcal N(x,\epsilon^2)$$
+
+    - linear regression would have been a good model
+    
+    - KNN is more flexible
+
+
+### k=1 and k=9
+
+
+![Source: https://web.stanford.edu/class/stats202/notes/Linear-regression/K-nearest-neighbors.html](plots/knn.png){width="400" fig-align="center"}
+
+### KNN regression with $k = 1$
+
+- Use only one nearest neighbor (NN) for prediction
+
+- Training sample:
+
+    - Every observation is its own NN, so $\hat Y(x_i) = y_i,~i = 1, \ldots,N$
+
+    - Hence, perfect fit (zero error) in training sample
+
+- Likely poor test sample performance (predictions very variable due to overfitting)
+
+### KNN regression with $k = 1$: Simulation example
+
+```{r echo = FALSE}
+set.seed(2020)
+# Function for k nearest neighbor regression
+KNN_prediction <- function(x, y, x0, K){
+  
+  # Nr of predictions
+  n0 <- length(x0)
+  
+  # Vector to store predictions
+  pred <- data.frame(x0 = x0, y0 = NA)
+  
+  # Loop through x0 values
+  for (jj in 1:n0){
+    # Squared deviations from x0[jj]
+    aux <- (x - x0[jj])^2
+    
+    # Find nearest neighbors
+    # First rank squared deviations
+    rk <- rank(aux, ties.method = "random")
+    
+    # Find indexes of nearest neighbors
+    ind_nn <- which(rk <= K)
+    
+    # Compute mean y value for neighbors
+    pred$y0[jj] <- mean(y[ind_nn])
+    
+  }
+  
+  return(pred)
+  
+}
+
+N <- 120
+s <- 1.8
+plot_l <- 5
+c <- grey(.5, .8)
+x <- rnorm(N)
+y <- x + rnorm(N, sd = s)
+x_test <- rnorm(N)
+y_test <- x_test + rnorm(N, sd = s)
+pred_test <- KNN_prediction(x, y, x_test, 1)
+par(mfrow = c(2, 1))
+plot(x = y, y = y, bty = "n", xlab = "Prediction", ylab = "Outcome", main = "Training sample (k = 1)", 
+     pch = 20, ylim = c(-plot_l, plot_l), xlim = c(-plot_l, plot_l), col = c)
+plot(x = pred_test$y0, y = y_test, bty = "n", xlab = "Prediction", ylab = "Outcome", 
+     main = "Test sample (k = 1)", pch = 20, ylim = c(-plot_l, plot_l), 
+     xlim = c(-plot_l, plot_l), col = c)
+```
+
+
+### KNN regression with $k = N$
+
+- Use N nearest neighbors for prediction
+
+- Training sample:
+
+    - Every observation is among the N nearest neighbors of all other observations, so $\hat Y(x_i) = 1/N \sum_{i=1}^N y_i, i = 1, \ldots,N$
+
+    - Hence, fairly high in-sample error
+
+- Test sample performance likely to leave room for improvement (method does not exploit potential information in $x$)
+
+
+### KNN regression with $k = N$: Simulation example
+
+```{r echo = FALSE}
+par(mfrow = c(2, 1))
+plot(x = rep(mean(y), N), y = y, bty = "n", xlab = "Prediction", ylab = "Outcome", 
+     main = "Training sample (k = N)", pch = 20, ylim = c(-plot_l, plot_l), 
+     xlim = c(-plot_l, plot_l), col = c)
+plot(x = rep(mean(y), N), y = y_test, bty = "n", xlab = "Prediction", ylab = "Outcome", 
+     main = "Test sample (k = N)", pch = 20, ylim = c(-plot_l, plot_l), 
+     xlim = c(-plot_l, plot_l), col = c)
+```
+
+### KNN example: Comments
+
+- Example highlights that training sample performance and test sample performance are distinct
+
+- Both above choices of $k$ are suboptimal: $k = 1$ overfits, $k = N$ underfits
+
+- Need to find the right model complexity (represented by $k$) in order to attain good test sample performance. Need to avoid both over- and underfitting.
+
+### Which $k$ does best in test/validation sample?
+
+```{r echo = FALSE}
+mse <- data.frame(k = 1:N, mse = NA)
+for (kk in 1:N){
+  mse$mse[kk] <- mean((y_test - KNN_prediction(x, y, x_test, kk)$y0)^2)
+}
+plot(1:N, mse$mse, bty = "n", xlab = "k", ylab = "Test sample mean squared error", col = c, pch = 20)
+abline(v = mse$k[which.min(mse$mse)], lwd = 2)
+
+```
+
+### Simulation example: Plots for (ex post) optimal choice of $k$
+
+```{r echo = FALSE}
+k_opt <- which.min(mse$mse)
+pred_train_new <- KNN_prediction(x, y, x, k_opt)
+pred_test_new <- KNN_prediction(x, y, x_test, k_opt)
+par(mfrow = c(2, 1))
+plot(x = pred_train_new$y0, y, bty = "n", xlab = "Prediction", ylab = "Outcome", 
+     main = paste0("Training sample (k = ", k_opt, ")"), pch = 20, ylim = c(-plot_l, plot_l), 
+     xlim = c(-plot_l, plot_l), col = c)
+plot(x = pred_test_new$y0, y_test, bty = "n", xlab = "Prediction", ylab = "Outcome", 
+     main = paste0("Test sample (k = ", k_opt, ")"), pch = 20, ylim = c(-plot_l, plot_l), 
+     xlim = c(-plot_l, plot_l), col = c)
+```
+
+# Neural Networks
+
+## Introduction
+
+- So far, you know
+
+    - linear models $\hat y(x)=\sum_k x_k \theta_k$
+    
+    - KNN $\hat y(x) = \frac{1}{k} \sum_{i \in N_k(x)} y_i,$
+
+- but what if model is
+
+    - not linear and
+    
+    - we want to allow more complex interactions?
+
+- **Neural Networks (NNs):** 
+
+    - Inspired by biological neurons
+    
+    - flexible functions
+    
+    - form the basis of **Deep Learning**    
+
+## Theory
+
+### The Basic Unit: Neuron (Perceptron)
+
+- A single neuron 
+
+    - takes multiple **inputs** $x_i$, 
+    
+    - computes a **weighted sum**, adds a bias $+b$,
+    $$z = (\sum_{i} w_i x_i)+b$$  
+    
+    - and applies a non-linear **activation function** $a = f(z)$
+
+![Simplified Neuron Diagram. Source: https://upload.wikimedia.org](plots/nn.png){width=70%}
+
+
+
+### Activation Functions: Adding Non-Linearity
+
+- If we only used linear combinations ($z = wx+b$), the whole network would just be one big linear transformation. 
+
+- Activation functions $f$ introduce non-linearity, allowing NNs to model complex relationships.
+
+- **ReLU (Rectified Linear Unit):** $f(z) = \max(0, z)$. 
+    
+    - Efficient, widely used in hidden layers. 
+    
+- **Linear:** $f(z) = z$. 
+
+    - used in the *output layer* for regression tasks
+
+
+---
+
+- **Logistic:** $f(z) = \frac {1} {1+e^{-z}}$
+    
+    - used in the output layer for binary probability prediction
+    
+- **Softmax:** $f(z_i) = \frac{e^{z_i}}{\sum_{j=1}^K e^{z_j}} \quad \text{for } i=1, \dots, K$
+   
+    - used in the output layer for finite outcome probability prediction ("classification")
+
+
+
+
+
+### Building Layers: Neural Networks
+
+- Neurons are organized into layers:
+    
+    - **Input Layer:** The raw data 
+    
+    - **Hidden Layer(s):** Can have multiple hidden layers ("Deep" Learning). This is where complex patterns are learned.
+    
+    - **Output Layer:** Produces the final prediction.
+    
+![Neural network with two hidden layers. Source: https://upload.wikimedia.org](plots/nn_full.png){width=70%}
+
+
+### Identification and interpretation
+
+- in econometrics, we normally focus on other aspects of models like identification and interpretation
+
+- Machine learning/deep learning focuses more on predictive performance
+
+- **identification**: Is there a unique parameter solving the optimization?
+
+    - linear regression and OLS: Yes
+    
+    - neural networks: No, multiple!
+    
+- **interpretation** of parameters
+
+    - linear regression: Yes.
+    
+    - neural networks: No. "Blackbox".
+
+
+
+## Estimation
+
+### The Goal: Learning Weights & Biases
+
+- How does the network learn its parameters $\theta$
+
+    - consists of weights ($w$) and biases ($b$)?
+
+- **Define a Loss Function:** Measures how "wrong" the network's predictions ($\hat{y}$) are compared to the true values ($y$).
+
+    - **Regression:** Mean Squared Error (MSE) is common: $L = \frac{1}{N} \sum (y_i - \hat{y}_i)^2$
+
+    - **Classification:** log score ("cross-entropy") is common.
+
+- **Goal:** Find the weights and biases that *minimize* the loss function across the training data.
+
+
+### Estimation
+
+- Bayesian estimation possible?
+
+    - in theory yes, works for small models, and little data
+    
+    - otherwise convergence problems
+    
+    - no sensible priors on weights and biases
+    
+- Instead: optimize loss function on training data
+
+    - First approach: Gradient descend
+
+### Gradient descend
+
+- **Intuition:** Imagine the loss function as a landscape with hills and valleys. We want to find the lowest point (minimum loss).
+
+- **Gradient:** The gradient ($\nabla L$) points in the direction of the *steepest ascent* of the loss function.
+
+- **Gradient Descent Algorithm:**
+
+    1. Initialize weights/biases randomly.
+    
+    2. Calculate the gradient of the loss function with respect to each weight/bias. 
+    
+    3. Update each weight/bias by taking a small step in the *opposite* direction of its gradient:
+    
+       $w_{new} = w_{old} - \eta \frac{\partial L}{\partial w_{old}}$
+       ($\eta$ is the *learning rate* - controls step size).
+    
+    4. Repeat steps 2-3 until the loss converges.
+
+
+### Stochastic gradient descend
+
+- Calculating the gradient using the *entire* training dataset is computationally expensive for large datasets
+
+- **Stochastic Gradient Descent (SGD):** Updates weights using the gradient calculated from a random subset of data for each update
+
+    - Noisy, but much faster, updates
+    
+    - Can escape shallow local minima
+    
+    - subset is called "batch"
+    
+    - loop through all data multiple times (called "epoch")
+    
+- Variants like **Adam** [@kingma2014adam] adapt the learning rate during training and often converge faster
+
+
+### Uncertainty quantification
+
+- NN can be used with probability distribution as output
+
+    - probabilistic prediction
+    
+    - unfortunately often uncalibrated
+    
+- NN can be used with point predictions as output
+
+    - point prediction
+    
+    - uncertainty quantification difficult
+    
+- There exist several approaches:
+    
+    - Ensemble: estimate multiple models and their predictions
+    
+    - Monte-carlo dropout: randomly deactivate neurons and compute predictions
+
+## Practice
+
+### Overfitting
+
+- NNs are very flexible and can learn complex patterns.
+- **Overfitting:** The network learns the *training data* too well, including its noise and specific quirks. It performs poorly on new, unseen data (poor generalization).
+- **Signs:** Training loss keeps decreasing, but validation/test loss starts increasing.
+
+![Overfitting Diagram, source:https://upload.wikimedia.org](plots/Overfitted_Data.png){width=60%}
+
+### Regularization
+
+- **Need Regularization:** Techniques to prevent overfitting.
+
+- Standard regularization uses adapted loss functions that **penalize** extreme weights, e.g.
+    $$L(y,\hat y, w) = (y-\hat y)^2 \color{red}{+ \lambda \sum_k |w_k|}$$
+    - $\lambda$ governs importance of penalty
+    
+    - doing this in OLS regression recovers **Lasso** estimation
+
+### Dropout
+
+- **Dropout** is a simpler and often more effective regularization technique.
+
+    - **Mechanism:** During training, randomly "drop out" a fraction of neurons
+
+    - A different set of neurons is dropped each time.
+    
+    - **Intuition:** Forces the network to learn more robust representations.
+
+
+### Transfer learning
+
+- **Problem:** Training large neural networks requires massive datasets
+    
+    - What if our specific task has limited data?
+    
+- **Solution: Transfer Learning:** 
+
+    - Take a **pre-trained model** (e.g., trained on related data)
+    
+    - update/fine-tune/extend it with your own training data
+      
+    - Feature Extraction: fix lower layers of pre-trained model and learn new layers on top
+      
+    - Fine-Tuning: Initialize your model with the pre-trained weights. Continue training on own data with much smaller training rate
+      
+- **Benefits:** Faster, cheaper, often better performance
+
+- **Common Domains:** Image recognition, text, time series forecasting.
+
+
+
+
+# Examples
+
+## Software
+
+- we will use **keras**
+
+- keras is **build on top** of **pytorch** and **tensorflow**
+
+- pytorch and tensorflow are the most used frameworks for deep learning
+
+- keras allows simpler but less versatile control
+
+- keras can be used in R and python directly
+
+    
+
+## Example with keras: real target, one covariate
+
+- let's start with a simple mean prediction example
+
+- we have a non-linear relationship of $y = sin(2x) + \epsilon$
+
+    - $x \sim \mathcal N (0,1)$
+
+- we want to predict $y$ for every $x$ based on a sample of 200 observations using 
+
+    - neural networks
+    
+    - sample splitting to check results
+
+### Code
+
+```{r}
+# Install necessary packages if you haven't already
+# install.packages("keras")
+# install.packages("tensorflow")
+# tensorflow::install_tensorflow() # Run this once to install TensorFlow backend for Keras in R
+# keras::install_keras() # Run this once to install backend for Keras in R
+
+# Load necessary libraries
+library(keras)
+library(tensorflow)
+library(ggplot2) # For plotting
+library(dplyr) # For data manipulation
+
+# Set random seed for reproducibility
+set.seed(42)
+tf$random$set_seed(42)
+
+# 1. Generate simulated data
+n_samples <- 200
+# x standard normal
+x <- rnorm(n_samples, mean = 0, sd = 1)
+# save as matrix
+x <- matrix(x, ncol = 1)
+# Generate y values based on sin(x) with added random noise
+y <- sin(2*x) + rnorm(n_samples, mean = 0, sd = .1)
+y <- matrix(y, ncol = 1) # Ensure y is a matrix for Keras
+
+
+# 3. Define a neural network, 
+# specify input (1-dimensional here)
+model <- keras_model_sequential(input_shape = c(1))  |> 
+  # first hidden layer: 64 neurons, ReLU activation
+  layer_dense(units = 64, activation = 'relu' ) |>
+  # Second hidden layer: 64 neurons, ReLU activation
+  layer_dense(units = 64, activation = 'relu') |>
+  # Output layer: 1 neuron, no activation (linear) for regression output
+  layer_dense(units = 1, activation = "linear")
+
+# 4. Compile the model
+# Use the Adam optimizer
+# Use Mean Squared Error as the loss function (common for regression)
+model |> compile(
+  optimizer = 'adam',
+  loss = 'mse'
+)
+
+# 5. Train the model
+# Train for 100 epochs
+# Use a batch size of 32
+# Use 20% of the training data for validation during training
+# verbose = 0 means no training progress output per epoch
+history <- model |> fit(
+  x, y,
+  epochs = 100,
+  batch_size = 32,
+  validation_split = 0.2,
+  verbose = 0
+)
+
+
+# 7. Make predictions using the trained model on the sorted x data
+
+# generate predictions from model
+y_pred <- model |> predict(x)
+
+# Create a data frame for easier handling
+data_df <- data.frame(x = x[,1], y = y[,1], y_pred = y_pred)
+
+# 8. Visualize the results using ggplot2
+prediction_plot <- ggplot() +
+  # scatter plot of data points
+  geom_point(data = data_df, aes(x = x, y = y), alpha = 0.6, size = 1, color = "blue") +
+  # line for predicted points
+  geom_line(data = data_df |> arrange(x), 
+            aes(x = x, y = y_pred), color = "red", size = 1)
+
+```
+
+
+### Results: loss
+
+```{r}
+plot(history)
+```
+### Results: predictions
+
+```{r}
+prediction_plot
+```
+
+## Example with keras (python)
+
+- for a python solution check out the following [[colab]{.blue}](https://colab.research.google.com/drive/1S8FEMWn1z8G5SkY-AMzxB5FsVGBLbDi8?usp=sharing)
+
+- or use the code below
+
+
+### Python code
+
+```python
+import numpy as np
+import tensorflow as tf
+from tensorflow import keras
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+
+# 1. Generate simulated data
+np.random.seed(42) # for reproducibility
+n_samples = 1000
+x = np.random.normal(loc=0, scale=1, size=(n_samples, 1)) # x ~ N(0, 1)
+y = np.sin(x) + np.random.normal(loc=0, scale=0.1, size=(n_samples, 1)) # y = sin(x) + some noise
+
+# Sort x for plotting purposes later
+sorted_indices = np.argsort(x.flatten())
+x_sorted = x[sorted_indices]
+y_sorted = y[sorted_indices]
+
+# 2. Split the data
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+
+# 3. Define a simple Keras model
+model = keras.Sequential([
+    keras.layers.Dense(64, activation='relu', input_shape=(1,)), # Input layer and a hidden layer with ReLU activation
+    keras.layers.Dense(64, activation='relu'), # Another hidden layer
+    keras.layers.Dense(1) # Output layer with no activation for regression
+])
+
+# 4. Compile the model
+model.compile(optimizer='adam', # Adam optimizer is a good default
+              loss='mse') # Mean Squared Error is suitable for regression
+
+# 5. Train the model
+history = model.fit(x_train, y_train,
+                    epochs=100, # Number of training epochs
+                    batch_size=32, # Number of samples per gradient update
+                    validation_split=0.2, # Use a portion of training data for validation
+                    verbose=0) # Don't show training progress for each epoch
+
+# 6. Evaluate the model
+loss = model.evaluate(x_test, y_test, verbose=0)
+print(f"Mean Squared Error on test data: {loss:.4f}")
+
+# 7. Make predictions
+y_pred = model.predict(x_sorted)
+
+# 8. Visualize the results
+plt.figure(figsize=(10, 6))
+plt.scatter(x, y, label='Simulated Data', alpha=0.6, s=10)
+plt.plot(x_sorted, y_pred, color='red', linewidth=2, label='Keras Model Predictions')
+plt.title('Keras Model Prediction of y = sin(x)')
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.grid(True)
+plt.show()
+```
+
+
+## Example with keras: binary target
+
+- next we consider a binary prediction target $y \sim Bernoulli(p(x))$ where $p(x)$ depends non-linearly on a 2-dimensional $x$
+
+For $y=0$ we simulate $x$ values on a sinus curve
+  
+  - $x_1 \sim \mathcal N(0,1)$
+  
+  - $x_2 \sim \mathcal N(sin(x_1), 0.2^2)$
+  
+For $y=1$ we simulate covariates with
+
+  - $x_1 \sim \mathcal N(0,1)$
+  
+  - $x_2 \sim \mathcal N(0,1)$
+  
+### Code: Data
+
+```{r}
+# Set random seed for reproducibility
+set.seed(42)
+tf$random$set_seed(42)
+
+# 1. Generate simulated data
+n_samples <- 1000
+# x standard normal
+x1 <- rnorm(n_samples, mean = 0, sd = 1)
+# x2 standard normal
+x2 <- rnorm(n_samples, mean = 0, sd = 1)
+# half to noisy sinus curve
+x2[(n_samples/2):n_samples] <-
+  sin(x1[(n_samples/2):n_samples])+rnorm(n_samples/2,mean=0, sd=.2)
+y <- c(rep(TRUE, n_samples/2), 
+       rep(FALSE, n_samples/2))
+
+```
+
+---
+
+```{r}
+ggplot()+
+  geom_point(data = data.frame(x=x1,y=x2,col=y), aes(x=x,y=y,col=col))
+```
+
+
+### Code 
+
+```{r}
+# reformat as matrix
+y <- as.matrix(y)
+x <- cbind(x1,x2)
+
+
+# 3. Define a neural network, 
+model <- keras_model_sequential(input_shape = c(2))  |> 
+  layer_dense(units = 64, activation = 'relu', ) |>
+  layer_dense(units = 64, activation = 'relu') |>
+  # Output layer: 1 neuron, activation logistic ("sigmoid") for binary output
+  layer_dense(units = 1, activation = "sigmoid")
+
+# 4. Compile the model
+# Use the Adam optimizer
+# Use crossentropy as loss function equivalent to log score
+# (common for classification/event prediction)
+model |> compile(
+  optimizer = 'adam',
+  loss = "binary_crossentropy" 
+)
+
+# 5. Train the model
+# Train for 100 epochs
+# Use a batch size of 32
+# Use 20% of the training data for validation during training
+# verbose = 0 means no training progress output per epoch
+history <- model |> fit(
+  x, y,
+  epochs = 100,
+  batch_size = 32,
+  validation_split = 0.2,
+  verbose = 0
+)
+
+
+# 7. Make predictions using the trained model on the sorted x data
+
+# generate predictions from model
+y_pred <- model |> predict(x)
+
+# Create a data frame for easier handling
+data_df <- data.frame(x1 = x[,1],x2=x[,2], y = y_pred)
+
+# 8. Visualize the results using ggplot2
+prediction_plot <- ggplot() +
+  # scatter plot of data points
+  geom_point(data = data_df, aes(x = x1, y =x2,col=y))
+```
+### Results
+
+```{r}
+prediction_plot
+
+```
+
+### Summary: Examples
+
+- neural networks can be fit with keras
+
+- if they work, they often do so very well
+
+    - sometimes hard to find a working specification
+
+- examples were with 1 or 2 dimensional covariate / input feature $x$ for illustration
+
+    - neural networks mostly used in higher dimensions
+
+## Summary: Neural networks
+
+- general and flexible class of models
+
+- good solution for rich data environments
+
+    - transfer learning if data is scarce but adjecent data is available
+    
+- difficult to do uncertainty quantification
+
+- difficult to interpret model parameters
+
+
+### Pitfall: Off support predictions
+
+```{r, echo=F, out.width=300}
+
+set.seed(12321)
+x <- runif(10,-1,1)
+y <- .4*x+rnorm(10,0,.1)
+
+ggplot(data.frame(x,y),aes(x,y))+
+  geom_point()+
+  xlim(c(-1,3))+geom_vline(xintercept = 2)+
+  geom_smooth(method = lm, formula = y ~ splines::ns(x,df=2), se = FALSE)+
+  theme(text = element_text(size=16))
+
+```
+
+- we call the observed $x$ values, the **support** of our data
+
+    - here support is $[-1,1]$
+    
+- off-support predictions rely on addition assumptions
+
+    - predict for $x=2$?!
+
+### Other methods
+
+- Deep learning (Machine Learning with neural networks with many layers) had the most success recently
+
+- for standard prediction tasks (e.g, the winning approaches in kaggle competitions) other methods may be more adequate
+
+    - penalized regression (e.g., lasso)
+    
+    - random forests
+    
+    - support vector machines
+    
+    - gaussian processes
+    
+    - many others
+
+
+
+
+
+
+
+# References {.allowframebreaks}

@@ -1,0 +1,502 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part III, Computational Methods"
+author: "Patrick Schmidt"
+---
+
+
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE)
+```
+
+
+
+
+# Language models
+
+
+## Basics 
+
+- "language models are next token prediction machines"
+
+- Example: "Language models are powerful"
+
+    - Tokens could be: ["Language", "models", "are", "powerful"]
+    
+- The Output: A sequence of tokens.
+  
+    - typically mapped to numerical IDs (e.g., [234, 765, 10, 8976]) 
+
+---
+
+- language model 
+
+    - **input**: sequence of tokens
+    
+    - **output**: probability distribution for next token
+
+- Example:
+
+    - **input**: "My favorite color is"
+    
+    - **output**: "{blue} 40%, {red} 20%, {not} 0.1%, ..."
+    
+- language models are **generative models**
+
+    - can generate next token by sampling from distributions
+    
+    - note: generation of text has random component!
+    
+- language models are **auto-regressive**
+
+### Model structure
+
+- we won't cover the model details here
+
+- the main architecture is called a "transformer" [@vaswani2017attention]
+
+    - neural network with "attention blocks"
+    
+    - attention blocks tells model on which part of the sequence to focus on
+ 
+ 
+### Scale
+
+- scale matters: The performance of LLMs improves predictably as we increase
+
+    - model size
+    
+    - training data
+    
+    - compute (training time)
+
+
+- models are very large
+
+    - GPT 3 and others: billions of parameters
+    
+    - GPT 4 and others: trillions of parameters
+
+## Training
+
+- Three stages
+
+    1) Pre-training $\Rightarrow$ Foundational Model
+    
+    2) Instruction training $\Rightarrow$ Instruct model
+    
+    3) Fine-tuning \& Reinforcement learning $\Rightarrow$ use-case model
+
+- based on the idea of transfer learning
+
+### Pre-training
+
+- Pre-training (Foundation Model Training):
+
+    - this is the most computationally intensive phase
+    
+    - the language model is trained on text snippets from a massive corpus of text data
+    
+    - loss function is logistic score on next-token prediction
+    
+- in effect: Model learns to store most of the text information 
+
+    - learns patterns by doing so
+    
+    - will not follow instructions
+
+
+### Example: Base model
+
+- Let's look at the base-model behind the first ChatGPT: GPT2
+
+    - in fact we look at small "destilled" version of it
+
+- Find the code on the following Colab [[link]{.blue}](https://colab.research.google.com/drive/1-0QJ4rbsMn-8hT_WZDm6INQ_NZSWhFpp?usp=sharing)
+
+### Example: Code
+
+```python
+from transformers import pipeline
+import torch
+
+# Specify the small model name
+model_name = "distilgpt2" 
+
+# Create a text-generation pipeline
+generator = pipeline('text-generation', model=model_name)
+
+# Define a prompt
+prompt = "What is Harry Potter?"
+
+# Generate text (sample from the model)
+outputs = generator(prompt, max_length=15, num_return_sequences=3)  
+
+# Print the generated text
+for i, output in enumerate(outputs):
+    print(f"\nSample {i}:")
+    print(output['generated_text'])
+
+```
+
+### Example results
+
+```text
+Sample 1:
+What is Harry Potter? 
+How much fun you're having? And when you
+
+Sample 2:
+What is Harry Potter? 
+Hermione did manage to come up
+
+Sample 3:
+What is Harry Potter? 
+Is he really a bit fatter, I wonder
+
+```
+
+### Base models
+
+- just ramble away
+
+- are not generally helpful
+
+- but know some stuff
+
+    - Harry potter is related to Hermione
+    
+### Supervised Fine-tuning
+
+- Next Foundation models can be trained on curated text that contains 
+
+    - questions with
+    
+    - desirable answers
+    
+- model learns to follow instructions and be helpful to question
+
+    - "instruct" models
+    
+    - aims at "model alignment"
+    
+- The technique that initiated the "ChatGPT moment"
+
+
+### Example: Instruct model
+
+- Let's look at a small instruction-fine tuned model
+
+- Find the code on the following Colab [[link]{.blue}](https://colab.research.google.com/drive/1-0QJ4rbsMn-8hT_WZDm6INQ_NZSWhFpp?usp=sharing)
+
+### Example: Code
+
+```python
+from transformers import pipeline
+
+pipe = pipeline("text-generation", model="TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+
+# prepare input (user, assistant)
+messages = [{"role": "user", "content": "What is Harry Potter?"}]
+
+# Generate text
+outputs = pipe(messages, max_new_tokens=60)
+
+# Print
+print(outputs[0]['generated_text'][-1]['content'])
+
+```
+
+### Example results
+
+```text
+Harry Potter is a series of seven fantasy
+novels written by British author J.K. Rowling. 
+The series follows the adventures of 11-year-old
+```
+
+### Instruct models
+
+- know some stuff
+
+- try to be helpful and follow instructions given in user input
+
+
+### Hallucinations
+
+- if all training examples here are sure on their respones, model learns to be sure on its response
+
+    - Hallucinations: Model makes wrong statements
+
+- solution: include examples in training corpus that teach model its own limits of knowledge
+
+    - "I was training on data until 2024 and cannot give you any information on events in 2025."
+
+    - worked pretty well and hallucinations are now much less common
+
+    - new problem: models sometimes generalize non-answers in the wrong direction and can be overly cautious
+
+### Shots? And In-Context Learning (ICL)
+
+- fine-Tuning updates the model's weights 
+
+- **Alternative for instruction-tuned models**: In-Context Learning (ICL)
+
+    - models learn new abilities only from the input sequence ("prompt")
+
+- **Levels of ICL:**
+    
+    - **Zero-Shot:** Provide only the instruction
+    
+    - **One-Shot:** Provide the instruction *plus one* example of the task 
+    
+    - **Few-Shot:** Provide the instruction *plus a few* (e.g., 2-10) examples of the task.
+    
+- unlike fine-tuning, ICL does not update model weights
+
+### Reinforcement learning and thinking
+
+- next to fine-tuning based on human-generated examples, we can also fine-tune with **reinforcement learning**
+
+- idea: 
+
+    1) generate multiple responses to a question
+    
+    2) judge which one is best
+    
+    3) learn on best response (i.e., update parameters)
+
+
+---
+
+- requires ground truth for automatic process
+
+    - that is how models got better at math and coding
+    
+    - modern "thinking" versions mostly fine-tuned with reinforcement learning
+    
+    - potential for super-human performance
+    
+- otherwise has to rely on human feedback 
+
+    - reinforcement learning with human feedback (RLHF)
+    
+    - slow and expensive
+    
+    - arguably less scope for super-human performance
+
+
+### Tool use
+
+- **Tool**: a function the model can call (search, calculator, code execution, database query, ...)
+
+    - model outputs a *request* to call a tool with arguments
+
+    - the system executes it and feeds the result back into the input sequence
+
+- think of tools as **context managers**
+
+    - the model no longer needs everything in its prompt up front
+
+    - it *pulls in* the right information on demand (e.g., retrieval, web search)
+
+    - and *offloads* work it is bad at (e.g., arithmetic to a calculator, facts to a search engine)
+
+- directly targets LLM weaknesses
+
+    - knowledge cutoff $\Rightarrow$ web search for current information
+
+    - hallucination $\Rightarrow$ ground answers in retrieved sources / computed results
+
+### Agents and tool use
+
+- **Agentic loop**: model chooses a tool $\rightarrow$ observes result $\rightarrow$ chooses next action $\rightarrow$ repeats until done
+
+    - turns a one-shot predictor into a system that can plan and act
+
+- **Coding agents** are the clearest success story
+
+    - [Claude Code]{.blue} (Anthropic) and [Codex]{.blue} (OpenAI) read/write files, run code, and run tests in a loop
+
+    - very useful for coding in general, also for your empirical/data work
+
+- **now standard**: essentially all major LLM web apps and APIs ship agentic tool use
+
+    - web browsing, code execution, file and image handling out of the box
+
+- relevant for forecasting: the state-of-the-art model above (news retrieval + reasoning) is essentially **tool use**
+
+### Summary: LLMs
+
+- probabilistic next-token prediction machines
+
+- great at 
+
+    - translation
+    
+    - synthesis
+    
+    - understanding
+    
+    - scale and repetition
+    
+- improve with
+
+    - scale (but available data mostly used)
+    
+    - reinforcement learning on anything with ground-truth
+    
+    - tools
+
+---
+
+- bad at
+
+    - knowing what they do not know
+    
+    - understanding anything beyond their training data cutoff
+    
+    - long consistent planing/action (but may change, partly depends on length of input sequence)
+    
+    - contradicting your ideas (because training data is mostly nice and affirmative)
+    
+    - many things inbetween ("off support") their training data ("jagged frontier")
+    
+## Language models and judgemental forecasts
+
+### LLMs and Forecasting
+
+- Machine-based predictions previously considered only for data-rich environments
+
+- Judgement predictions based on human intelligence and intuition
+
+- Large language models (LLMs) have access to vast amounts of information and can process it quickly
+
+- LLMs can be used to generate predictions
+
+    - faster than humans
+    - more cost-effective than humans
+    - in seconds, with costs below 30 cents (some below 0.01 cent)
+
+- Question: How good can those predictions be?
+
+### Should an LLM predict or decide?
+
+- why not let an LLM decide for you, then you do not need the prediction
+
+   - LLM: "take an umbrella today"
+   - LLM: "It is raining with probability 30% today."
+   
+- For a good decision, llm needs to know probabilities and your preferences over consequences
+
+- For you to make a good decision, you only need to know the probabilities (preferences are your own and can be anything)
+
+
+### Challenges of LLMs in Forecasting
+
+- LLMs may struggle with forecasts that require nuanced understanding or domain expertise
+
+- They may be sensitive to the way questions are framed or the information provided.
+
+- LLMs trained on old text
+
+  - do not incoorparte most recent information automatically
+
+- When training LLMs for forecasting with old data, hard to avoid training pollution
+
+  - then LLM just learns fact, not predictions
+
+
+
+
+### Current state of the art
+
+- best fully automatic judgment prediction model is currently based on [@halawi2024approaching]
+
+    (i) input: forecasting question, description, and resolution criteria.
+    (ii) retrieves relevant articles from a news corpus
+    (iii) summarizes the articles
+    (iv) generates a reasoning for the question
+    (v) generates prediction based on reasons
+
+
+---
+
+- best performing model is fine-tuned version of GPT-4
+
+    - fine-tuned on a large set of forecasting questions and answers.
+
+    - input: the question, description, and resolution criteria, followed by summarized news articles.
+
+    - outpout: The target output consists of a reasoning and a prediction.
+
+    - close to human performance, better on uncertain questions (human prediction close to $0.5$)
+
+
+- Interestingly, best performing prompt for prediction used instructions evocking strategies for human superforecasters
+
+    - "You are an expert superforecaster, familiar with the work of Tetlock and others."
+
+    - "Provide reasons why the answer might be yes [...] or no [...] aggregate your considerations.
+
+
+### Training LLMs to forecast: outcomes as free labels
+
+- Recall: reinforcement learning works best when there is **ground truth** to reward
+
+- Forecasting has a natural ground truth: **time resolves the question** [@turtel2026foresight]
+
+    - make the model forecast events that have not yet happened
+
+    - wait until they resolve, then reward with a **proper scoring rule** (e.g., Brier score)
+
+    - no human annotation needed ("the future labels itself")
+
+- Results:
+
+    - fine-tuned Qwen3-32B: ~27% better Brier score, calibration error halved vs. baseline
+
+    - the 32B model **beats a 235B model** (7x larger) and rivals the Metaculus benchmark
+
+- Takeaway: reinforcement learning on resolved outcomes improves predictions from LLMs
+
+
+### ForecastBench: A Dynamic Benchmark
+
+- ForecastBench is a dynamic benchmark that evaluates the accuracy of LLMs on a large set of forecasting questions [@karger2025forecastbench]
+
+- It focuses on questions about future events to avoid data leakage.
+
+- ForecastBench provides a standardized way to compare the performance of LLMs and human forecasters. (Uses the Quadratic scoring rule)
+
+- link: [https://www.forecastbench.org/explore/](https://www.forecastbench.org/explore/)
+
+### The Wisdom of the Silicon Crowd
+
+- Ensembles of LLMs can improve forecasting accuracy by leveraging the diversity of models. [@schoenegger2024wisdom]
+
+- This "wisdom of the silicon crowd" can rival the accuracy of human crowds.
+
+- Aggregating forecasts from different LLMs can lead to more robust and well-calibrated predictions.
+
+### Human-AI Collaboration in Forecasting
+
+- LLMs can be used to assist human forecasters by providing relevant information and suggesting potential outcomes.
+
+- AI-augmented predictions can lead to significant improvements in forecasting accuracy [@schoenegger2024aiaugmented]
+
+### Conclusion
+
+- LLMs have the potential to revolutionize judgmental forecasting by providing scalable and efficient predictions
+
+    - but not there yet
+
+- Combining human and machine intelligence can lead to significant improvements in forecasting accuracy
+
+    - you can use LLMs for your judgement predictions
+
+
+# References {.allowframebreaks}
