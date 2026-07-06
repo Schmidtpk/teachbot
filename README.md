@@ -50,7 +50,12 @@ description: "**Markdown** description"  # optional; shown in profile chooser
 model: "google/gemini-3-flash-preview"   # optional LLM override
 temperature: 0.3
 max_tokens: 2048
+extra_content:                            # optional; shared files (relative to content/ root)
+  - _shared/intro.qmd                     #   injected before the course's own folder content
 ```
+
+To share one file across several courses (e.g. an intro/syllabus), put it in `content/_shared/`
+and list it under `extra_content` in each course's `_meta.yaml`.
 
 **4. Configure the course**
 

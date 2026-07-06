@@ -99,7 +99,15 @@ temperature: 0.3                          # optional LLM override
 max_tokens: 2048                          # optional LLM override
 first_date: 2026-05-01                # optional; inclusive lower bound (server local date)
 last_date:  2026-05-15                # optional; inclusive upper bound (server local date)
+extra_content:                        # optional; shared files (relative to content/ root)
+  - _shared/script0.qmd               #   injected BEFORE the course's own folder content
 ```
+
+**Shared content (`extra_content`):** files listed here are loaded in addition to the course
+folder — used to share one file across courses without duplication (e.g. the intro/syllabus
+`content/_shared/script0.qmd` included in all three Q&A parts). Paths are relative to `content/`;
+a missing file → loud startup failure naming the folder. The `content/_shared/` folder is
+`_`-prefixed, so it is never treated as a course itself.
 
 **Availability window:** `first_date` and `last_date` are both optional and both inclusive — omit either for an open-ended window. Comparison uses the server's local date (Railway = UTC). A course outside its window is hidden from the profile chooser; when at least one bound is set, an "Available …" line is appended to the chooser description. Invalid date or `first_date > last_date` → loud startup failure naming the folder.
 

@@ -1,0 +1,5 @@
+lecture_name: "Q&A – Part 2"
+order: 1
+description: "Predicting with subjective judgment (lectures 3–6), plus the course introduction."
+extra_content:            # IID-MULTI-COURSE: shared intro/syllabus injected into every Q&A part
+  - _shared/script0.qmd

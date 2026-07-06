@@ -30,6 +30,30 @@ def _strip_quarto_syntax(text: str) -> str:
     return text.strip()
 
 
+def _clean_sections(files: list[Path]) -> list[str]:
+    """IID-CONTENT-INJECT: Clean each file and wrap it in a `### [filename]` section."""
+    sections: list[str] = []
+    for f in files:
+        raw = f.read_text(encoding="utf-8")
+        cleaned = _strip_quarto_syntax(_strip_frontmatter(raw))
+        if cleaned:
+            sections.append(f"### [{f.name}]\n\n{cleaned}")
+    return sections
+
+
+def load_files(files: list[Path]) -> str:
+    """IID-CONTENT-INJECT: Clean and concatenate an explicit list of content files.
+
+    Used for `extra_content` entries in `_meta.yaml` (IID-MULTI-COURSE) — shared
+    files injected into a course on top of its own folder. Raises SystemExit if
+    a file is missing so a bad path fails loudly at startup.
+    """
+    for f in files:
+        if not f.is_file():
+            sys.exit(f"[Lectos] ERROR: extra content file '{f}' not found.")
+    return "\n\n---\n\n".join(_clean_sections(files))
+
+
 def load_content(content_dir: str | Path) -> str:
     """
     IID-CONTENT-INJECT: Read all .qmd and .md files, clean, and concatenate.
@@ -47,11 +71,4 @@ def load_content(content_dir: str | Path) -> str:
         sys.exit(f"[Lectos] ERROR: content directory '{content_dir}' is empty. "
                  "Add at least one .qmd or .md file.")
 
-    sections: list[str] = []
-    for f in files:
-        raw = f.read_text(encoding="utf-8")
-        cleaned = _strip_quarto_syntax(_strip_frontmatter(raw))
-        if cleaned:
-            sections.append(f"### [{f.name}]\n\n{cleaned}")
-
-    return "\n\n---\n\n".join(sections)
+    return "\n\n---\n\n".join(_clean_sections(files))

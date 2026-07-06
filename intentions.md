@@ -249,6 +249,15 @@ model (course model for both), an evolving/sharpening big question (kept fixed p
 - `_welcome.md`: subfolder → `content/` root
 - `model` / `temperature` / `max_tokens`: `_meta.yaml` → `config.yaml` llm section
 - `lecture_name` / `{{course_name}}`: `_meta.yaml.lecture_name` → `config.yaml.course_name`
+
+**Shared content:** optional `extra_content` list in `_meta.yaml` — file paths relative to the
+content root, injected *before* the course's own folder content (see `load_files` in
+`src/content_loader.py`). Lets several courses include one shared file without duplication;
+convention: put shared files in `content/_shared/` (the `_` prefix keeps it out of course
+discovery). Missing listed file or non-list value → loud SystemExit naming the folder.
+Used by the three Q&A part courses (`qna_part1/2/3`), which each cover one part of the lecture
+scripts and all share `_shared/script0.qmd` (intro + syllabus); their `_system_prompt.md` lists
+all three parts so the bot redirects students to the right part.
 **`_meta.yaml` format:**
 ```yaml
 lecture_name: "Course Name"          # required; shown in profile chooser
@@ -259,6 +268,8 @@ temperature: 0.3                         # optional LLM override
 max_tokens: 2048                         # optional LLM override
 first_date: 2026-05-01               # optional; inclusive lower bound (server local date)
 last_date:  2026-05-15               # optional; inclusive upper bound (server local date)
+extra_content:                       # optional; shared files (relative to content/ root),
+  - _shared/script0.qmd              #   injected before the course's own folder content
 student_model_choices:               # optional; IID-STUDENT-MODEL-CHOICE
   - id: "google/gemini-3-flash-preview"
     label: "Gemini Flash"

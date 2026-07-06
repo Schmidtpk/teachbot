@@ -12,6 +12,10 @@ Fallback chain (see IID-MULTI-COURSE):
   model / temperature / max_tokens : _meta.yaml → config.yaml llm section
   lecture_name / {{course_name}}   : _meta.yaml → config.yaml course_name
   student_model_choices (IID-STUDENT-MODEL-CHOICE) : subfolder _meta.yaml → root content/_meta.yaml
+
+Optional `extra_content` in _meta.yaml: list of file paths relative to the content
+root (e.g. `_shared/script0.qmd`) injected before the course's own folder content —
+lets several courses share one file without duplication.
 """
 
 import sys
@@ -21,7 +25,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
-from src.content_loader import load_content
+from src.content_loader import load_content, load_files
 
 
 @dataclass
@@ -41,6 +45,7 @@ class CourseConfig:
     student_model_choices: list[dict] = field(default_factory=list)  # IID-STUDENT-MODEL-CHOICE: [{id, label}, ...]
     mode: str = "qa"  # IID-LEARN-GOALS: "qa" (default) or "learning_goals"
     learning_goals: list[dict] = field(default_factory=list)  # IID-LEARN-GOALS: [{id, title, goal}, ...]
+    extra_content: list[Path] = field(default_factory=list)  # IID-MULTI-COURSE: shared files injected before folder content
 
     def is_available(self, today: date) -> bool:
         """IID-MULTI-COURSE: True iff today falls inside the (optional) availability window."""
@@ -227,6 +232,24 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         mode = str(meta.get("mode", "qa"))
         learning_goals = _load_learning_goals(folder, mode)
 
+        # IID-MULTI-COURSE: optional extra_content — shared files (paths relative to
+        # the content root) injected into this course in addition to its own folder
+        raw_extra = meta.get("extra_content", [])
+        if raw_extra and not isinstance(raw_extra, list):
+            sys.exit(
+                f"[Lectos] ERROR: '_meta.yaml' in '{folder.name}' field 'extra_content' "
+                f"must be a list of paths relative to '{root}'."
+            )
+        extra_content: list[Path] = []
+        for entry in raw_extra:
+            p = root / str(entry)
+            if not p.is_file():
+                sys.exit(
+                    f"[Lectos] ERROR: '_meta.yaml' in '{folder.name}' lists extra_content "
+                    f"'{entry}', but '{p}' does not exist."
+                )
+            extra_content.append(p)
+
         courses.append(CourseConfig(
             course_id=folder.name,
             lecture_name=meta["lecture_name"],
@@ -242,6 +265,7 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             student_model_choices=student_model_choices,
             mode=mode,
             learning_goals=learning_goals,
+            extra_content=extra_content,
         ))
 
     # Sort by order field (from _meta.yaml) then lecture_name for deterministic profile ordering
@@ -266,6 +290,9 @@ def build_system_prompt(course: CourseConfig) -> str:
     """
     instructions = load_course_text(course.system_prompt_path, course.lecture_name)
     content = load_content(course.content_dir)
+    # IID-MULTI-COURSE: extra_content files (e.g. shared intro/syllabus) come first
+    if course.extra_content:
+        content = f"{load_files(course.extra_content)}\n\n---\n\n{content}"
     return (
         f"{instructions}\n\n"
         f"--- LECTURE CONTENT START ---\n{content}\n--- LECTURE CONTENT END ---\n"
