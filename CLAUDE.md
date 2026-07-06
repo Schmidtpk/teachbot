@@ -144,9 +144,11 @@ a new one (the dialogue continues until clicked). When all goals are done, a com
 In learning-goals mode, each student answer is handled by **two LLM calls** instead of one:
 
 1. **Diagnose** — a non-streamed structured-JSON call (`src/tutor_loop.py` → `llm_client.complete_json`)
-   judges the answer against the goal + lecture content, ranks the misunderstandings, and picks the
-   single most important one plus a `tactic` (`explain`/`probe`). Shown as an "Analysing your answer…"
-   step; the JSON is logged internally as role `diagnosis` (never shown to the student).
+   judges the answer against the goal + lecture content + the **full student↔tutor dialogue for this
+   goal** (points made in earlier turns are credited, not flagged as omissions; mastery is cumulative),
+   ranks the misunderstandings, and picks the single most important one plus a `tactic`
+   (`explain`/`probe`). Shown as an "Analysing your answer…" step; the JSON is logged internally as
+   role `diagnosis` (never shown to the student).
 2. **Act** — the streamed reply, seeded to address **only that one point** and re-ask the fixed
    **"big question"** (the question first posed for the goal, held constant for the whole goal).
 

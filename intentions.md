@@ -173,8 +173,10 @@ IID-AUTH-BASIC (the per-student key), and IID-SHEETS-LOG (durable store).
 **Description:** Agentic two-step turn layered on IID-LEARN-GOALS. Instead of answering each student
 reply with a single LLM call, a learning-goals turn runs **(1) diagnose** then **(2) act**:
 1. **Diagnose** — a non-streamed, structured-JSON call (`response_format=json_object`) that judges the
-   student's latest answer against the current goal + injected lecture content, lists every
-   misunderstanding ranked most→least important, and selects the **single most important** one, plus a
+   student's latest answer against the current goal + injected lecture content **plus the full
+   student↔tutor dialogue for this goal** (so a point the student made in an earlier turn is credited,
+   not flagged as an omission; mastery is judged cumulatively over the dialogue). Lists every
+   misunderstanding ranked most→least important and selects the **single most important** one, plus a
    `tactic` (`explain` | `probe`). Shown to the student as a subtle "Analysing your answer…" step.
 2. **Act** — the existing streamed reply, seeded with an internal instruction so it addresses **only**
    that one point (explains it briefly or asks one probing question) and then re-asks the fixed
@@ -186,7 +188,8 @@ diagnosis JSON is logged internally (role `diagnosis`) for auditing, never shown
 Builds on IID-LEARN-GOALS, IID-LEARN-SOCRATIC, IID-CONTENT-INJECT; uses SID-LLM-PROVIDER.
 **Inputs:**
 - `_diagnose_prompt.md` (subfolder → root `content/` fallback) — the diagnostic instructions.
-- Cached per session: diagnose prompt text, lecture content, current goal, current big question.
+- Cached per session: diagnose prompt text, lecture content, current goal, current big question,
+  per-goal dialogue transcript (`goal_dialogue`, reset when a new goal is posed).
 **Outputs:**
 - One internal `diagnosis` log row (JSON) + the normal streamed assistant reply per student turn.
 **Success criteria:**

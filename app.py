@@ -147,6 +147,8 @@ async def _pose_goal_question(
     # IID-LEARN-DIAGNOSE: this posed question is the fixed "big question" the student keeps
     # re-answering for the rest of this goal; the diagnostic turn references it.
     cl.user_session.set("current_big_question", full_response)
+    # IID-LEARN-DIAGNOSE: fresh goal → fresh dialogue transcript for the diagnose call
+    cl.user_session.set("goal_dialogue", [])
     await _send_actions(response_msg.id, full_response, mode)
 
 
@@ -165,12 +167,15 @@ async def _diagnostic_turn(
     lecture_content: str = cl.user_session.get("lecture_content", "")
     current_goal: dict = cl.user_session.get("current_goal")
     big_question: str = cl.user_session.get("current_big_question", "")
+    # IID-LEARN-DIAGNOSE: full student↔tutor exchange for this goal, so the judge sees
+    # points the student already made in earlier turns (not just the latest answer)
+    goal_dialogue: list = cl.user_session.get("goal_dialogue") or []
 
     # Step 1 — diagnose (structured, non-streamed) inside a visible thinking step
     async with cl.Step(name="Analysing your answer…", type="tool") as step:
         diagnosis = await diagnose_answer(
             LLM_CLIENT, course_llm, diagnose_prompt, lecture_content,
-            current_goal, big_question, user_text,
+            current_goal, big_question, user_text, goal_dialogue,
         )
         step.output = diagnosis.rationale or (
             "Looks solid." if diagnosis.mastered else "Identified the main gap."
@@ -189,6 +194,10 @@ async def _diagnostic_turn(
     logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG
     if sheets_logger:
         sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG
+    # IID-LEARN-DIAGNOSE: record this exchange so the next diagnose call sees the full dialogue
+    goal_dialogue.append({"role": "student", "content": user_text})
+    goal_dialogue.append({"role": "tutor", "content": full_response})
+    cl.user_session.set("goal_dialogue", goal_dialogue)
     await _send_actions(response_msg.id, full_response, "learning_goals")
 
 

@@ -69,15 +69,27 @@ class Diagnosis:
         }
 
 
+def _render_dialogue(dialogue: list[dict[str, str]]) -> str:
+    """IID-LEARN-DIAGNOSE: render the prior student↔tutor exchange as a plain transcript."""
+    labels = {"student": "STUDENT", "tutor": "TUTOR"}
+    return "\n\n".join(
+        f"{labels.get(turn.get('role', ''), 'STUDENT')}: {turn.get('content', '')}"
+        for turn in dialogue
+    )
+
+
 def build_diagnose_messages(
     diagnose_prompt: str, lecture_content: str, goal: dict,
     big_question: str, student_answer: str,
+    dialogue: list[dict[str, str]] | None = None,
 ) -> list[dict[str, str]]:
     """IID-LEARN-DIAGNOSE, IID-CONTENT-INJECT: assemble the diagnose call's messages.
 
     System = diagnostic instructions + lecture content + the current goal + the anchor question.
-    User   = the student's latest answer to grade. Kept as a pure function so the message shape
-    is unit-testable without any network call.
+    User   = the dialogue so far for this goal (roles "student"/"tutor", excluding the latest
+    answer) + the student's latest answer to grade, so the judge credits points the student
+    already made earlier instead of flagging them as omissions. Kept as a pure function so the
+    message shape is unit-testable without any network call.
     """
     title = goal.get("title", "")
     goal_text = goal.get("goal", "")
@@ -88,8 +100,15 @@ def build_diagnose_messages(
         f"--- CURRENT LEARNING GOAL ---\n{goal_block}\n--- END LEARNING GOAL ---\n\n"
         f"--- BIG QUESTION ---\n{big_question}\n--- END BIG QUESTION ---\n"
     )
+    transcript = _render_dialogue(dialogue) if dialogue else ""
+    dialogue_block = (
+        f"Dialogue so far on this goal (before the latest answer):\n\n"
+        f"--- DIALOGUE START ---\n{transcript}\n--- DIALOGUE END ---\n\n"
+        if transcript else ""
+    )
     user = (
-        "The student was asked the BIG QUESTION above. Here is their latest answer:\n\n"
+        f"The student was asked the BIG QUESTION above. {dialogue_block}"
+        "Here is their latest answer:\n\n"
         f'"""\n{student_answer}\n"""\n\n'
         "Diagnose this answer as instructed and reply with ONLY the JSON object."
     )
@@ -102,6 +121,7 @@ def build_diagnose_messages(
 async def diagnose_answer(
     client: AsyncOpenAI, course_llm: dict, diagnose_prompt: str, lecture_content: str,
     goal: dict, big_question: str, student_answer: str,
+    dialogue: list[dict[str, str]] | None = None,
 ) -> Diagnosis:
     """IID-LEARN-DIAGNOSE: run the structured diagnose call and return a Diagnosis.
 
@@ -109,7 +129,7 @@ async def diagnose_answer(
     `Diagnosis.from_raw({})` → neutral, so the caller falls back to generic feedback.
     """
     messages = build_diagnose_messages(
-        diagnose_prompt, lecture_content, goal, big_question, student_answer
+        diagnose_prompt, lecture_content, goal, big_question, student_answer, dialogue
     )
     raw = await complete_json(client, {"llm": course_llm}, messages)
     return Diagnosis.from_raw(raw)
