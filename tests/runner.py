@@ -26,7 +26,19 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.content_loader import load_content
+from src.course_loader import build_system_prompt, discover_courses
 from src.llm_client import build_client, stream_response
+
+
+def _course_map(cfg: dict) -> dict:
+    """IID-MULTI-COURSE: Map course_id -> CourseConfig for cases that target a
+    specific course subfolder. Reuses the same discovery + prompt-building path
+    as app.py so course tests exercise the real per-course system prompt.
+    Returns {} when no course subfolders exist (single-course mode)."""
+    root = Path(cfg.get("content_dir", "content"))
+    if not root.is_absolute():
+        root = ROOT / root
+    return {c.course_id: c for c in discover_courses(root, cfg)}
 
 
 def _load_cfg(llm_overrides: dict | None = None) -> dict:
@@ -68,17 +80,41 @@ def load_cases(cases_path: str) -> list[dict]:
         return yaml.safe_load(fh)
 
 
-async def run_case(case: dict, cfg: dict, course_content: str) -> dict:
-    """Run a single test case through the LLM pipeline. Returns result dict."""
-    client = build_client(cfg)
-    system_prompt = _build_system_prompt(cfg, course_content)
+async def run_case(
+    case: dict,
+    cfg: dict,
+    course_content: str,
+    course_map: dict | None = None,
+) -> dict:
+    """Run a single test case through the LLM pipeline. Returns result dict.
+
+    A case may target a specific course subfolder via a `course:` field; when
+    present, the system prompt and LLM settings come from that course (the real
+    production path), instead of the generic config.yaml prompt. (IID-MULTI-COURSE)
+    """
+    course_id = case.get("course")
+    if course_id:
+        course = (course_map or {}).get(course_id)
+        if course is None:
+            raise ValueError(
+                f"Case '{case['id']}' references unknown course '{course_id}'. "
+                f"Known courses: {sorted((course_map or {}).keys())}"
+            )
+        system_prompt = build_system_prompt(course)
+        case_cfg = copy.deepcopy(cfg)
+        case_cfg["llm"] = dict(course.llm)
+    else:
+        system_prompt = _build_system_prompt(cfg, course_content)
+        case_cfg = cfg
+
+    client = build_client(case_cfg)
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": case["question"]},
     ]
 
     full_response = ""
-    async for token in stream_response(client, cfg, messages):
+    async for token in stream_response(client, case_cfg, messages):
         full_response += token
 
     return {
@@ -87,8 +123,9 @@ async def run_case(case: dict, cfg: dict, course_content: str) -> dict:
         "response": full_response,
         "rubric": case.get("rubric", ""),
         "tags": case.get("tags", []),
-        "model": cfg.get("llm", {}).get("model", "unknown"),
-        "temperature": cfg.get("llm", {}).get("temperature", 0.3),
+        "course": course_id,
+        "model": case_cfg.get("llm", {}).get("model", "unknown"),
+        "temperature": case_cfg.get("llm", {}).get("temperature", 0.3),
     }
 
 
@@ -110,10 +147,12 @@ async def run_cases(
         effective_cfg = cfg
 
     course_content = load_content(effective_cfg.get("content_dir", "content"))
+    # IID-MULTI-COURSE: only discover courses if some case targets one
+    course_map = _course_map(effective_cfg) if any(c.get("course") for c in cases) else {}
     results = []
     for case in cases:
         print(f"  Running [{case['id']}] ...", end=" ", flush=True)
-        result = await run_case(case, effective_cfg, course_content)
+        result = await run_case(case, effective_cfg, course_content, course_map)
         print("done")
         results.append(result)
     return results
@@ -135,7 +174,11 @@ async def _main_async(args: argparse.Namespace) -> None:
         cases = load_cases(args.cases)
     elif args.case:
         found = None
-        for default_path in ["tests/cases/qna.yaml", "tests/cases/behavior.yaml"]:
+        for default_path in [
+            "tests/cases/qna.yaml",
+            "tests/cases/behavior.yaml",
+            "tests/cases/exercise25.yaml",
+        ]:
             p = ROOT / default_path
             if p.exists():
                 for c in load_cases(str(p)):

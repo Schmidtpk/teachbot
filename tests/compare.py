@@ -150,7 +150,7 @@ async def _run_compare(cases_paths: list[str], variants_path: str) -> None:
     REPORTS_DIR.mkdir(exist_ok=True)
     report_path = REPORTS_DIR / f"compare_{ts_file}.md"
     report_path.write_text(report, encoding="utf-8")
-    print(f"\nReport saved → {report_path}")
+    print(f"\nReport saved -> {report_path}")
 
 
 def main() -> None:

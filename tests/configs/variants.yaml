@@ -10,23 +10,37 @@
 #   system_prompt_override: (null = use default prompt from app.py)
 
 variants:
-  - id: baseline
+  - id: gemini-flash
     model: google/gemini-3-flash-preview
     temperature: 0.3
     system_prompt_override: null
 
-  - id: low-temp
-    model: google/gemini-3-flash-preview
-    temperature: 0.0
+  - id: deepseek-v4-pro
+    model: deepseek/deepseek-v4-pro
+    temperature: 0.3
     system_prompt_override: null
 
-  # Uncomment to compare against other models available on OpenRouter:
-  # - id: gpt4o-mini
-  #   model: openai/gpt-4o-mini
-  #   temperature: 0.3
-  #   system_prompt_override: null
+  - id: claude-sonnet
+    model: anthropic/claude-sonnet-4-6
+    temperature: 0.3
+    system_prompt_override: null
 
-  # - id: claude-haiku
-  #   model: anthropic/claude-haiku-4-5-20251001
-  #   temperature: 0.3
+  - id: gemini-pro
+    model: google/gemini-3.1-pro-preview
+    temperature: 0.3
+    system_prompt_override: null
+
+  - id: glm-5.2
+    model: z-ai/glm-5.2
+    temperature: 0.3
+    system_prompt_override: null
+
+  # Legacy temperature variants (gemini-flash only):
+  # - id: low-temp
+  #   model: google/gemini-3-flash-preview
+  #   temperature: 0.0
+  #   system_prompt_override: null
+  # - id: high-temp
+  #   model: google/gemini-3-flash-preview
+  #   temperature: 1.0
   #   system_prompt_override: null
