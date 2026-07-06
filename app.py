@@ -5,6 +5,7 @@ Chainlit entry point for Lectos v1.
 Run with:  chainlit run app.py
 """
 
+import json
 import uuid
 from datetime import date
 from pathlib import Path
@@ -19,7 +20,10 @@ from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, 
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_text
+from src.goals import GOAL_KICKOFF, build_goal_system_prompt, sample_goal
 from src.llm_client import build_client, stream_response
+from src.progress_store import ProgressStore
+from src.tutor_loop import build_act_instruction, diagnose_answer
 
 # SID-API-CONFIG: load secrets from .env (never hardcoded)
 load_dotenv()
@@ -96,6 +100,98 @@ if auth_enabled(_AUTH_CFG):
         return None  # wrong password
 
 
+async def _stream_assistant(history: list[dict], course_llm: dict) -> tuple[cl.Message, str, str]:
+    """IID-QNA-CORE, IID-UI-RENDER: Stream one assistant turn, append it to history.
+
+    Returns (message, full_response, active_model). Caller is responsible for logging.
+    """
+    active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
+    response_msg = cl.Message(content="")
+    await response_msg.send()
+
+    full_response = ""
+    async for token in stream_response(LLM_CLIENT, {"llm": course_llm}, history):
+        full_response += token
+        await response_msg.stream_token(token)
+    await response_msg.update()
+
+    history.append({"role": "assistant", "content": full_response})
+    return response_msg, full_response, active_model
+
+
+async def _send_actions(message_id: str, full_response: str, mode: str) -> None:
+    """IID-STUDENT-FEEDBACK-STORE, IID-LEARN-GOALS: attach per-message action buttons."""
+    await cl.Action(
+        name="flag",
+        label="🚩 Flag this response",
+        payload={"flagged_message": full_response},
+    ).send(for_id=message_id)
+    if mode == "learning_goals":  # IID-LEARN-GOALS: let the student mark the goal complete
+        await cl.Action(
+            name="complete_goal",
+            label="✅ Mark goal complete",
+            payload={},
+        ).send(for_id=message_id)
+
+
+async def _pose_goal_question(
+    history: list[dict], course_llm: dict, logger: ChatLogger,
+    sheets_logger: "SheetsLogger | None", mode: str,
+) -> None:
+    """IID-LEARN-GOALS: append the internal kickoff turn, stream + log the bot's question."""
+    history.append({"role": "user", "content": GOAL_KICKOFF})  # internal, not logged
+    response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
+    logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG
+    if sheets_logger:
+        sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG
+    # IID-LEARN-DIAGNOSE: this posed question is the fixed "big question" the student keeps
+    # re-answering for the rest of this goal; the diagnostic turn references it.
+    cl.user_session.set("current_big_question", full_response)
+    await _send_actions(response_msg.id, full_response, mode)
+
+
+async def _diagnostic_turn(
+    history: list[dict], user_text: str, course_llm: dict,
+    logger: ChatLogger, sheets_logger: "SheetsLogger | None",
+) -> None:
+    """IID-LEARN-DIAGNOSE: two-step learning-goals turn — diagnose the answer, then act.
+
+    Step 1 (diagnose): a non-streamed structured call ranks the student's misunderstandings and
+    picks the single most important one (shown to the student as a subtle "Analysing…" step).
+    Step 2 (act): the existing streamed reply, seeded to address only that one point and re-ask
+    the fixed big question. The diagnosis JSON is logged as an internal event (never shown).
+    """
+    diagnose_prompt: str = cl.user_session.get("diagnose_prompt", "")
+    lecture_content: str = cl.user_session.get("lecture_content", "")
+    current_goal: dict = cl.user_session.get("current_goal")
+    big_question: str = cl.user_session.get("current_big_question", "")
+
+    # Step 1 — diagnose (structured, non-streamed) inside a visible thinking step
+    async with cl.Step(name="Analysing your answer…", type="tool") as step:
+        diagnosis = await diagnose_answer(
+            LLM_CLIENT, course_llm, diagnose_prompt, lecture_content,
+            current_goal, big_question, user_text,
+        )
+        step.output = diagnosis.rationale or (
+            "Looks solid." if diagnosis.mastered else "Identified the main gap."
+        )
+
+    # Log the diagnosis internally (IID-CHAT-LOG / IID-SHEETS-LOG) — audit only, not shown
+    diag_json = json.dumps(diagnosis.as_dict(), ensure_ascii=False)
+    logger.log("diagnosis", diag_json)
+    if sheets_logger:
+        sheets_logger.log("diagnosis", diag_json)
+
+    # Step 2 — act: seed the streamed reply with the chosen misconception + tactic
+    act_instruction = build_act_instruction(diagnosis, big_question)
+    history.append({"role": "user", "content": act_instruction})  # internal, not logged
+    response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
+    logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG
+    if sheets_logger:
+        sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG
+    await _send_actions(response_msg.id, full_response, "learning_goals")
+
+
 @cl.on_chat_start
 async def on_chat_start() -> None:
     """IID-CHAT-SHELL1, IID-AUTH-BASIC, IID-MULTI-COURSE: Initialise session state."""
@@ -147,8 +243,35 @@ async def on_chat_start() -> None:
     # IID-STUDENT-MODEL-CHOICE: build label→id map; empty when feature is off for this course
     model_choice_map: dict[str, str] = {m["label"]: m["id"] for m in model_choices}
 
+    # IID-LEARN-GOALS: learning-goals practice mode — load progress, sample one goal,
+    # inject ONLY that goal into the system prompt. `current_goal is None` ⇒ all goals done.
+    mode = course.mode if COURSES else "qa"
+    progress_store: ProgressStore | None = None
+    current_goal: dict | None = None
+    completed: set[str] = set()
+    if mode == "learning_goals":
+        progress_store = ProgressStore(sheets_id, user_email, course_name)
+        completed = await progress_store.completed_goal_ids()
+        current_goal = sample_goal(course.learning_goals, completed)
+        if current_goal is not None:
+            system_prompt = build_goal_system_prompt(course, current_goal)
+        # IID-LEARN-DIAGNOSE: cache the diagnose prompt + lecture content once so the two-step
+        # turn (diagnose → act) needn't re-read them on every student answer.
+        cl.user_session.set(
+            "diagnose_prompt",
+            load_course_text(course.diagnose_prompt_path, course.lecture_name)
+            if course.diagnose_prompt_path else "",
+        )
+        cl.user_session.set("lecture_content", load_content(course.content_dir))
+
     # Store in Chainlit user session
     cl.user_session.set("history", [{"role": "system", "content": system_prompt}])
+    cl.user_session.set("mode", mode)  # IID-LEARN-GOALS
+    cl.user_session.set("progress_store", progress_store)  # IID-LEARN-GOALS
+    cl.user_session.set("current_goal", current_goal)  # IID-LEARN-GOALS
+    cl.user_session.set("completed", completed)  # IID-LEARN-GOALS
+    if COURSES:
+        cl.user_session.set("course", course)  # IID-LEARN-GOALS: needed to sample the next goal
     cl.user_session.set("logger", logger)
     cl.user_session.set("sheets_logger", sheets_logger)
     cl.user_session.set("course_llm", course_llm)  # IID-MULTI-COURSE: per-session LLM config
@@ -169,6 +292,17 @@ async def on_chat_start() -> None:
 
     await cl.Message(content=welcome).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
 
+    # IID-LEARN-GOALS: in learning-goals mode, either announce completion or pose the first question
+    if mode == "learning_goals":
+        if current_goal is None:
+            await cl.Message(
+                content="🎉 You have completed all learning goals for this course. "
+                        "Nothing left to practice — well done!"
+            ).send()
+            return
+        history = cl.user_session.get("history")
+        await _pose_goal_question(history, course_llm, logger, sheets_logger, mode)
+
 
 @cl.on_settings_update
 async def on_settings_update(settings: dict) -> None:
@@ -187,6 +321,8 @@ async def on_message(message: cl.Message) -> None:
     history: list[dict] = cl.user_session.get("history")
     logger: ChatLogger = cl.user_session.get("logger")
     sheets_logger: SheetsLogger | None = cl.user_session.get("sheets_logger")
+    course_llm: dict = cl.user_session.get("course_llm")  # IID-MULTI-COURSE
+    mode: str = cl.user_session.get("mode", "qa")  # IID-LEARN-GOALS
 
     user_text = message.content.strip()
     history.append({"role": "user", "content": user_text})
@@ -194,30 +330,59 @@ async def on_message(message: cl.Message) -> None:
     if sheets_logger:
         sheets_logger.log("user", user_text)  # IID-SHEETS-LOG
 
+    # IID-LEARN-DIAGNOSE: in learning-goals mode, each answer is a two-step diagnose→act turn.
+    # Guarded by an active goal (None ⇒ all goals done, fall through to a plain reply).
+    if mode == "learning_goals" and cl.user_session.get("current_goal") is not None:
+        await _diagnostic_turn(history, user_text, course_llm, logger, sheets_logger)
+        return
+
     # Stream response — IID-UI-RENDER (Chainlit renders MD + LaTeX natively)
-    response_msg = cl.Message(content="")
-    await response_msg.send()
-
-    full_response = ""
-    course_llm: dict = cl.user_session.get("course_llm")  # IID-MULTI-COURSE
-    active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
-    async for token in stream_response(LLM_CLIENT, {"llm": course_llm}, history):
-        full_response += token
-        await response_msg.stream_token(token)
-
-    await response_msg.update()
-
-    history.append({"role": "assistant", "content": full_response})
+    response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
     logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG, IID-STUDENT-MODEL-CHOICE
     if sheets_logger:
         sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG, IID-STUDENT-MODEL-CHOICE
 
-    # IID-STUDENT-FEEDBACK-STORE: send flag button linked to this message
-    await cl.Action(
-        name="flag",
-        label="🚩 Flag this response",
-        payload={"flagged_message": full_response},
-    ).send(for_id=response_msg.id)
+    # IID-STUDENT-FEEDBACK-STORE + IID-LEARN-GOALS: flag button (+ goal-complete button in goals mode)
+    await _send_actions(response_msg.id, full_response, mode)
+
+
+@cl.action_callback("complete_goal")
+async def on_complete_goal(action: cl.Action) -> None:
+    """IID-LEARN-GOALS: record the current goal as done and advance to the next one."""
+    progress_store: ProgressStore | None = cl.user_session.get("progress_store")
+    current_goal: dict | None = cl.user_session.get("current_goal")
+    completed: set[str] = cl.user_session.get("completed", set())
+    course: CourseConfig | None = cl.user_session.get("course")
+    logger: ChatLogger = cl.user_session.get("logger")
+    sheets_logger: SheetsLogger | None = cl.user_session.get("sheets_logger")
+    course_llm: dict = cl.user_session.get("course_llm")
+
+    if current_goal is None or course is None:
+        return  # stale button (e.g. all goals already completed)
+
+    # Persist completion and exclude this goal from further sampling
+    if progress_store is not None:
+        progress_store.mark_done(current_goal["id"])  # IID-LEARN-GOALS
+    completed.add(current_goal["id"])
+    cl.user_session.set("completed", completed)
+
+    next_goal = sample_goal(course.learning_goals, completed)
+    if next_goal is None:
+        cl.user_session.set("current_goal", None)
+        await cl.Message(
+            content="✅ Recorded. 🎉 That was the last goal — you've completed every learning "
+                    "goal for this course. Well done!"
+        ).send()
+        return
+
+    # Reset context to the next goal so only one goal is ever in the LLM's context
+    cl.user_session.set("current_goal", next_goal)
+    new_prompt = build_goal_system_prompt(course, next_goal)
+    history = [{"role": "system", "content": new_prompt}]
+    cl.user_session.set("history", history)
+
+    await cl.Message(content="✅ Recorded. Here's your next goal:").send()
+    await _pose_goal_question(history, course_llm, logger, sheets_logger, "learning_goals")
 
 
 @cl.action_callback("flag")

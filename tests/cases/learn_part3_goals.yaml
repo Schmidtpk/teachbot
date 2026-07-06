@@ -1,0 +1,159 @@
+# IID-TEST-LLM-EVAL, IID-LEARN-GOALS
+# Tests for the learning-goals practice mode on "Practice: Part III" (course_id: learn_part3).
+# NOTE: cases here carry NO `goal:` text — the harness pulls the goal from the course's
+# _learning_goals.yaml by id, so the tested system prompt is exactly the deployed one.
+#
+# Run:  python tests/learn_goals.py --cases tests/cases/learn_part3_goals.yaml
+#       python tests/learn_goals.py --cases tests/cases/learn_part3_goals.yaml --model z-ai/glm-5.2
+
+course: learn_part3
+
+goals:
+  - id: mc_core_idea
+    question_rubric: |
+      The tutor's opening question is ADEQUATE if it:
+      - targets the core idea of Monte-Carlo simulation (random sampling from input distributions to
+        approximate an outcome distribution, and/or convergence as runs increase);
+      - is a single concrete question answerable in a few sentences;
+      - does NOT state the answer itself, and does not drift to Bayesian modeling or machine learning.
+    student_turns:
+      - persona: partial
+        instruction: |
+          You are an average student. Give a partially correct answer: say Monte Carlo means
+          "simulating the system many times on a computer and looking at what happens". Do NOT mention
+          random sampling from input probability distributions, and do NOT mention that the empirical
+          distribution converges to the true distribution as runs increase. Keep it to 2-3 sentences.
+        feedback_rubric: |
+          GOOD feedback:
+          - acknowledges the repetition idea is right;
+          - identifies what is missing (inputs are SAMPLED from probability distributions and/or
+            convergence with the number of runs) WITHOUT simply stating the full missing answer;
+          - guides via a question or hint; concise; stays on this goal.
+          FAIL if it declares the answer complete, hands over the missing pieces outright, or drifts.
+
+  - id: mc_steps
+    question_rubric: |
+      ADEQUATE if it asks the student to describe the procedure/steps of a Monte-Carlo simulation
+      (possibly anchored in a small scenario), is a single concrete question, and does NOT list the
+      steps itself.
+    student_turns:
+      - persona: correct
+        instruction: |
+          You are a strong student. List the steps correctly: model the system, assign probability
+          distributions to the uncertain inputs, in each run sample the inputs and compute the outcome,
+          repeat many times, and save the outcomes as the predictive sample. Keep it to 3-5 sentences.
+        feedback_rubric: |
+          GOOD feedback: confirms the steps are correct, is concise, and either invites clicking
+          "Mark goal complete" or asks ONE short deepening question. Stays on this goal.
+          FAIL if it wrongly calls the answer incomplete/incorrect or drifts to another topic.
+
+  - id: mc_strengths_weaknesses
+    question_rubric: |
+      ADEQUATE if it targets strengths and/or weaknesses of Monte-Carlo simulation, is a single
+      concrete answerable question, and does NOT enumerate the strengths/weaknesses itself.
+    student_turns:
+      - persona: misconception
+        instruction: |
+          You are a confident but mistaken student. Claim the main strength of Monte-Carlo simulation
+          is that it LEARNS FROM DATA: the more data you feed into the simulation, the better its
+          predictions get, just like machine learning. Keep it to 2-3 sentences.
+        feedback_rubric: |
+          GOOD feedback:
+          - does NOT agree; identifies the misconception — a plain Monte-Carlo simulation cannot learn
+            from data (that is exactly its weakness; it only needs a generative model with assumed
+            input distributions);
+          - corrects via a guiding question or hint rather than a full lecture; respectful, concise,
+            stays on this goal.
+          FAIL if it endorses the misconception or declares the goal complete.
+
+  - id: regression_simulation
+    question_rubric: |
+      ADEQUATE if it asks about Monte-Carlo simulation of the linear model y = beta*x + epsilon
+      (identifying inputs, choosing their distributions, and/or the difference to the OLS point
+      prediction), is a single concrete question, and does NOT give the answer itself.
+    student_turns:
+      - persona: partial
+        instruction: |
+          You are an average student. Correctly identify the inputs (beta, x, epsilon) and suggest
+          distributions (x uniform, beta and epsilon standard normal). But on how this differs from an
+          OLS prediction, say only "the simulation is just more accurate than OLS". Keep it to 3-4
+          sentences.
+        feedback_rubric: |
+          GOOD feedback:
+          - confirms the inputs/distributions part;
+          - flags that "more accurate" is not the point — the key difference is that the simulation
+            yields a whole predictive DISTRIBUTION/sample while OLS gives a single point prediction —
+            guiding toward this via a question or hint WITHOUT a full lecture;
+          - concise, stays on this goal.
+          FAIL if it accepts "more accurate" as the difference, or drifts.
+
+  - id: predictive_sample_analysis
+    question_rubric: |
+      ADEQUATE if it asks how to extract quantities from a predictive sample (event probability, mean
+      point prediction, confidence interval, and/or visualization), ideally with a small concrete
+      framing; single question; does NOT explain the methods itself.
+    student_turns:
+      - persona: correct
+        instruction: |
+          You are a strong student. Answer correctly: event probabilities are the share of runs where
+          the event occurs, the mean point prediction is the sample average, a 90% interval comes from
+          the 5% and 95% sample quantiles, and a histogram visualizes the distribution. Keep it to 3-4
+          sentences.
+        feedback_rubric: |
+          GOOD feedback: confirms the answer is correct, is concise, and either invites "Mark goal
+          complete" or asks ONE short extension. Stays on this goal.
+          FAIL if it wrongly calls the answer incomplete/incorrect or drifts.
+
+  - id: wealth_pseudocode
+    question_rubric: |
+      The tutor's opening message is ADEQUATE if it:
+      - SHOWS the pseudocode of the wealth simulation (or a faithful equivalent): a loop of many runs,
+        within each run 10 years of y = y * r with r drawn from a Normal distribution, and the three
+        outputs mean(y_sample > 2), mean(y_sample), and the 5%/95% quantiles;
+      - asks the student what the three computed outputs mean;
+      - does NOT give the interpretations itself.
+    student_turns:
+      - persona: correct
+        instruction: |
+          You are a strong student. Interpret all three outputs correctly: the first is the estimated
+          probability that wealth more than doubles after 10 years, the second is the mean point
+          prediction of final wealth, the third is the central 90% prediction interval (5% and 95%
+          quantiles of the predictive sample). Keep it to 2-4 sentences.
+        feedback_rubric: |
+          GOOD feedback: confirms all three interpretations, is concise, and either invites "Mark goal
+          complete" or asks ONE short deepening question. Stays on this goal.
+          FAIL if it wrongly calls the answer incomplete/incorrect or drifts.
+      - persona: confuses_interval
+        instruction: |
+          You are an average student. Interpret the first two outputs correctly (probability of more
+          than doubling; average final wealth), but claim the third output is a 90% confidence interval
+          for the MEAN final wealth, i.e. the range where the average outcome lies. Keep it to 2-3
+          sentences.
+        feedback_rubric: |
+          GOOD feedback:
+          - confirms the first two interpretations;
+          - identifies that the interval interpretation is wrong — it describes the range of individual
+            OUTCOMES (central 90% of the predictive distribution), not uncertainty about the mean —
+            guiding via a question or hint (e.g. what share of simulated outcomes lies between the two
+            quantiles) rather than only asserting the correction;
+          - does NOT declare the goal complete; concise, stays on this goal.
+          FAIL if it accepts the mean-interval reading or invites completion anyway.
+
+  - id: mc_critique
+    question_rubric: |
+      ADEQUATE if it invites the student to critically assess the assumptions of the wealth/stock-market
+      simulation (e.g. asking which assumptions could be wrong or how to judge the trustworthiness of
+      its output), is a single concrete question, and does NOT list the critiques itself.
+    student_turns:
+      - persona: partial
+        instruction: |
+          You are an average student. Give only ONE critique: real yearly returns may not be normally
+          distributed (e.g. fat tails, crashes). Do NOT mention independence/iid, stationarity, or
+          structural breaks. Keep it to 2-3 sentences.
+        feedback_rubric: |
+          GOOD feedback:
+          - acknowledges the Gaussian critique as valid;
+          - probes for further assumption critiques (independence/iid of returns, stationarity /
+            no structural breaks) via a guiding question WITHOUT simply listing them all;
+          - concise, stays on this goal.
+          FAIL if it declares the goal complete after one critique, dumps the full list itself, or drifts.

@@ -105,6 +105,50 @@ last_date:  2026-05-15                # optional; inclusive upper bound (server 
 
 **Fallback chain:** `_system_prompt.md` / `_welcome.md`: subfolder → `content/` root. LLM settings: `_meta.yaml` → `config.yaml`. Missing `_meta.yaml` or missing `lecture_name` → startup error.
 
+## Learning-goals practice mode (IID-LEARN-GOALS)
+
+Set `mode: learning_goals` in a course's `_meta.yaml` to turn it into a goal-drill experience instead of
+plain Q&A. The course folder then also needs a `_learning_goals.yaml`:
+
+```yaml
+goals:
+  - id: bayes_rule              # required, unique, stable (it is the per-student progress key)
+    title: "Bayes' rule"        # optional short label
+    goal: "Student can state Bayes' rule and apply it to a numerical example."
+  - id: ...
+```
+
+Per session the app loads the student's completed goals, **samples one uncompleted goal at random**, and
+injects **only that goal** into the system prompt. The bot poses a test question and gives Socratic
+feedback; when satisfied it suggests clicking **✅ Mark goal complete**, which records the goal and serves
+a new one (the dialogue continues until clicked). When all goals are done, a completion message is shown.
+
+- **Persistence (survives Railway redeploys):** a `progress` worksheet in the Sheet named by
+  `sheets_log_id` — columns `timestamp, user_email, course, goal_id` (auto-created). Without Sheets,
+  falls back to local `progress/<email>.json` (gitignored). **Requires `IID-AUTH-BASIC`** for a stable
+  `user_email`; with auth disabled, progress is in-session only.
+- **Validation:** `mode: learning_goals` with a missing/empty `_learning_goals.yaml`, or duplicate/empty
+  goal ids → loud startup failure naming the folder.
+- Example course: `content/learn_part1/`.
+
+### Diagnostic two-step turns (IID-LEARN-DIAGNOSE)
+
+In learning-goals mode, each student answer is handled by **two LLM calls** instead of one:
+
+1. **Diagnose** — a non-streamed structured-JSON call (`src/tutor_loop.py` → `llm_client.complete_json`)
+   judges the answer against the goal + lecture content, ranks the misunderstandings, and picks the
+   single most important one plus a `tactic` (`explain`/`probe`). Shown as an "Analysing your answer…"
+   step; the JSON is logged internally as role `diagnosis` (never shown to the student).
+2. **Act** — the streamed reply, seeded to address **only that one point** and re-ask the fixed
+   **"big question"** (the question first posed for the goal, held constant for the whole goal).
+
+`mastered` → affirm + suggest ✅. A failed/empty diagnose call degrades to generic Socratic feedback,
+so a flaky model never breaks the turn. Both calls use the course model.
+
+- **Editable prompt:** `content/_diagnose_prompt.md` (root default), overridable per course via
+  `content/<course>/_diagnose_prompt.md` (same subfolder→root fallback as `_system_prompt.md`).
+- The plain Q&A path (IID-QNA-CORE) is untouched — only `mode: learning_goals` courses use this loop.
+
 ## Key files
 
 | File | IID/SID | Description |
@@ -117,7 +161,11 @@ last_date:  2026-05-15                # optional; inclusive upper bound (server 
 | `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `chainlit.md` | IID-EDUCATOR-CONFIG | Editable sidebar/welcome panel (Chainlit requires it at project root) |
-| `src/course_loader.py` | IID-MULTI-COURSE | Discovers course subfolders, loads `_meta.yaml`, merges LLM config, resolves fallback paths for system prompt and welcome text |
+| `src/course_loader.py` | IID-MULTI-COURSE, IID-LEARN-GOALS | Discovers course subfolders, loads `_meta.yaml` (incl. `mode` + `_learning_goals.yaml`), merges LLM config, resolves fallback paths for system prompt and welcome text |
+| `src/goals.py` | IID-LEARN-GOALS | Samples one uncompleted learning goal; builds the per-goal system prompt (only one goal in context) |
+| `src/tutor_loop.py` | IID-LEARN-DIAGNOSE | Two-step turn: structured `diagnose_answer` (ranks misconceptions, picks top-1 + tactic) + `build_act_instruction` seeding the streamed reply |
+| `content/_diagnose_prompt.md` | IID-LEARN-DIAGNOSE | Editable diagnostic instructions (JSON output); default fallback for goals courses that omit their own copy |
+| `src/progress_store.py` | IID-LEARN-GOALS | Per-student record of completed goals — Google Sheet `progress` tab (durable) or `progress/<email>.json` fallback |
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
 | `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
@@ -189,6 +237,8 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/runner.py` | IID-TEST-LLM-EVAL | Runs test cases through the LLM pipeline (no Chainlit) |
 | `tests/judge.py` | IID-TEST-LLM-EVAL | LLM-as-judge: grades a response PASS/FAIL against a rubric |
 | `tests/compare.py` | IID-TEST-MODEL-COMPARE | Runs all cases × all variants, writes `reports/compare_*.md` |
+| `tests/learn_goals.py` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Multi-turn harness for learning-goals mode: judges the opening question + the tutor's feedback to simulated students |
+| `tests/cases/learn_part1_goals.yaml` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Goal cases for "Practice: Part I": per-goal `question_rubric` + student personas with `feedback_rubric` |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
 | `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |
 | `tests/cases/behavior.yaml` | IID-TEST-LLM-EVAL | Behavior/hallucination guard test cases |
@@ -217,6 +267,14 @@ python tests/smoke.py --full
 
 # Use a stronger judge model for evaluation
 JUDGE_MODEL=anthropic/claude-opus-4-6 python tests/compare.py
+
+# Learning-goals mode (IID-LEARN-GOALS): check opening questions + feedback quality
+python tests/learn_goals.py                          # all goals in Practice: Part I
+python tests/learn_goals.py --goal why_probabilistic # one goal
+python tests/learn_goals.py --no-judge               # transcripts only, no grading
+# The default judge (config model) can be flaky (empty output → ERROR verdicts);
+# use a steadier grader for reliable verdicts:
+JUDGE_MODEL=anthropic/claude-opus-4-6 python tests/learn_goals.py
 ```
 
 **Test case authoring:** Add/edit cases in `tests/cases/*.yaml` — no Python required.

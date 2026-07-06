@@ -1,0 +1,49 @@
+# IID-LEARN-GOALS: each goal is sampled one at a time; only the sampled goal enters the LLM context.
+# `id` must be unique and stable (it is the key stored in the per-student progress sheet).
+# `title` is optional (shown to the model as a short label); `goal` is required.
+# Goals follow the slide order of script3.1 (Part III: Computational Methods, Monte-Carlo simulations).
+goals:
+  - id: mc_core_idea
+    title: "Monte Carlo: core idea"
+    goal: "Student can explain the core idea of Monte Carlo simulation — repeated random sampling from input probability distributions to simulate a system and generate a distribution of possible outcomes — and state that the empirical distribution converges to the true distribution as the number of simulation runs increases."
+
+  - id: mc_steps
+    title: "Monte Carlo: the steps"
+    goal: "Student can list the steps of a Monte Carlo simulation: model the system, assign probability distributions to uncertain inputs, sample inputs and compute the outcome in each run, repeat many times, save predictive sample."
+
+  - id: mc_strengths_weaknesses
+    title: "Strengths and weaknesses"
+    goal: "Student can name the strengths of Monte Carlo simulation (quantifies uncertainty via a full outcome distribution, handles complex systems, intuitive, needs only a generative model) and its weaknesses (cannot learn from data)."
+
+  - id: regression_simulation
+    title: "Simulating a linear regression"
+    goal: "Student can apply the Monte Carlo framework to the linear model y = βx + ε: identify the inputs θ = (β, x, ε), propose distributions for them (e.g. x uniform, β and ε standard normal), and explain how the resulting predictive sample differs from the OLS point prediction ŷ = β̂x."
+
+  - id: predictive_sample_analysis
+    title: "Analyzing the predictive sample"
+    goal: "Student can explain how to extract quantities from a predictive sample: event probabilities as the share of runs where the event occurs, mean point predictions as the sample average, confidence intervals from sample quantiles (e.g. 90% CI from the 5% and 95% quantiles), and histograms to visualize the distribution."
+
+  - id: wealth_pseudocode
+    title: "Reading the wealth simulation"
+    goal: |
+      Show the student this pseudocode of the wealth Monte Carlo prediction (1 = starting wealth,
+      10-year investment horizon) and ask what the three computed predictions mean:
+
+          for i from 1 to 10000:
+              y = 1
+              for t from 1 to 10:
+                  r = draw from Normal(mean = 1.10, sd = 0.16)
+                  y = y * r
+              y_sample[i] = y
+
+          out1 = mean(y_sample > 2)
+          out2 = mean(y_sample)
+          out3 = [quantile(y_sample, 5%), quantile(y_sample, 95%)]
+
+      Student can interpret the three outputs: out1 is the estimated probability that wealth more than
+      doubles after 10 years, out2 is the mean point prediction of final wealth, and out3 is the central
+      90% prediction interval (between the 5% and 95% quantiles of the predictive sample).
+
+  - id: mc_critique
+    title: "Critiquing simulation assumptions"
+    goal: "Student can critically discuss the assumptions of the wealth simulation — e.g. whether yearly returns are really Gaussian and iid, whether process is stationary/non-changing/without breaks"

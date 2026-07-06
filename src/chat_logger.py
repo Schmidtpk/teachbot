@@ -66,6 +66,21 @@ _SHEETS_SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _HEADER_ROW = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message", "model"]
 
 
+def gspread_client():
+    """IID-SHEETS-LOG: Build an authorized gspread client from the service-account key.
+
+    The JSON key is read from the GOOGLE_SERVICE_ACCOUNT_JSON environment variable
+    (a Railway secret). Shared by SheetsLogger and ProgressStore (IID-LEARN-GOALS).
+    """
+    import gspread
+    from google.oauth2.service_account import Credentials
+
+    raw = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
+    info = json.loads(raw)
+    creds = Credentials.from_service_account_info(info, scopes=_SHEETS_SCOPES)
+    return gspread.authorize(creds)
+
+
 class SheetsLogger:
     """Append chat turns as rows to a Google Sheet (IID-SHEETS-LOG, IID-AUTH-BASIC, SID-PRIVACY-DATA).
 
@@ -86,13 +101,7 @@ class SheetsLogger:
         """Return the first worksheet, opening the sheet if needed."""
         if self._ws is not None:
             return self._ws
-        import gspread
-        from google.oauth2.service_account import Credentials
-
-        raw = os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"]
-        info = json.loads(raw)
-        creds = Credentials.from_service_account_info(info, scopes=_SHEETS_SCOPES)
-        gc = gspread.authorize(creds)
+        gc = gspread_client()
         self._ws = gc.open_by_key(self._sheet_id).sheet1
         return self._ws
 

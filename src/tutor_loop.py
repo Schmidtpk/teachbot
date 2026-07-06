@@ -1,0 +1,160 @@
+"""
+IID-LEARN-DIAGNOSE
+Agentic two-step tutoring turn for learning-goals mode (IID-LEARN-GOALS).
+
+Each student answer is handled in two LLM calls instead of one:
+  1. diagnose  — a non-streamed, structured-JSON call that ranks the misunderstandings in the
+                 student's latest answer and selects the SINGLE most important one, plus whether
+                 to `explain` it or `probe` for it (see `Diagnosis`).
+  2. act       — the existing streamed reply, seeded with the chosen misconception so it addresses
+                 exactly one point and then re-asks the fixed "big question" (built here as an
+                 internal instruction via `build_act_instruction`).
+
+Pure orchestration: no Chainlit imports, so it is unit-testable with a stub client.
+The diagnose prompt text and lecture content are passed in as strings by the caller (app.py).
+"""
+
+from dataclasses import dataclass, field
+from typing import Any
+
+from openai import AsyncOpenAI
+
+from src.llm_client import complete_json
+
+
+@dataclass
+class Diagnosis:
+    """IID-LEARN-DIAGNOSE: structured result of judging one student answer.
+
+    `mastered` is only True when the model explicitly signals the answer meets the goal.
+    When the diagnose call fails or returns nothing, `from_raw({})` yields a neutral value
+    (not mastered, no misconception) so `build_act_instruction` degrades to generic Socratic
+    feedback rather than falsely congratulating the student.
+    """
+    mastered: bool = False
+    candidates: list[str] = field(default_factory=list)
+    major_misconception: str = ""
+    tactic: str = "probe"          # "explain" | "probe"
+    rationale: str = ""            # internal only, never shown to the student
+
+    @classmethod
+    def from_raw(cls, raw: dict[str, Any]) -> "Diagnosis":
+        """Coerce a parsed JSON object (possibly empty/garbage) into a valid Diagnosis."""
+        major = str(raw.get("major_misconception") or "").strip()
+        mastered = bool(raw.get("mastered", False))
+        tactic = str(raw.get("tactic", "probe")).strip().lower()
+        if tactic not in ("explain", "probe"):
+            tactic = "probe"
+        raw_cands = raw.get("candidates", [])
+        candidates = (
+            [str(c).strip() for c in raw_cands if str(c).strip()]
+            if isinstance(raw_cands, list) else []
+        )
+        return cls(
+            mastered=mastered,
+            candidates=candidates,
+            major_misconception=major,
+            tactic=tactic,
+            rationale=str(raw.get("rationale") or "").strip(),
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        """Serialisable form for internal logging (IID-CHAT-LOG / IID-SHEETS-LOG)."""
+        return {
+            "mastered": self.mastered,
+            "candidates": self.candidates,
+            "major_misconception": self.major_misconception,
+            "tactic": self.tactic,
+            "rationale": self.rationale,
+        }
+
+
+def build_diagnose_messages(
+    diagnose_prompt: str, lecture_content: str, goal: dict,
+    big_question: str, student_answer: str,
+) -> list[dict[str, str]]:
+    """IID-LEARN-DIAGNOSE, IID-CONTENT-INJECT: assemble the diagnose call's messages.
+
+    System = diagnostic instructions + lecture content + the current goal + the anchor question.
+    User   = the student's latest answer to grade. Kept as a pure function so the message shape
+    is unit-testable without any network call.
+    """
+    title = goal.get("title", "")
+    goal_text = goal.get("goal", "")
+    goal_block = f"{title}\n{goal_text}" if title else goal_text
+    system = (
+        f"{diagnose_prompt}\n\n"
+        f"--- LECTURE CONTENT START ---\n{lecture_content}\n--- LECTURE CONTENT END ---\n\n"
+        f"--- CURRENT LEARNING GOAL ---\n{goal_block}\n--- END LEARNING GOAL ---\n\n"
+        f"--- BIG QUESTION ---\n{big_question}\n--- END BIG QUESTION ---\n"
+    )
+    user = (
+        "The student was asked the BIG QUESTION above. Here is their latest answer:\n\n"
+        f'"""\n{student_answer}\n"""\n\n'
+        "Diagnose this answer as instructed and reply with ONLY the JSON object."
+    )
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+async def diagnose_answer(
+    client: AsyncOpenAI, course_llm: dict, diagnose_prompt: str, lecture_content: str,
+    goal: dict, big_question: str, student_answer: str,
+) -> Diagnosis:
+    """IID-LEARN-DIAGNOSE: run the structured diagnose call and return a Diagnosis.
+
+    Uses the course model (SID-LLM-PROVIDER via `complete_json`). Any failure yields
+    `Diagnosis.from_raw({})` → neutral, so the caller falls back to generic feedback.
+    """
+    messages = build_diagnose_messages(
+        diagnose_prompt, lecture_content, goal, big_question, student_answer
+    )
+    raw = await complete_json(client, {"llm": course_llm}, messages)
+    return Diagnosis.from_raw(raw)
+
+
+def build_act_instruction(diagnosis: Diagnosis, big_question: str) -> str:
+    """IID-LEARN-DIAGNOSE, IID-LEARN-SOCRATIC: internal instruction that seeds the streamed reply.
+
+    Three cases:
+      - mastered            → affirm + suggest the ✅ button, no new material.
+      - has misconception   → address ONLY that point (explain or probe per tactic), then re-ask
+                              the fixed big question.
+      - neither (diagnosis  → generic Socratic feedback re-asking the big question (degrades to the
+        unavailable)         prior single-call behaviour).
+    """
+    q = big_question.strip()
+
+    if diagnosis.mastered and not diagnosis.major_misconception:
+        return (
+            "The student's answer is essentially correct and demonstrates the goal. Briefly affirm "
+            "what they got right (one or two sentences) and tell them they can click the "
+            "'✅ Mark goal complete' button to move on. Do not introduce new material or new questions."
+        )
+
+    if diagnosis.major_misconception:
+        if diagnosis.tactic == "explain":
+            tactic = (
+                "Explain this one point concisely (2-3 sentences), grounded in the lecture content, "
+                "without handing over the full answer to the big question."
+            )
+        else:
+            tactic = (
+                "Ask ONE focused probing question that leads the student to notice and correct this "
+                "point. Do not explain it outright."
+            )
+        return (
+            f'The single most important gap in the student\'s latest answer is: '
+            f'"{diagnosis.major_misconception}". {tactic} '
+            f'Then ask the student to give an improved answer to the big question: "{q}". '
+            f"Keep it short and address only this one point."
+        )
+
+    # Diagnosis unavailable (empty/garbage JSON) — behave like the prior single-call tutor.
+    return (
+        "Give brief Socratic feedback on the student's latest answer: first affirm what is correct, "
+        "then point out the most important thing that is missing or wrong without revealing the full "
+        f'answer, and ask them to give an improved answer to the big question: "{q}".'
+    )

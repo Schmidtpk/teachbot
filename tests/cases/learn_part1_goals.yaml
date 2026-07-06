@@ -1,0 +1,116 @@
+# IID-TEST-LLM-EVAL, IID-LEARN-GOALS
+# Tests for the learning-goals practice mode on the "Practice: Part I" course (course_id: learn_part1).
+# Each goal is checked on two things:
+#   (a) the INITIAL question the tutor poses for the goal  -> question_rubric
+#   (b) the FEEDBACK the tutor gives to a simulated student -> each student turn's feedback_rubric
+# Student answers are produced live by a student-simulator persona reacting to the tutor's real
+# question, so the feedback is judged against an authentic exchange (not a canned one).
+#
+# Run:  python tests/learn_goals.py
+#       python tests/learn_goals.py --goal why_probabilistic
+#       python tests/learn_goals.py --no-judge        # print transcripts only
+
+course: learn_part1
+
+goals:
+  - id: why_probabilistic
+    title: "Why probabilistic, not deterministic, predictions"
+    goal: >
+      The student can justify why decisions should rest on probabilistic rather than deterministic
+      predictions, at two levels: (i) intuitively — a deterministic "it will / won't happen" hides
+      the trade-off between the two ways of being wrong, while a probability makes it explicit; and
+      (ii) formally — any decision under uncertainty decomposes into a utility over consequences and
+      a subjective probability over states, with the best action maximizing expected utility
+      (subjective expected utility / Savage). So a probability is precisely the input a decision needs.
+    question_rubric: |
+      The tutor's opening question is ADEQUATE if it:
+      - targets THIS goal (why probabilistic vs deterministic predictions, and/or the SEU decomposition);
+      - is a single, concrete, answerable question (a worked decision example such as crossing a street
+        or taking an umbrella is good), not a vague "explain everything" prompt;
+      - can be answered in a few sentences;
+      - does NOT reveal or state the answer, and does not ask about an unrelated Part I topic
+        (e.g. Bayes' rule, calibration, scoring rules).
+    student_turns:
+      - persona: correct_full
+        instruction: |
+          You are a strong student. Answer the tutor's question correctly and completely: explain that a
+          deterministic prediction hides the trade-off between the two ways of being wrong, AND that the
+          decision splits into a utility over consequences times a probability over states, choosing the
+          action with the highest expected utility. Keep it to 3-5 sentences.
+        feedback_rubric: |
+          GOOD feedback here:
+          - confirms the answer is essentially correct (both the trade-off intuition and the SEU split);
+          - is concise (a few sentences);
+          - does NOT introduce a large new lecture dump; at most a light extension or affirmation;
+          - signals the goal looks demonstrated (e.g. invites clicking "Mark goal complete") OR asks one
+            short deepening question — either is acceptable;
+          - stays on this goal.
+          FAIL if it wrongly calls the answer incomplete/incorrect, or drifts to another topic.
+      - persona: intuition_only
+        instruction: |
+          You are an average student. Give ONLY the intuitive answer: a deterministic prediction hides how
+          likely things are / the trade-off, and a probability is more informative. Do NOT mention utility,
+          expected utility, consequences, states, or SEU. Keep it to 2-3 sentences.
+        feedback_rubric: |
+          GOOD feedback here:
+          - acknowledges the intuition is correct;
+          - identifies that the FORMAL part is missing (how the decision uses the probability — utility over
+            consequences and expected-utility maximization / SEU) WITHOUT stating that answer outright;
+          - guides via a question or a pointer to the lecture material (e.g. the street-crossing example)
+            rather than handing over the SEU decomposition;
+          - is concise and stays on this goal.
+          FAIL if it just gives away the SEU answer, declares the goal complete, or says the answer is fully
+          correct, or drifts off goal.
+      - persona: misconception
+        instruction: |
+          You are a confident but mistaken student. Argue the WRONG view: a good forecaster should just commit
+          and say "it will happen"; giving a probability like 70% is hedging / a cop-out so nobody can be held
+          wrong. Keep it to 2-3 sentences.
+        feedback_rubric: |
+          GOOD feedback here:
+          - does not simply agree; identifies the misconception (a deterministic claim hides the trade-off and
+            silently fixes a threshold/cost the decision-maker should choose; a probability is what the decision
+            actually needs);
+          - corrects without lecturing the entire answer — uses a guiding question or a concrete decision example
+            (umbrella / crossing the street) to expose why "it will happen" is insufficient;
+          - is respectful and concise; stays on this goal.
+          FAIL if it endorses the misconception, or dumps the full correct derivation instead of guiding.
+
+  - id: calibration
+    title: "Calibration"
+    goal: >
+      The student can state that a probabilistic prediction p-hat is calibrated for outcome y when
+      E[y | p-hat] = p-hat (equivalently P(y=1 | p-hat) = p-hat), explain it in words (among all cases
+      where you predicted p-hat, the event happens a p-hat fraction of the time), and distinguish
+      calibration (a local/conditional condition for every predicted value) from mere unbiasedness
+      (the global condition E[y] = E[p-hat]). Calibration implies unbiasedness but not conversely.
+    question_rubric: |
+      The tutor's opening question is ADEQUATE if it:
+      - targets calibration (its definition, meaning, or its distinction from unbiasedness/accuracy);
+      - is a single concrete, answerable question (a small example, e.g. "of all days you said 30%, how
+        often should it rain?", is good);
+      - can be answered in a few sentences;
+      - does NOT reveal the definition outright, and does not drift to scoring rules or sharpness.
+    student_turns:
+      - persona: correct
+        instruction: |
+          You are a strong student. Answer correctly: a prediction is calibrated if E[y | p-hat] = p-hat,
+          i.e. among all the times you predicted p-hat the event occurs a p-hat fraction of the time, and note
+          this is stronger than unbiasedness. Keep it to 2-4 sentences.
+        feedback_rubric: |
+          GOOD feedback: confirms the definition and the unbiasedness distinction are correct, stays concise,
+          does not dump unrelated material, and either invites completion or asks one short extension. Stays on
+          goal. FAIL if it wrongly marks the answer incorrect or drifts to scoring/sharpness.
+      - persona: confuses_unbiasedness
+        instruction: |
+          You are an average student who CONFUSES calibration with unbiasedness. Say a prediction is calibrated
+          if, on average, the predicted probability equals the overall rate of the event, i.e. E[p-hat] = E[y].
+          Do not mention the conditional E[y | p-hat]. Keep it to 2-3 sentences.
+        feedback_rubric: |
+          GOOD feedback:
+          - notes what the student said describes UNBIASEDNESS (a global/average condition), not calibration;
+          - guides toward the conditional definition E[y | p-hat] = p-hat (calibration must hold for EVERY
+            predicted value) via a question or example, WITHOUT just stating the full definition;
+          - mentions or hints that calibration is the stronger/conditional notion;
+          - concise, stays on goal.
+          FAIL if it accepts the unbiasedness answer as calibration, or simply gives away the full definition.

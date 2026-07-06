@@ -1,0 +1,848 @@
+---
+title: "Predictions: Theory and Practice"
+subtitle: "Part III, Computational Methods"
+---
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+
+knitr::opts_chunk$set(eval = TRUE, echo = TRUE,message = FALSE,warning = FALSE)
+```
+
+
+# Introduction
+
+## Software
+
+- in the lecture, I will mostly use R
+
+    - some solutions will also be available in Python
+    
+    - I use quarto/markdown documents in RStudio, which can execute R and Python examples
+    
+
+### List of tools
+
+- R / python are open-source and free programming languages
+
+- you can run both on your laptop (after installing them)
+
+  - **IDE** help in using them (+AI help)
+  
+  - for R: **RStudio**
+  
+  - for python: Visual Studio Code, Jupyter, PyCharm
+
+- you can run both only **web-based** (less preparation needed)
+
+  - for R: Kaggle, Posit cloud, Google Colab
+  
+  - for python: Kaggle, Jupyter Notebook, Google Colab
+
+
+
+---
+
+- for Bayesian modeling we will use 
+
+    - Stan (R,python), JAGS(R)
+    
+    - and pymc (python)
+
+- For Stan, there exists easy to use web-implementation
+
+    - https://stan-playground.flatironinstitute.org/
+    
+
+### Programming
+
+- I will try to provide context during the lecture
+
+- some learning by doing will be necessary
+
+- I recommend spending a few hours on an intro/tutorial to R (or python)
+
+- great starting point: LLMs
+
+    - "I want to do XXX in R/python"
+    
+    - "explain what the following code does"
+    
+    - "I have the following code and error"
+
+### Agentic programming
+
+- an LLM put inside a software "harness" that lets it act, not just chat
+
+  - "tools" = functions the harness provides for the llm 
+
+  - it can **read** your files, **write** and **run** code
+
+  - you describe a goal in plain language; the agent plans and executes the steps
+
+- the loop: **think, questions, plan, execute, test (and fix)**
+
+- probably how a lot of programming will be done in the future
+
+### CLI-based vs. other agentic tools
+
+
+- **Web / chat-based** (in the browser, sandboxed)
+
+  - safest and easiest to start
+
+  - examples: ChatGPT, Claude.ai, Gemini, Google AI Studio
+  
+  - harness lives online
+    
+    - that is how they search the web, etc.
+
+- **IDE / editor-integrated** (live inside your code editor)
+
+  - common IDEs with addins: Visual Studio Code, RStudio
+  
+  - specific IDEs: Cursor (free student tier)
+
+  - suggestions and chat next to your code
+
+---
+
+- **Command Line (CLI) / terminal-based agents** (run in a terminal, full access to your machine)
+
+  - operate directly in CLI on your folders, run any command
+
+  - most powerful and flexible
+
+  - examples: Claude Code, Codex CLI, Antigravity CLI, OpenCode (needs API for llm)
+  
+  - runs in the background for Claude Cowork and Codex
+
+### What is the right workflow for you?
+
+- you: no interest in coding.
+
+  - use web-based interfaces
+  
+  - understand logic of method and interpretation of output
+  
+- you: some interest
+
+  - python, cloud: use google colab with integrated Gemini 3 flash
+  
+  - python, local: Antigravity or Visual Studio Code
+  
+  - R, local: Rstudio with Antigravity Cli in background or just copy paste 
+
+- you: highly interested
+
+  - many options, local installation still necessary
+  
+  - combination of IDE and Cli tool
+  
+  - OpenCode Cli with free tier or Openrouter free models
+  
+  - some setup costs
+
+### Paid subscriptions?
+
+- not necessary or helpful for this lecture
+
+- not necessary for learning the workflow of agentic coding
+
+- but very helpful for implementing empirical work that would be based on this lecture
+
+- unclear how this develops
+
+  - free tier catching up and being smart enough for student projects?
+  
+  - paid tier usage forbidden for graded work?
+  
+  - student access via university (nothing helpful planned at this point)?
+  
+  
+
+
+## Overview
+
+- Monte-Carlo simulations
+
+    - generate probabilistic models that can quantify uncertainty
+    - input: data generating process
+    
+- Bayesian modeling
+
+    - generate probabilistic models that can learn from data by Bayesian updating
+    - input: likelihood function + data
+    - learn MCMC sampling
+    - priors in applications
+
+- Machine learning
+
+    - learn methods that scale better than Bayesian learning
+    - test, train, validate
+    - loss functions
+    - deep learning basics
+
+
+# Model-based predictions with Monte-Carlo simulations
+
+## Introduction
+
+- we want to predict an uncertain outcome in a complex system
+
+- the prediction should be probabilistic
+
+- we consider a situation without data
+
+- Approach: Monte-carlo simulation
+
+
+
+### Examples
+
+* Example Questions:
+    
+    * How much does a stock market investment return after 10 years?
+    
+    * How often do I win in the Monty-Hall / Goat problem if I switch doors?
+
+
+### Monte Carlo Simulation: The Core Idea
+
+* **Analogy:** Imagine rolling dice thousands of times to figure out the probability of getting different numbers or combinations. 
+
+    - Monte Carlo does this computationally for complex systems.
+
+* **Core Idea:** Use repeated **random sampling** from input probability distributions to simulate the behavior of a system and generate a distribution of possible outcomes.
+
+* As the **number of simulation repetition increases**, the empirical distribution **converges towards the true distribution**
+
+* Named after the Monte Carlo Casino
+
+## Approach
+
+### How It Works: The Steps
+
+1.  **Model the System:** Define the mathematical relationships or rules that link inputs to outputs.
+
+2.  **Assign Probability Distributions:** For each uncertain input, define its probability distribution 
+    
+    - based on historical data, expert opinion, or assumptions
+    
+3.  **Generate Random Samples:** One simulation run (an "iteration" or "trial"):
+    
+    - draw a random value for *each* uncertain input
+    
+    - calculate outcome based on model
+
+4.  **Repeat:** Perform step 3 many times (number of iterations / simulation runs)
+
+5.  **Aggregate Results:** Collect all the outcomes from the iterations which are a sample of the underlying distribution
+
+6. **Visualize** or **Summarize** this sample
+
+    - event outcome: compute estimated probability by ratio
+    
+    - real outcome: histograms for the distribution and average for mean
+
+
+### Strengths
+
+* **Quantifies Uncertainty:** 
+
+    - provides a full distribution of possible outcomes
+    
+* **Handles Complexity:** 
+
+  - can model complex systemns
+  
+* **Intuitive:** 
+
+  - relatively easy to grasp
+  
+* **Low requirements:** 
+
+  - needs only a generative model / data generating process
+
+
+
+### Weaknesses
+
+- cannot include data
+
+- **"Garbage In, Garbage Out":** 
+
+    - results depend on model choice and assigned probability distributions of inputs
+    
+
+
+    
+
+
+    
+## Example: Monty hall
+
+- model the system:
+
+  - car_door: door where car is
+  
+  - player_choice: door player chose
+  
+  - strategy: switch or stay
+  
+  - win if car_door = player_door
+  
+- assign probabilities to car_door and player_choice
+
+  - both (1/3,1/3,1/3)
+
+- run many iterations
+
+### Some R functions
+
+```{r, eval=FALSE}
+# generate variable
+variable_name <- 1
+
+# generate vector of size n
+n <- 3
+vector_name <- numeric(n)
+
+# assign values to vector elements
+vector_name[2]<-10
+vector_name
+```
+
+
+
+```{r, eval=FALSE}
+# sample k elements from set set_name 
+sample(set_name,k)
+
+# example: sample 1 element from the vector (1,2,3)
+sample(1:3, 1)
+```
+
+
+### Code (see html version for details)
+
+```{r}
+monty_hall_simulation <- function(num_trials = 10000) {
+  
+  # define variables to save results
+  wins_stay <- numeric(num_trials)
+  wins_switch <- numeric(num_trials)
+
+  # for loop: repeat num_trials times
+  for (i in 1:num_trials) {
+    # 1. Host hides the car behind a random door (1, 2, or 3)
+    car_door <- sample(1:3, 1)
+
+    # 2. Player chooses a door (1, 2, or 3)
+    player_choice <- sample(1:3, 1)
+
+    # 3. staying wins if player_choice is car_door
+    wins_stay[i]   <- (player_choice == car_door)
+    
+    # 4. switching wins if player_choice is not car_door
+    wins_switch[i] <- (player_choice != car_door)
+  }
+
+
+  return(list(stay=wins_stay,switch= wins_switch))
+}
+
+# Run the simulation (e.g., 1,000 trials)
+results <- monty_hall_simulation(num_trials = 10000)
+```
+
+### results
+
+```{r, results = "hold"}
+cat("Number of trials:", length(results$stay), "\n")
+cat("winning by staying:", sum(results$stay), "\n")
+cat("winning by switching:", sum(results$switch), "\n")
+
+mean(results$switch)
+```
+
+
+### Python solution
+
+```{python}
+
+import random
+
+def monty_hall_simulation(num_trials=10000):
+    """
+    Simulates the Monty Hall problem using Monte Carlo method.
+
+    Args:
+        num_trials: The number of times to run the simulation.
+
+    Returns:
+        A tuple containing the win percentage for staying and switching.
+    """
+    wins_stay = 0
+    wins_switch = 0
+
+    for _ in range(num_trials):
+        # Doors are represented by numbers 0, 1, 2
+
+        # 1. Host hides the car behind a random door
+        car_door = random.choice([0, 1, 2])
+
+        # 2. Player chooses a door
+        player_choice = random.choice([0, 1, 2])
+
+        # 3. staying wins if player_choice is car_door
+        if player_choice == car_door:
+            wins_stay += 1
+
+        # 4. switching wins if player_choice is not car_door
+        if player_choice != car_door:
+            wins_switch += 1
+
+    # Calculate win percentages
+    win_percentage_stay = (wins_stay / num_trials) * 100
+    win_percentage_switch = (wins_switch / num_trials) * 100
+
+    return win_percentage_stay, win_percentage_switch
+
+# Run the simulation
+num_simulations = 10000
+stay_percentage, switch_percentage = monty_hall_simulation(num_simulations)
+
+print(f"Based on {num_simulations} simulations:")
+print(f"  Win percentage by staying: {stay_percentage:.2f}%")
+print(f"  Win percentage by switching: {switch_percentage:.2f}%")
+```
+
+
+
+## Technical summary
+
+- define model $m$ that generates samples of $y$
+
+    - in model $m$ we normally have input variables or parameters
+    
+    - let's call those inputs $\theta$
+    
+- define distribution for inputs, $\theta \sim P_\theta$
+
+- one simulation run
+
+  - sample $\theta_1 \sim P_\theta$
+  
+  - sample $y_1 \sim m(\theta_1)$
+  
+- $n$ simulation runs result in predictive sample $(y_1, \dots, y_n)$
+
+  - can be understood as sample from probability prediction for $y$
+  
+## Example Linear regression
+
+- model $m$:
+$$y = \beta x + \epsilon$$
+
+- $\theta = (\beta,x,\epsilon)$ where 
+
+    - input variables: $x$ and $\epsilon$
+    
+    - parameters: $\beta$
+
+- choose input distribution:
+
+  - $x \sim U[0,1]$ (uniform between 0 and 1)
+  
+  - could come from data distribution
+  
+  - $\beta,\epsilon \sim \mathcal N(0,1)$
+  
+  - could come from OLS result
+  
+- compute predictions $y=m(\beta,x,\epsilon)$
+
+- note: difference to OLS point prediction 
+
+    - $\hat y = \hat \beta x$
+
+### Pseudo code
+
+```{r, eval=F}
+
+for i from 1 to n_replication
+  
+  # sample inputs
+  sample x from uniform
+  sample epsilon from standard normal
+  sample beta from standard normal
+  
+  # compute linear model
+  compute y[i] = x*beta + epsilon
+  
+```
+
+
+
+### Some R functions
+
+```{r, eval=FALSE}
+# sample from normal distribution
+rnorm(n = 1, mean = 0, sd = 1)
+rnorm(n=1, mean = 2)
+
+# sample from Uniform distribution
+runif(n = 1)
+
+# define my own function
+my_function <- function(parameter){
+  my_result <- parameter*2
+  
+  return(my_result)
+}
+
+# call function
+my_function(3)
+
+# replicate function
+replicate(n=2, my_function(3))
+
+```
+  
+### Code simulate
+
+```{r}
+# define model
+m <- function(beta,x,epsilon){
+  y <- x*beta + epsilon
+  return(y)
+}
+
+# define sampling+model computation
+sample1 <- function(){
+  
+  # sample from input distribution
+  x <- runif(n = 1)
+  epsilon <- rnorm(n = 1)
+  beta <- rnorm(n = 1)
+  
+  # compute outcome
+  y <- m(beta,x,epsilon)
+  
+  return(y)
+}
+sample1()
+```
+
+
+### Code: Execute simulation
+
+```{r}
+# run simulation function
+y_sample <- replicate(n = 1000, sample1())
+
+head(y_sample)
+```
+
+
+### Analyzing the predictive sample
+
+- predictive sample represents probabilistic prediction
+
+    - larger sample size, improves approximation
+    
+- can look at histogram for illustration
+
+- can look at event probabilities by computing ratios
+    $$P(y\le c) \approx \frac 1 n \sum 1_{(y_i \le c)}$$
+    
+- can derive mean point predictions by computing averages
+    $$\hat y \approx \frac 1 n \sum y_i$$
+    
+- can compute Confidence intervals with quantiles $q_\alpha$ of sample $y_1,\dots,y_n$
+    $$CI_{90\%} \approx [q_{5\%}, q_{95\%}]$$
+
+### Some R functions
+
+```{r, eval=FALSE}
+# plot histogram
+hist(rnorm(100,0,1))
+
+```
+
+### Code: Predictive distribution
+
+```{r}
+hist(y_sample)
+abline(v=0,col="red",lwd = 5)
+
+mean(y_sample)
+
+mean(y_sample < 1)
+```
+
+## Example: Predicting wealth with stock market participation
+
+- core idea:
+
+  - you can invest 1.000 CHF for 10 years
+  
+  - what is your risk if you put it in a standard stock portfolio?
+  
+- model: $$y[t+1]=y[t] r[t]$$
+
+- outcome: $y[10]$
+
+- uncertain input is $r[t]$
+
+  - assume that follows normal distribution
+  
+  - mean and sd based on historic values
+  
+  
+- note: no investment advice, numbers are crude guesstimates.
+
+### Input research (data)
+
+```{r}
+library(tidyquant)
+library(dplyr)
+
+# Download historical data for the S&P 500 (^GSPC is the Yahoo Finance ticker)
+sp500_yearly <- tq_get("^GSPC",
+                     from = "1980-01-01",
+                     to = Sys.Date()) |>
+  group_by(year = lubridate::year(date)) |>
+  slice_max(date, n = 1) |>
+  ungroup() |> 
+  select(year,close)
+
+head(sp500_yearly)
+```
+### Input research: mean and sd
+
+```{r}
+# extract returns
+returns <- sp500_yearly |> 
+  mutate(r = close/lag(close)-1) |>
+  filter(!is.na(r)) |> # keep only complete observations
+  pull(r) # pull vector from data.frame
+
+# compute average
+mean(returns) 
+
+# compute standard deviation
+sd(returns)
+  
+```
+
+- We will use the assumption $$r[t] \sim_{iid} \mathcal N (0.10, 0.16^2)$$
+
+
+### Some R functions
+
+```{r, eval=FALSE}
+# for loop
+for(t in 1:3){ #loop over c(1,2,3)
+  # in each loop, t has one of the values of c(1,2,3)
+  print(t)
+}
+
+
+```
+
+### Code for one simulation run
+
+```{r, eval=FALSE}
+### inputs from analysis above
+# average return
+average_growth <- 0.10
+# sd of return
+average_sd <- 0.16
+
+years <- 10
+
+# create vectors
+r <- numeric(years)
+y <- numeric(years+1)
+
+#starting wealth
+y[1] <- 1
+
+# loop over years
+for(t in 1:years){
+  #sample random return
+  r[t] <- rnorm(n = 1,
+                mean = 1 + average_growth,
+                sd = average_sd)
+  # save next time step
+  y[t+1]<-y[t]*r[t]
+}
+y[years+1] #result of model run
+```
+
+### Function for one simulation run
+
+```{r}
+### inputs from analysis above
+sample1 <- function(average_growth = 0.10,
+                    average_sd = 0.16,
+                    years = 10){
+  # create vectors
+  r <- numeric(years)
+  y <- numeric(years+1)
+  
+  #starting wealth
+  y[1] <- 1
+  
+  # loop over years
+  for(t in 1:years){
+    #sample random return
+    r[t] <- rnorm(n = 1,
+                  mean = 1 + average_growth,
+                  sd = average_sd)
+    # save next time step
+    y[t+1]<-y[t]*r[t]
+  }
+  return(y[years+1])
+}
+```
+
+### Run simulation
+```{r}
+# ensures replicability of random draws
+set.seed(1)
+
+# parameters
+sim_runs <- 1000
+
+# execute simulation
+y <- replicate(sim_runs, sample1())
+
+```
+
+
+### Results distribution
+
+```{r}
+# distribution approximation
+hist(y,breaks = 100)
+abline(v= mean(y),col="red", lwd=4)
+abline(v= 1,col="blue", lwd=4)
+```
+
+### Results
+
+- let's compute 
+
+    - expected return (point prediction)
+    
+    - probability of making losses
+    \vspace{1cm}
+
+```{r}
+# expected return after 10 years
+mean(y)
+
+# probability of loss
+mean(y<1)
+```
+
+
+### Python solution
+
+```{python}
+# if you use Rstudio, make sure
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Ensures replicability of random draws
+np.random.seed(1)
+
+# Parameters
+initial_wealth = 1.0  # Corresponds to w1 in R code
+years = 10
+sim_runs = 1000
+
+# Inputs from analysis (average annual growth and standard deviation)
+average_growth = 0.10
+average_sd = 0.16
+
+# Initialize arrays to store results
+wealth_paths = np.full((years + 1, sim_runs), np.nan)
+# Store initial wealth in the first row
+wealth_paths[0, :] = initial_wealth
+
+# Returns array 'r' stores the random growth factor for each year/simulation
+# The mean for the normal distribution is 1 + average_growth to represent the factor (e.g., 1.10 for 10% growth)
+returns = np.full((years, sim_runs), np.nan)
+
+# Loop over years
+for t in range(years):
+    # Sample random returns for all simulations for year t
+    # Use np.random.normal for sampling from normal distribution
+    # The mean is 1 + average_growth because we multiply wealth by this factor
+    random_returns = np.random.normal(loc=1 + average_growth, scale=average_sd, size=sim_runs)
+    returns[t, :] = random_returns
+
+    # Calculate next year's wealth for all simulations
+    wealth_paths[t + 1, :] = wealth_paths[t, :] * returns[t, :]
+
+# Extract final wealth from the last row of the wealth_paths array
+final_wealth = wealth_paths[years, :] # Corresponds to y[years+1,] in R
+
+# 1. Distribution Approximation - Plot Histogram
+plt.figure(figsize=(10, 6))
+plt.hist(final_wealth, bins=100, edgecolor='black') # 'breaks=100' corresponds to bins=100
+plt.title(f'Distribution of Wealth after {years} Years ({sim_runs} simulations)')
+plt.xlabel('Final Wealth')
+plt.ylabel('Frequency')
+plt.grid(axis='y', alpha=0.75)
+plt.show()
+
+# 2. Probability of Loss
+# Calculate the proportion of simulations where final wealth is less than initial wealth
+prob_loss = np.mean(final_wealth < initial_wealth) # Corresponds to mean(y[years+1,]<1)
+
+print(f"\nBased on {sim_runs} simulations over {years} years:")
+print(f"  Average final wealth: {np.mean(final_wealth):.2f}")
+print(f"  Probability of ending with less than initial wealth: {prob_loss:.3f} ({prob_loss*100:.1f}%)")
+
+```
+
+
+### Critique
+
+- returns vs real returns
+
+- returns follow Gaussian distribution?
+
+```{r,out.width="70%"}
+hist(returns)
+```
+
+
+## Summary: Monte-Carlo
+
+Idea:
+
+- define a model 
+
+    - generative (can be simulated from) and 
+    
+    - probabilistic (is random)
+    
+- inputs of model have some distribution
+
+- simulate repeatedly from model to generate a sample of predictions
+
+- each simulated outcome represents a probability particle
+
+    - compute probability of event by averaging
+    
+    - compute mean predictions for real by averaging
+    
+    - illustrate probabilistic prediction for reals by histogram
+
+# References {.allowframebreaks}

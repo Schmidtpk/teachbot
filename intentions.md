@@ -130,6 +130,76 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 - Bot detects correct vs. incorrect student responses and adapts next prompt.
 - Session ends with a summary of what was learned.
 
+### IID-LEARN-GOALS
+**Lifecycle:** IN_PROGRESS
+**Description:** Learning-goals practice mode — a course behavioral mode (`mode: learning_goals` in
+`_meta.yaml`) that drills a student through a list of learning goals one at a time. At session start
+the app loads the student's already-completed goals, **samples one uncompleted goal at random**, and
+injects **only that goal** into the system prompt (on top of the normal lecture content, IID-CONTENT-INJECT).
+The bot poses a test question on the goal, gives Socratic feedback, and — when it judges the goal
+demonstrated — *suggests* the student click the **"✅ Mark goal complete"** button. The button is the
+authoritative completion trigger (no LLM "done"-token parsing): clicking it records the goal to the
+per-student store and advances to a freshly sampled goal, resetting the context so only one goal is
+ever present. When all goals are completed, the student sees a completion message and no goal is served.
+Builds on IID-MULTI-COURSE (course folders), IID-CONTENT-INJECT, IID-LEARN-SOCRATIC (dialogue style),
+IID-AUTH-BASIC (the per-student key), and IID-SHEETS-LOG (durable store).
+**Inputs:**
+- `_meta.yaml`: `mode: learning_goals`.
+- `_learning_goals.yaml`: `goals:` list of `{id, title?, goal}` — `id` unique + stable (the progress key).
+- Authenticated `user_email` (required for cross-session persistence).
+**Outputs:**
+- Per-turn chat (question → answer → feedback), logged as usual (IID-CHAT-LOG, IID-SHEETS-LOG).
+- Progress rows `(timestamp, user_email, course, goal_id)` in a `progress` worksheet of the Sheet
+  (`sheets_log_id`), or `progress/<email>.json` locally when Sheets is disabled.
+**Persistence (per student, survives Railway redeploys):**
+- Backend 1: `progress` tab in the configured Google Sheet (reuses `GOOGLE_SERVICE_ACCOUNT_JSON`).
+- Backend 2: local `progress/<email>.json` (dev fallback when `sheets_log_id` is blank).
+- Backend 3: in-session only when no `user_email` (auth disabled) — nothing persists; logs a warning.
+**Success criteria:**
+- Only the sampled goal appears in the LLM context; completed goals are not re-sampled until all done.
+- Completion is recorded only on button click; the dialogue continues if the student keeps answering.
+- Re-login as the same student does not re-serve completed goals; all-done shows a completion message.
+- `mode: learning_goals` without a valid non-empty `_learning_goals.yaml` (unique ids) → loud SystemExit.
+**Key files:** `src/goals.py` (sampling + per-goal prompt), `src/progress_store.py` (per-student store),
+`src/course_loader.py` (`mode` + `learning_goals` parsing/validation), `src/chat_logger.py`
+(`gspread_client` shared helper), `app.py` (`on_chat_start` branch, `complete_goal` action,
+`_pose_goal_question`/`_send_actions`/`_stream_assistant` helpers),
+`content/learn_part1/` (example course).
+**No-Goals:** Mastery scoring / spaced repetition, multiple questions tracked per goal, automatic
+(LLM-signalled) completion, ordering/prerequisites between goals.
+
+### IID-LEARN-DIAGNOSE
+**Lifecycle:** IN_PROGRESS
+**Description:** Agentic two-step turn layered on IID-LEARN-GOALS. Instead of answering each student
+reply with a single LLM call, a learning-goals turn runs **(1) diagnose** then **(2) act**:
+1. **Diagnose** — a non-streamed, structured-JSON call (`response_format=json_object`) that judges the
+   student's latest answer against the current goal + injected lecture content, lists every
+   misunderstanding ranked most→least important, and selects the **single most important** one, plus a
+   `tactic` (`explain` | `probe`). Shown to the student as a subtle "Analysing your answer…" step.
+2. **Act** — the existing streamed reply, seeded with an internal instruction so it addresses **only**
+   that one point (explains it briefly or asks one probing question) and then re-asks the fixed
+   **"big question"** — the question first posed for this goal, held constant for the whole goal so the
+   student iterates on the same target until it is clean.
+When diagnosis reports `mastered` the bot affirms and suggests the ✅ button; when the diagnose call
+fails/returns nothing it degrades to generic Socratic feedback (prior single-call behaviour). The
+diagnosis JSON is logged internally (role `diagnosis`) for auditing, never shown as an assistant turn.
+Builds on IID-LEARN-GOALS, IID-LEARN-SOCRATIC, IID-CONTENT-INJECT; uses SID-LLM-PROVIDER.
+**Inputs:**
+- `_diagnose_prompt.md` (subfolder → root `content/` fallback) — the diagnostic instructions.
+- Cached per session: diagnose prompt text, lecture content, current goal, current big question.
+**Outputs:**
+- One internal `diagnosis` log row (JSON) + the normal streamed assistant reply per student turn.
+**Success criteria:**
+- Exactly two LLM calls per learning-goals answer; the Q&A path (IID-QNA-CORE) is unchanged.
+- The reply targets one misconception and re-asks the same big question until mastery.
+- Diagnose failure never crashes the turn — it falls back to generic Socratic feedback.
+**Key files:** `src/tutor_loop.py` (Diagnosis, message + act-instruction builders, `diagnose_answer`),
+`src/llm_client.py` (`complete_json`), `content/_diagnose_prompt.md` (default prompt),
+`src/course_loader.py` (`diagnose_prompt_path`), `app.py` (`_diagnostic_turn`, `on_message` branch,
+big-question capture in `_pose_goal_question`).
+**No-Goals:** Addressing several misconceptions per turn (top-1 only), a separate cheaper diagnose
+model (course model for both), an evolving/sharpening big question (kept fixed per goal).
+
 ## Core Mode: Eval
 
 ### IID-EVAL-FEEDBACK
@@ -298,6 +368,10 @@ student_model_choices:               # optional; IID-STUDENT-MODEL-CHOICE
 **Inputs:** `tests/cases/*.yaml` (question + rubric per case), `config.yaml`, `.env`.
 **Outputs:** PASS/FAIL verdict + explanation printed per case; full results in `reports/` via compare.py.
 **Key files:** `tests/runner.py`, `tests/judge.py`, `tests/cases/qna.yaml`, `tests/cases/behavior.yaml`
+**Learning-goals extension (IID-LEARN-GOALS):** `tests/learn_goals.py` is a multi-turn harness that, per goal,
+judges (a) the tutor's opening question against a `question_rubric` and (b) the tutor's feedback to live
+student-simulator personas against per-persona `feedback_rubric`s. Cases in `tests/cases/learn_part1_goals.yaml`.
+Degrades to an ERROR verdict (not a crash) when the judge model returns empty; `JUDGE_MODEL` overrides the grader.
 **CLI:**
 - `python tests/runner.py --cases tests/cases/qna.yaml` — run cases, print responses
 - `python tests/runner.py --case <id> --judge` — run single case with judge verdict

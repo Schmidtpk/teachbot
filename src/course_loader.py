@@ -35,9 +35,12 @@ class CourseConfig:
     system_prompt_path: Path # resolved: subfolder/_system_prompt.md or root fallback
     welcome_path: Path       # resolved: subfolder/_welcome.md or root fallback
     llm: dict                # merged LLM config: _meta.yaml overrides → config.yaml defaults
+    diagnose_prompt_path: Path | None = None  # IID-LEARN-DIAGNOSE: resolved _diagnose_prompt.md (goals mode)
     first_date: date | None = None  # IID-MULTI-COURSE: inclusive lower bound of availability
     last_date:  date | None = None  # IID-MULTI-COURSE: inclusive upper bound of availability
     student_model_choices: list[dict] = field(default_factory=list)  # IID-STUDENT-MODEL-CHOICE: [{id, label}, ...]
+    mode: str = "qa"  # IID-LEARN-GOALS: "qa" (default) or "learning_goals"
+    learning_goals: list[dict] = field(default_factory=list)  # IID-LEARN-GOALS: [{id, title, goal}, ...]
 
     def is_available(self, today: date) -> bool:
         """IID-MULTI-COURSE: True iff today falls inside the (optional) availability window."""
@@ -80,6 +83,53 @@ def _parse_meta_date(value: Any, folder_name: str, field: str) -> date | None:
         f"[Lectos] ERROR: '_meta.yaml' in '{folder_name}' field '{field}' must be a "
         f"YYYY-MM-DD date (got {type(value).__name__})."
     )
+
+
+def _load_learning_goals(folder: Path, mode: str) -> list[dict]:
+    """IID-LEARN-GOALS: Load and validate `_learning_goals.yaml` for a learning-goals course.
+
+    Returns [] for non-learning_goals courses. For mode == "learning_goals", the file is
+    required and must hold a non-empty `goals` list of dicts, each with a unique non-empty `id`.
+    Fails loudly (SystemExit) naming the folder, matching discover_courses' fail-loud style.
+    """
+    if mode != "learning_goals":
+        return []
+
+    goals_path = folder / "_learning_goals.yaml"
+    if not goals_path.exists():
+        sys.exit(
+            f"[Lectos] ERROR: course '{folder.name}' has mode 'learning_goals' but no "
+            f"_learning_goals.yaml. Add it with a non-empty 'goals:' list."
+        )
+    try:
+        with goals_path.open(encoding="utf-8") as fh:
+            data: dict = yaml.safe_load(fh) or {}
+    except yaml.YAMLError as exc:
+        sys.exit(f"[Lectos] ERROR: failed to parse '{goals_path}': {exc}")
+
+    goals = data.get("goals")
+    if not isinstance(goals, list) or not goals:
+        sys.exit(
+            f"[Lectos] ERROR: '_learning_goals.yaml' in '{folder.name}' must contain a "
+            f"non-empty 'goals' list."
+        )
+
+    seen: set[str] = set()
+    for g in goals:
+        if not isinstance(g, dict) or not str(g.get("id", "")).strip() or not str(g.get("goal", "")).strip():
+            sys.exit(
+                f"[Lectos] ERROR: every goal in '{folder.name}/_learning_goals.yaml' needs a "
+                f"non-empty 'id' and 'goal'."
+            )
+        gid = str(g["id"])
+        if gid in seen:
+            sys.exit(
+                f"[Lectos] ERROR: duplicate goal id '{gid}' in "
+                f"'{folder.name}/_learning_goals.yaml'."
+            )
+        seen.add(gid)
+
+    return goals
 
 
 def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]:
@@ -173,6 +223,10 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         else:
             student_model_choices = global_model_choices
 
+        # IID-LEARN-GOALS: behavioral mode + learning goals
+        mode = str(meta.get("mode", "qa"))
+        learning_goals = _load_learning_goals(folder, mode)
+
         courses.append(CourseConfig(
             course_id=folder.name,
             lecture_name=meta["lecture_name"],
@@ -182,9 +236,12 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             system_prompt_path=_resolve("_system_prompt.md"),
             welcome_path=_resolve("_welcome.md"),
             llm=merged_llm,
+            diagnose_prompt_path=_resolve("_diagnose_prompt.md"),  # IID-LEARN-DIAGNOSE
             first_date=first_date,
             last_date=last_date,
             student_model_choices=student_model_choices,
+            mode=mode,
+            learning_goals=learning_goals,
         ))
 
     # Sort by order field (from _meta.yaml) then lecture_name for deterministic profile ordering

@@ -9,6 +9,7 @@ users.yaml
 # Runtime data
 logs/
 exports/          # IID-SHEETS-LOG: weekly CSV backups of Google Sheet (student data)
+progress/         # IID-LEARN-GOALS: local-JSON fallback for per-student goal progress
 
 # Python
 __pycache__/
