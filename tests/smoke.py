@@ -36,7 +36,7 @@ def check_http(url: str) -> bool:
             headers={"User-Agent": "lectos-smoke-test/1.0"},
         )
         with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
-            print(f"[smoke] HTTP GET {url} → {resp.status}")
+            print(f"[smoke] HTTP GET {url} -> {resp.status}")
             return 200 <= resp.status < 300
     except urllib.error.HTTPError as e:
         print(f"[smoke] HTTP error: {e.code} {e.reason}")
