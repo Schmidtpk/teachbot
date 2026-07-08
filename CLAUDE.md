@@ -165,8 +165,11 @@ In learning-goals mode, each student answer is handled by **two LLM calls** inst
 2. **Act** — the streamed reply, seeded to address **only that one point** and re-ask the fixed
    **"big question"** (the question first posed for the goal, held constant for the whole goal).
 
-`mastered` → affirm + suggest ✅. A failed/empty diagnose call degrades to generic Socratic feedback,
-so a flaky model never breaks the turn. Both calls use the course model.
+`mastered` → affirm + suggest ✅. `requested_solution` (student explicitly asks for help, a summary,
+or the solution) → the tutor provides the full answer to the big question, then invites the student
+to restate it in their own words — explicit requests are honoured, never met with another probe.
+A failed/empty diagnose call degrades to generic Socratic feedback, so a flaky model never breaks
+the turn. Both calls use the course model.
 
 - **Editable prompt:** `content/_diagnose_prompt.md` (root default), overridable per course via
   `content/<course>/_diagnose_prompt.md` (same subfolder→root fallback as `_system_prompt.md`).

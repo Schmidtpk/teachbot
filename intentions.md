@@ -192,9 +192,13 @@ reply with a single LLM call, a learning-goals turn runs **(1) diagnose** then *
    that one point (explains it briefly or asks one probing question) and then re-asks the fixed
    **"big question"** — the question first posed for this goal, held constant for the whole goal so the
    student iterates on the same target until it is clean.
-When diagnosis reports `mastered` the bot affirms and suggests the ✅ button; when the diagnose call
-fails/returns nothing it degrades to generic Socratic feedback (prior single-call behaviour). The
-diagnosis JSON is logged internally (role `diagnosis`) for auditing, never shown as an assistant turn.
+When diagnosis reports `mastered` the bot affirms and suggests the ✅ button. When it reports
+`requested_solution` (the student explicitly asked for help, a summary, or the solution — e.g.
+"help me", "please tell me") the bot provides the full answer to the big question grounded in the
+lecture, then invites the student to restate it in their own words; explicit requests are honoured
+rather than met with another probe. When the diagnose call fails/returns nothing it degrades to
+generic Socratic feedback (prior single-call behaviour). The diagnosis JSON is logged internally
+(role `diagnosis`) for auditing, never shown as an assistant turn.
 Builds on IID-LEARN-GOALS, IID-LEARN-SOCRATIC, IID-CONTENT-INJECT; uses SID-LLM-PROVIDER.
 **Inputs:**
 - `_diagnose_prompt.md` (subfolder → root `content/` fallback) — the diagnostic instructions.

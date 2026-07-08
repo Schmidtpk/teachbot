@@ -32,6 +32,7 @@ class Diagnosis:
     feedback rather than falsely congratulating the student.
     """
     mastered: bool = False
+    requested_solution: bool = False  # student explicitly asked for help/summary/the solution
     candidates: list[str] = field(default_factory=list)
     major_misconception: str = ""
     tactic: str = "probe"          # "explain" | "probe"
@@ -52,6 +53,7 @@ class Diagnosis:
         )
         return cls(
             mastered=mastered,
+            requested_solution=bool(raw.get("requested_solution", False)),
             candidates=candidates,
             major_misconception=major,
             tactic=tactic,
@@ -62,6 +64,7 @@ class Diagnosis:
         """Serialisable form for internal logging (IID-CHAT-LOG / IID-SHEETS-LOG)."""
         return {
             "mastered": self.mastered,
+            "requested_solution": self.requested_solution,
             "candidates": self.candidates,
             "major_misconception": self.major_misconception,
             "tactic": self.tactic,
@@ -146,8 +149,10 @@ async def diagnose_answer(
 def build_act_instruction(diagnosis: Diagnosis, big_question: str) -> str:
     """IID-LEARN-DIAGNOSE, IID-LEARN-SOCRATIC: internal instruction that seeds the streamed reply.
 
-    Three cases:
+    Four cases:
       - mastered            → affirm + suggest the ✅ button, no new material.
+      - requested solution  → the student explicitly asked for help/a summary/the solution: give the
+                              full answer to the big question, then ask them to restate it themselves.
       - has misconception   → address ONLY that point (explain or probe per tactic), then re-ask
                               the fixed big question.
       - neither (diagnosis  → generic Socratic feedback re-asking the big question (degrades to the
@@ -160,6 +165,15 @@ def build_act_instruction(diagnosis: Diagnosis, big_question: str) -> str:
             "The student's answer is essentially correct and demonstrates the goal. Briefly affirm "
             "what they got right (one or two sentences) and tell them they can click the "
             "'✅ Mark goal complete' button to move on. Do not introduce new material or new questions."
+        )
+
+    if diagnosis.requested_solution:
+        return (
+            "The student has explicitly asked for help, a summary, or the solution — provide it. "
+            f'Give a clear, complete answer to the big question: "{q}", grounded in the lecture '
+            "content (a short numbered list or a few sentences, whichever fits). Then invite the "
+            "student to restate it in their own words, since the goal is demonstrated only once "
+            "they can state it themselves."
         )
 
     if diagnosis.major_misconception:

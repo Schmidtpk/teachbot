@@ -8,6 +8,7 @@ Return ONLY a JSON object with exactly these fields:
 
 {
   "mastered": true | false,
+  "requested_solution": true | false,
   "candidates": ["short phrase per misunderstanding, most to least important"],
   "major_misconception": "the single most important gap in THIS answer (empty string if none)",
   "tactic": "explain" | "probe",
@@ -23,6 +24,10 @@ Rules:
 - `tactic`: choose "explain" when the point is a factual or definitional gap the student is unlikely
   to derive on their own; choose "probe" when a well-aimed question can lead them to it. Prefer
   "probe" when in doubt.
+- `requested_solution`: true when the student's latest message explicitly asks for help, a summary,
+  an overview, or the solution (e.g. "help me", "please tell me", "I don't know, explain it",
+  "show me the steps") instead of attempting an answer. Honour such requests even after repeated
+  probing — students who ask to be told must be told. When true, set `tactic` to "explain".
 - Judge cumulatively over the WHOLE dialogue, not the latest answer in isolation: a point the
   student already stated correctly earlier in the dialogue counts as covered — never list it as a
   gap merely because the latest answer does not repeat it. Set `mastered` to true once the dialogue
