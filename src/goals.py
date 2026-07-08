@@ -21,15 +21,24 @@ GOAL_KICKOFF = (
 )
 
 
-def sample_goal(goals: list[dict], completed: set[str]) -> Optional[dict]:
-    """IID-LEARN-GOALS: Uniformly pick one goal whose id is not in `completed`.
+def sample_goal(goals: list[dict], completed: set[str], seed_key: Optional[str] = None) -> Optional[dict]:
+    """IID-LEARN-GOALS: Pick one goal whose id is not in `completed`.
 
-    Returns None when every goal has been completed. Pure function (no I/O) so it is
-    unit-testable without network access.
+    With `seed_key` (stable per student+course, e.g. "email:course") the pick is
+    deterministic for a given completed-set: a page reload mid-goal — iPad Safari
+    evicts the tab on app switch, restarting the Chainlit session — re-serves the
+    SAME goal instead of jumping to a different one. Completing a goal changes the
+    completed-set and thus the seed, so the next goal still varies per student.
+    Without `seed_key` (auth disabled → no stable identity) falls back to uniform
+    random per session. Returns None when every goal has been completed. Pure
+    function (no I/O) so it is unit-testable without network access.
     """
     remaining = [g for g in goals if g["id"] not in completed]
     if not remaining:
         return None
+    if seed_key is not None:
+        rng = random.Random(f"{seed_key}|{','.join(sorted(completed))}")
+        return rng.choice(remaining)
     return random.choice(remaining)
 
 

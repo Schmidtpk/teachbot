@@ -126,7 +126,10 @@ goals:
   - id: ...
 ```
 
-Per session the app loads the student's completed goals, **samples one uncompleted goal at random**, and
+Per session the app loads the student's completed goals, **picks one uncompleted goal deterministically
+per (student, course, completed-set)** — seeded pseudo-random, so order varies across students but a
+mid-goal page reload (e.g. iPad Safari evicting the tab on app switch) re-serves the **same** goal
+instead of a new one; with auth disabled the pick is random per session — and
 injects **only that goal** into the system prompt. The bot poses a test question and gives Socratic
 feedback; when satisfied it suggests clicking **✅ Mark goal complete**, which records the goal and serves
 a new one (the dialogue continues until clicked). When all goals are done, a completion message is shown.

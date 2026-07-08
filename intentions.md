@@ -134,8 +134,12 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Lifecycle:** IN_PROGRESS
 **Description:** Learning-goals practice mode — a course behavioral mode (`mode: learning_goals` in
 `_meta.yaml`) that drills a student through a list of learning goals one at a time. At session start
-the app loads the student's already-completed goals, **samples one uncompleted goal at random**, and
-injects **only that goal** into the system prompt (on top of the normal lecture content, IID-CONTENT-INJECT).
+the app loads the student's already-completed goals, **picks one uncompleted goal deterministically per
+(student, course, completed-set)** — seeded pseudo-random, so goal order still varies across students but a
+mid-goal page reload (iPad Safari evicts the tab on app switch → new Chainlit session) re-serves the SAME
+goal instead of jumping to a different one; with auth disabled there is no stable seed and the pick is
+random per session — and injects **only that goal** into the system prompt (on top of the normal lecture
+content, IID-CONTENT-INJECT).
 The bot poses a test question on the goal, gives Socratic feedback, and — when it judges the goal
 demonstrated — *suggests* the student click the **"✅ Mark goal complete"** button. The button is the
 authoritative completion trigger (no LLM "done"-token parsing): clicking it records the goal to the
@@ -157,6 +161,7 @@ IID-AUTH-BASIC (the per-student key), and IID-SHEETS-LOG (durable store).
 - Backend 3: in-session only when no `user_email` (auth disabled) — nothing persists; logs a warning.
 **Success criteria:**
 - Only the sampled goal appears in the LLM context; completed goals are not re-sampled until all done.
+- Reconnecting or reloading mid-goal (same student, same completed-set) serves the same goal again.
 - Completion is recorded only on button click; the dialogue continues if the student keeps answering.
 - Re-login as the same student does not re-serve completed goals; all-done shows a completion message.
 - `mode: learning_goals` without a valid non-empty `_learning_goals.yaml` (unique ids) → loud SystemExit.
