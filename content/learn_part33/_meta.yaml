@@ -1,4 +1,4 @@
-lecture_name: "Practice: Part III.1 (Monte Carlo)"
-order: 42
+lecture_name: "Practice: Part III.3 (Machine Learning)"
+order: 43
 mode: learning_goals          # IID-LEARN-GOALS: activates goal-sampling practice mode
 description: "**Practice mode**: the assistant draws one learning goal at a time, poses a test question, and tracks your progress. Each completed goal is remembered across sessions."

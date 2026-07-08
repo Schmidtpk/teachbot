@@ -1,12 +1,12 @@
 # IID-TEST-LLM-EVAL, IID-LEARN-GOALS
-# Tests for the learning-goals practice mode on "Practice: Part III" (course_id: learn_part3).
+# Tests for the learning-goals practice mode on "Practice: Part III.1 (Monte Carlo)" (course_id: learn_part31).
 # NOTE: cases here carry NO `goal:` text — the harness pulls the goal from the course's
 # _learning_goals.yaml by id, so the tested system prompt is exactly the deployed one.
 #
-# Run:  python tests/learn_goals.py --cases tests/cases/learn_part3_goals.yaml
-#       python tests/learn_goals.py --cases tests/cases/learn_part3_goals.yaml --model z-ai/glm-5.2
+# Run:  python tests/learn_goals.py --cases tests/cases/learn_part31_goals.yaml
+#       python tests/learn_goals.py --cases tests/cases/learn_part31_goals.yaml --model z-ai/glm-5.2
 
-course: learn_part3
+course: learn_part31
 
 goals:
   - id: mc_core_idea
