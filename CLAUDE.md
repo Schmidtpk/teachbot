@@ -123,8 +123,18 @@ goals:
   - id: bayes_rule              # required, unique, stable (it is the per-student progress key)
     title: "Bayes' rule"        # optional short label
     goal: "Student can state Bayes' rule and apply it to a numerical example."
+    material: |                 # optional: code/formulas/data the student must literally see
+      ```
+      P(A|B) = P(B|A) P(A) / P(B)
+      ```
   - id: ...
 ```
+
+**`material`:** anything the student must have in front of them to answer (pseudocode, formulas,
+a small dataset). The app appends it **verbatim below the opening question** (and the diagnose
+call sees it too), so its display never depends on the LLM copying it out of the goal text —
+the LLM is instructed to refer to it, not reproduce it. Must be a string if present (validated
+at startup).
 
 Per session the app loads the student's completed goals, **picks one uncompleted goal deterministically
 per (student, course, completed-set)** — seeded pseudo-random, so order varies across students but a

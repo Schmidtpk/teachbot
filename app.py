@@ -20,7 +20,7 @@ from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, 
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_text
-from src.goals import GOAL_KICKOFF, build_goal_system_prompt, sample_goal
+from src.goals import GOAL_KICKOFF, build_goal_system_prompt, goal_material, sample_goal
 from src.llm_client import build_client, stream_response
 from src.progress_store import ProgressStore
 from src.tutor_loop import build_act_instruction, diagnose_answer
@@ -141,6 +141,14 @@ async def _pose_goal_question(
     """IID-LEARN-GOALS: append the internal kickoff turn, stream + log the bot's question."""
     history.append({"role": "user", "content": GOAL_KICKOFF})  # internal, not logged
     response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
+    # IID-LEARN-GOALS: goal material (pseudocode/formulas the student must see) is appended
+    # verbatim by the app itself — display never depends on the LLM copying it from the goal.
+    material = goal_material(cl.user_session.get("current_goal") or {})
+    if material:
+        full_response = f"{full_response}\n\n{material}"
+        history[-1]["content"] = full_response
+        response_msg.content = full_response
+        await response_msg.update()
     logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG
     if sheets_logger:
         sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG

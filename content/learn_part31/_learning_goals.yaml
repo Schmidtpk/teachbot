@@ -1,6 +1,8 @@
 # IID-LEARN-GOALS: each goal is sampled one at a time; only the sampled goal enters the LLM context.
 # `id` must be unique and stable (it is the key stored in the per-student progress sheet).
 # `title` is optional (shown to the model as a short label); `goal` is required.
+# `material` is optional: code/formulas/data the student must literally see — the app appends
+# it verbatim below the opening question (display never depends on the LLM copying it).
 # Goals follow the slide order of script3.1 (Part III: Computational Methods, Monte-Carlo simulations).
 goals:
   - id: mc_core_idea
@@ -26,23 +28,24 @@ goals:
   - id: wealth_pseudocode
     title: "Reading the wealth simulation"
     goal: |
-      Show the student this pseudocode of the wealth Monte Carlo prediction (1 = starting wealth,
-      10-year investment horizon) and ask what the three computed predictions mean:
-
-          for i from 1 to 10000:
-              y = 1
-              for t from 1 to 10:
-                  r = draw from Normal(mean = 1.10, sd = 0.16)
-                  y = y * r
-              y_sample[i] = y
-
-          out1 = mean(y_sample > 2)
-          out2 = mean(y_sample)
-          out3 = [quantile(y_sample, 5%), quantile(y_sample, 95%)]
-
+      The student is shown pseudocode of the wealth Monte Carlo prediction (1 = starting wealth,
+      10-year investment horizon; see MATERIAL) and asked what the three computed predictions mean.
       Student can interpret the three outputs: out1 is the estimated probability that wealth more than
       doubles after 10 years, out2 is the mean point prediction of final wealth, and out3 is the central
       90% prediction interval (between the 5% and 95% quantiles of the predictive sample).
+    material: |
+      ```
+      for i from 1 to 10000:
+          y = 1
+          for t from 1 to 10:
+              r = draw from Normal(mean = 1.10, sd = 0.16)
+              y = y * r
+          y_sample[i] = y
+
+      out1 = mean(y_sample > 2)
+      out2 = mean(y_sample)
+      out3 = [quantile(y_sample, 5%), quantile(y_sample, 95%)]
+      ```
 
   - id: mc_critique
     title: "Critiquing simulation assumptions"

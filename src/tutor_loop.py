@@ -94,6 +94,14 @@ def build_diagnose_messages(
     title = goal.get("title", "")
     goal_text = goal.get("goal", "")
     goal_block = f"{title}\n{goal_text}" if title else goal_text
+    # IID-LEARN-GOALS: goal material (pseudocode/formulas the student was shown) must be
+    # visible to the judge too, or correct answers about it would be graded as unfounded.
+    material = str(goal.get("material") or "").strip()
+    if material:
+        goal_block += (
+            f"\n\n--- MATERIAL (shown to the student with the question) ---\n"
+            f"{material}\n--- END MATERIAL ---"
+        )
     system = (
         f"{diagnose_prompt}\n\n"
         f"--- LECTURE CONTENT START ---\n{lecture_content}\n--- LECTURE CONTENT END ---\n\n"

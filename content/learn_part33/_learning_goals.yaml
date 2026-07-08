@@ -1,6 +1,8 @@
 # IID-LEARN-GOALS: each goal is sampled one at a time; only the sampled goal enters the LLM context.
 # `id` must be unique and stable (it is the key stored in the per-student progress sheet).
 # `title` is optional (shown to the model as a short label); `goal` is required.
+# `material` is optional: code/formulas/data the student must literally see — the app appends
+# it verbatim below the opening question (display never depends on the LLM copying it).
 # Goals follow the slide order of script3.3 (Part III: Computational Methods, Machine learning & neural networks).
 goals:
   - id: ml_vs_judgement

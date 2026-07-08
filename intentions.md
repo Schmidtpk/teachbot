@@ -149,7 +149,10 @@ Builds on IID-MULTI-COURSE (course folders), IID-CONTENT-INJECT, IID-LEARN-SOCRA
 IID-AUTH-BASIC (the per-student key), and IID-SHEETS-LOG (durable store).
 **Inputs:**
 - `_meta.yaml`: `mode: learning_goals`.
-- `_learning_goals.yaml`: `goals:` list of `{id, title?, goal}` — `id` unique + stable (the progress key).
+- `_learning_goals.yaml`: `goals:` list of `{id, title?, goal, material?}` — `id` unique + stable (the
+  progress key). `material` (string) is anything the student must literally see (pseudocode, formulas,
+  data): the app appends it verbatim below the posed opening question and the diagnose call
+  (IID-LEARN-DIAGNOSE) sees it, so display never depends on the LLM copying it from the goal text.
 - Authenticated `user_email` (required for cross-session persistence).
 **Outputs:**
 - Per-turn chat (question → answer → feedback), logged as usual (IID-CHAT-LOG, IID-SHEETS-LOG).
@@ -164,7 +167,9 @@ IID-AUTH-BASIC (the per-student key), and IID-SHEETS-LOG (durable store).
 - Reconnecting or reloading mid-goal (same student, same completed-set) serves the same goal again.
 - Completion is recorded only on button click; the dialogue continues if the student keeps answering.
 - Re-login as the same student does not re-serve completed goals; all-done shows a completion message.
-- `mode: learning_goals` without a valid non-empty `_learning_goals.yaml` (unique ids) → loud SystemExit.
+- `mode: learning_goals` without a valid non-empty `_learning_goals.yaml` (unique ids) → loud SystemExit;
+  a non-string `material` also fails loudly at startup.
+- A goal with `material` always displays it verbatim with the opening question (LLM-independent).
 **Key files:** `src/goals.py` (sampling + per-goal prompt), `src/progress_store.py` (per-student store),
 `src/course_loader.py` (`mode` + `learning_goals` parsing/validation), `src/chat_logger.py`
 (`gspread_client` shared helper), `app.py` (`on_chat_start` branch, `complete_goal` action,

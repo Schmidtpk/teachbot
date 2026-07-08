@@ -36,7 +36,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).parent))  # for `judge`
 
 from src.course_loader import discover_courses
-from src.goals import GOAL_KICKOFF, build_goal_system_prompt
+from src.goals import GOAL_KICKOFF, build_goal_system_prompt, goal_material
 from src.llm_client import build_client, stream_response
 
 DEFAULT_CASES = ROOT / "tests" / "cases" / "learn_part1_goals.yaml"
@@ -134,6 +134,11 @@ async def run_goal(client, cfg: dict, course, goal: dict, do_judge: bool) -> dic
         {"role": "user", "content": GOAL_KICKOFF},
     ]
     tutor_question = (await _complete(client, cfg, q_messages)).strip()
+    # IID-LEARN-GOALS: mirror app.py `_pose_goal_question` — the app appends goal material
+    # verbatim below the question, so the judged question must include it too.
+    material = goal_material(goal)
+    if material:
+        tutor_question = f"{tutor_question}\n\n{material}"
 
     print(f"\n{'=' * 70}\nGOAL: {goal['id']} — {goal.get('title', '')}")
     print(f"\n[Q] tutor's opening question:\n{tutor_question}")
@@ -212,6 +217,7 @@ async def _main_async(args: argparse.Namespace) -> None:
                          f"the course's _learning_goals.yaml (known: {sorted(production)})")
             g["goal"] = production[g["id"]]["goal"]
             g.setdefault("title", production[g["id"]].get("title", ""))
+            g.setdefault("material", production[g["id"]].get("material", ""))
 
     all_checks: list[dict] = []
     records: list[dict] = []

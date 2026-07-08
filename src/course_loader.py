@@ -44,7 +44,7 @@ class CourseConfig:
     last_date:  date | None = None  # IID-MULTI-COURSE: inclusive upper bound of availability
     student_model_choices: list[dict] = field(default_factory=list)  # IID-STUDENT-MODEL-CHOICE: [{id, label}, ...]
     mode: str = "qa"  # IID-LEARN-GOALS: "qa" (default) or "learning_goals"
-    learning_goals: list[dict] = field(default_factory=list)  # IID-LEARN-GOALS: [{id, title, goal}, ...]
+    learning_goals: list[dict] = field(default_factory=list)  # IID-LEARN-GOALS: [{id, title, goal, material?}, ...]
     extra_content: list[Path] = field(default_factory=list)  # IID-MULTI-COURSE: shared files injected before folder content
 
     def is_available(self, today: date) -> bool:
@@ -95,6 +95,8 @@ def _load_learning_goals(folder: Path, mode: str) -> list[dict]:
 
     Returns [] for non-learning_goals courses. For mode == "learning_goals", the file is
     required and must hold a non-empty `goals` list of dicts, each with a unique non-empty `id`.
+    A goal may carry an optional `material` string — code/formulas/data the student must see,
+    displayed verbatim by the app itself (see src/goals.py) — which must be a string if present.
     Fails loudly (SystemExit) naming the folder, matching discover_courses' fail-loud style.
     """
     if mode != "learning_goals":
@@ -133,6 +135,11 @@ def _load_learning_goals(folder: Path, mode: str) -> list[dict]:
                 f"'{folder.name}/_learning_goals.yaml'."
             )
         seen.add(gid)
+        if g.get("material") is not None and not isinstance(g["material"], str):
+            sys.exit(
+                f"[Lectos] ERROR: goal '{gid}' in '{folder.name}/_learning_goals.yaml' has a "
+                f"'material' field that is not a string."
+            )
 
     return goals
 
