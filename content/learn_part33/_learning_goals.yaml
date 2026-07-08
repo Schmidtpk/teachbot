@@ -1,0 +1,36 @@
+# IID-LEARN-GOALS: each goal is sampled one at a time; only the sampled goal enters the LLM context.
+# `id` must be unique and stable (it is the key stored in the per-student progress sheet).
+# `title` is optional (shown to the model as a short label); `goal` is required.
+# Goals follow the slide order of script3.3 (Part III: Computational Methods, Machine learning & neural networks).
+goals:
+  - id: ml_vs_judgement
+    title: "Machine learning vs. judgmental/Bayesian prediction"
+    goal: "Student can contrast machine learning with Bayesian/judgmental modeling: ML is suited to settings with much data (evaluation is simple via held-out data, focus is on whatever predicts well, models are general/scalable), while Bayesian/judgmental modeling suits high-uncertainty, little-data settings with purpose-specific models and harder evaluation."
+
+  - id: estimation_framework
+    title: "The general estimation framework"
+    goal: "Student can describe the general supervised-learning estimation framework: a model m(x,theta) with parameters theta is fit by choosing theta to minimize the sum over observations of a loss function L(y, m(x,theta)); and can explain that OLS regression is the special case with a linear model and squared-error loss, while other models/losses generally require numerical (not analytical) optimization."
+
+  - id: train_test_split
+    title: "In-sample vs. out-of-sample"
+    goal: "Student can explain the difference between in-sample (training) and out-of-sample (test/validation) performance, why a complex model can fit the training data almost perfectly yet predict poorly out-of-sample (overfitting), and why data is split into a training set (fit parameters) and a validation/test set (evaluate accuracy, choose model/hyperparameters)."
+
+  - id: knn_complexity
+    title: "KNN and model complexity"
+    goal: "Student can explain k-nearest-neighbor regression and how the choice of k controls model complexity and the bias-variance tradeoff: k=1 gives a perfect (zero-error) training fit but overfits and predicts poorly out-of-sample, k=N (using all data) underfits by ignoring x, and the right k is chosen by evaluating test-sample error."
+
+  - id: nn_building_blocks
+    title: "Neurons, activation functions, and layers"
+    goal: "Student can describe the basic building block of a neural network (a neuron computing a weighted sum of inputs plus a bias, then applying a non-linear activation function such as ReLU, logistic/sigmoid, or softmax), explain why a non-linear activation function is necessary (otherwise the whole network collapses to one linear transformation), and describe how neurons are organized into input, hidden, and output layers."
+
+  - id: nn_estimation
+    title: "Training a neural network"
+    goal: "Student can explain how a neural network's weights and biases are learned: define a loss function (e.g. mean squared error for regression, cross-entropy/log score for classification), and use (stochastic) gradient descent to iteratively update each weight by taking a small step opposite its gradient, scaled by a learning rate; and can explain why SGD uses random mini-batches (epochs) rather than the full dataset for each update."
+
+  - id: nn_regularization
+    title: "Regularization: penalties and dropout"
+    goal: "Student can explain why neural networks need regularization to avoid overfitting, and describe two techniques: penalizing extreme weights in the loss function (analogous to Lasso in linear regression), and dropout (randomly deactivating a different set of neurons during each training step to force more robust representations)."
+
+  - id: nn_practice_pitfalls
+    title: "Interpretability, identification, and off-support predictions"
+    goal: "Student can explain that, unlike OLS, neural networks generally have no unique parameter solving the optimization (no identification) and their weights are not individually interpretable ('blackbox'); and can explain the risk of off-support predictions — extrapolating to x values far outside the range observed in training data, where predictions rely on unverifiable additional assumptions."
