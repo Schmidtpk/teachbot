@@ -37,15 +37,6 @@ goals:
   - id: calibration
     title: "Calibration vs. unbiasedness"
     goal: "Student can state the definition of calibration E[y | p̂] = p̂ (equivalently the forecast error e = y − p̂ averages to zero within each predicted value), interpret it as 'given only the prediction, we cannot improve it', and explain the relationship to unbiasedness: calibration is a local/conditional condition that implies the global condition E[y]=E[p̂] (via the tower property), but unbiasedness does not imply calibration."
-    material: |
-      Calibration:      E[y | p̂] = p̂      ⇔   E[y − p̂ | p̂] = 0
-      Unbiasedness:     E[y] = E[p̂]        (global / marginal)
-      Tower property:   E[E[y | p̂]] = E[y]
-
-      Counterexample (unbiased but not calibrated):
-          y ~ Bernoulli(0.5),  p̂ ~ Uniform[0,1] independent of y
-          E[p̂] = 0.5 = E[y]  ✓ unbiased
-          E[y | p̂] = 0.5 ≠ p̂  ✗ not calibrated
 
   - id: accuracy_proper_scores
     title: "Accuracy & proper scoring rules"
