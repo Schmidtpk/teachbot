@@ -1,0 +1,62 @@
+# IID-LEARN-GOALS: each goal is sampled one at a time; only the sampled goal enters the LLM context.
+# `id` must be unique and stable (it is the key stored in the per-student progress sheet).
+# `title` is optional (shown to the model as a short label); `goal` is required.
+# `material` is optional: code/formulas/data the student must literally see — the app appends
+# it verbatim below the opening question (display never depends on the LLM copying it).
+# Goals follow the slide order of script1.1 (Decision-making under uncertainty) and
+# script1.2 (Optimal predictions), Part I: Decisions, distributions, data.
+goals:
+  - id: prob_vs_deterministic
+    title: "Why probabilistic predictions"
+    goal: "Student can explain why decisions should be based on probabilistic rather than deterministic predictions: a deterministic 'the event will happen' hides a trade-off between being wrong if the event happens and being wrong if it does not, whereas a probability makes this trade-off explicit."
+
+  - id: seu_two_parts
+    title: "Subjective expected utility"
+    goal: "Student can explain the subjective expected utility (SEU) result: that following the preference axioms (completeness, transitivity, independence, state neutrality, likelihood consistency) is equivalent to (i) having a utility u over consequences, (ii) a subjective probability distribution π over states, and (iii) choosing the action that maximizes expected utility (Savage's theorem), so any decision problem splits into utilities of consequences and probabilities over states."
+
+  - id: bayes_rule_application
+    title: "Applying Bayes' rule"
+    goal: "Student can compute a posterior P(B|A) from a given prior P(B) and likelihood P(A|B) using Bayes' rule, expanding the denominator P(A) via the law of total probability. "
+    material: |
+      Bayes' rule from prior P(B) and likelihood P(A|B):
+
+          P(B|A) = P(A∩B) / P(A)
+
+      with
+          P(A∩B) = P(A|B) P(B)
+          P(A)   = P(A|B) P(B) + P(A|not B) P(not B)
+
+  - id: prediction_targets
+    title: "Targets & types of prediction"
+    goal: "Student can name the three main targets of prediction — binary events {0,1}, categorical variables {E_1,…,E_k}, and real-valued (continuous) variables y ∈ ℝ — and distinguish a point (deterministic) prediction ŷ ∈ {0,1} from a probabilistic prediction p̂ (a distribution over {0,1}, identified by p = P(1))."
+
+  - id: prediction_space_setting
+    title: "The prediction space setting"
+    goal: "Student can explain the prediction space setting: both the target y and the prediction p̂ are treated as random variables with a joint distribution, and prediction quality is judged via the relationship between them. Student can give at least one concrete reason p̂ is random — e.g. sampling predictions from data (sampling uncertainty) or sampling from a population of prediction problems (across forecasters/events)."
+
+  - id: calibration
+    title: "Calibration vs. unbiasedness"
+    goal: "Student can state the definition of calibration E[y | p̂] = p̂ (equivalently the forecast error e = y − p̂ averages to zero within each predicted value), interpret it as 'given only the prediction, we cannot improve it', and explain the relationship to unbiasedness: calibration is a local/conditional condition that implies the global condition E[y]=E[p̂] (via the tower property), but unbiasedness does not imply calibration."
+    material: |
+      Calibration:      E[y | p̂] = p̂      ⇔   E[y − p̂ | p̂] = 0
+      Unbiasedness:     E[y] = E[p̂]        (global / marginal)
+      Tower property:   E[E[y | p̂]] = E[y]
+
+      Counterexample (unbiased but not calibrated):
+          y ~ Bernoulli(0.5),  p̂ ~ Uniform[0,1] independent of y
+          E[p̂] = 0.5 = E[y]  ✓ unbiased
+          E[y | p̂] = 0.5 ≠ p̂  ✗ not calibrated
+
+  - id: accuracy_proper_scores
+    title: "Accuracy & proper scoring rules"
+    goal: "Student can define a proper scoring rule (expected score E[s(p̂,y)] is maximized at the truth p̂ = p), name the quadratic/Brier score and the logarithmic score as examples, and explain why the linear score |y − p̂| is NOT proper — its expected score is linear in p̂, so it rewards reporting the extreme point prediction (0 or 1) rather than the true probability."
+    material: |
+      Quadratic (Brier) score:   s_qsr(p̂, y) = 1 − (p̂ − y)^2
+      Logarithmic score:         s_log(p̂, y) = log(p̂_y),  where p̂_1 = p̂, p̂_0 = 1 − p̂
+      Linear (improper) score:   s_l(p̂, y)  = |y − p̂|
+
+  - id: sharpness_and_optimality
+    title: "Sharpness subject to calibration"
+    goal: "Student can define sharpness as concentration of the prediction, sharpness(p̂) = 1 − 4·Var(p̂), and explain why sharpness alone is insufficient (a bold but miscalibrated forecast, e.g. p̂ ~ Bernoulli(0.5), scores maximum sharpness yet is useless). Student can state the guiding principle 'maximize sharpness subject to calibration'."
+    material: |
+      Sharpness:            sharpness(p̂) = 1 − 4·Var(p̂)

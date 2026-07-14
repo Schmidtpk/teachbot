@@ -1,0 +1,4 @@
+lecture_name: "Practice: Part I (Decisions & Optimal Predictions)"
+order: 40
+mode: learning_goals          # IID-LEARN-GOALS: activates goal-sampling practice mode
+description: "**Practice mode**: the assistant draws one learning goal at a time, poses a test question, and tracks your progress. Each completed goal is remembered across sessions."

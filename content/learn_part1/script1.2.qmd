@@ -1,0 +1,959 @@
+---
+title: "Part I: Decisions, distributions, data"
+subtitle: "Predictions: Theory and Practice"
+---
+
+```{r setup, echo=F,message=F}
+library(ggplot2)
+theme_set(theme_bw()+theme(text = element_text(size=16)))
+# theme_set(theme_gray(base_size = 18))
+```
+
+
+# Optimal Predictions
+
+### Example: Good Judgement
+
+- Good judgement [(link)](https://www.gjopen.com/challenges) 
+  - webpage gathering (and selling) predictions
+  - awarding the title of "superforecasters" (top 2%)
+
+- The Economist 2023: “The Good Judgment team [...] correctly forecasting the outcomes of eight questions..."
+
+  - Global growth was 3%
+  - China grew by 5%
+  - ruling-party candidates won in Nigeria and Turkey
+  - Vladimir Putin was not ousted
+  - there was no election in Britain
+  - no clash over Taiwan
+  - no nuclear device detonated by Russia
+
+
+### Current Topics on Good Judgement Open (2026)
+
+
+- **Global Armed Conflict**
+  - Will Mojtaba Khamenei flee Iran or cease to be its supreme leader before Sep 2026?
+
+- **Artificial Intelligence**
+  - What will be the AI model adoption rate for large US businesses in Dec 2026?
+  - What will be NVIDIA's total revenue in Q1 of fiscal year 2027?
+
+- **The Economist: World Ahead 2026** (20 questions)
+  - Will the FDA approve Moderna's mRNA flu vaccine before Oct 2026?
+  - India's real GDP growth (2026-27)
+  - Effective US tariff rate for all imports in H2 2026
+
+- **"Right!" said FRED**
+  - Spread between 10-year and 2-year Treasury yields
+  - 30-year fixed mortgage rate for week ending 25 June 2026
+  - unemployment rate for June 2026
+
+### Goals
+
+By the end of this lecture, you should be able to answer:
+
+1. What are the main **types** of prediction targets?
+
+2. When is a prediction **accurate**?
+
+3. When is a prediction **calibrated**?
+
+4. When is a prediction **sharp**?
+
+5. In which sense is calibration **optimal**?
+
+### Mathematics motiviation for everyone
+
+- this lecture is very mathematical
+
+- my take on mathematics:
+
+  - mostly about developing **intuition that is government by logic**
+  
+  - two step procedure:
+  
+    1) intuition: "A seems true."
+    
+    2) mathematics: "Check A, if true proceed, otherwise revise intuition."
+    
+  - developing this intuition requires exposure
+  
+  - LLMs can handle math for you, but often struggle with transfer to applications
+
+- we will revisit the concepts when empirically analyzing predictions and human behavior
+
+## Types of predictions
+
+### Targets of predictions
+
+-   the three most important targets of predictions are
+
+    -   binary events
+
+        -   $\{0,1\}$
+        -   TRUE,FALSE
+        -   event $E$, complement $E^C$
+        -   examples: $\{rain, no rain\}$, {higher, not higher}
+    -   categorical variables
+        -   $\{E_1,E_2,\dots,E_k\}$
+        -   examples: countries, $\{rock, paper, scissors\}$, {higher, same, lower},...
+
+    -   real-valued (continuous) variables
+
+        -   $y \in \mathbb{R}$
+        -   can be decomposed into infinite number of events ($y \le c$)
+        -   examples: money values, length, weight, ...
+
+---
+
+-   we start with **binary events**
+
+    -   categorical and real-valued can be reduced to event predictions
+    -   later concepts will be generalized to real-valued prediction targets
+
+
+### Necessary knowledge
+
+- a random variable $y$
+
+    - maps into the space of **possible outcomes**
+    
+    - example (coin toss): maps into {"heads","tails"}
+    
+    - takes on one **realized value** (also "realization")
+    
+- distribution of a random variable
+
+    - distribution over the possible outcomes
+    
+    - example (coin toss): P("head") = 50%, P("tails") = 50%
+    
+- Sidenote: not necessary are the concepts of
+
+    - measureability of a random variable
+    
+    - $\sigma$-algebras as a concept for information sets
+
+--- 
+  
+- for a real-valued random variable $y$...
+    
+    - possible outcomes are numbers
+
+    - example (coin toss): with "heads" = 1, "tails" = 0
+    
+    
+    
+- ... the **expectation** or **expected value** $E[y]$
+
+    - is a real number.
+    
+    - is a property of the distribution, not of the realized value
+
+    
+- example (coin toss):
+  
+    - possible outcomes: "heads" = 1, "tails" = 0
+    
+    - distribution / probabilities: $P("0")=P("1")=50\%=0.5$
+    
+    - Expected value $$E[y]= 0 \times P("0") + 1 \times P("1") = 0 \times 0.5 + 1 \times 0.5=0.5$$
+
+
+## Point (deterministic) predictions
+
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: point predictions.
+A prediction $\hat y$ for an event is a point prediction if it is an element of the potential outcomes $\{0,1\}$.
+:::
+
+-   no direct connection to decision-making
+
+    -   remember: Decisions are informed by probabilities
+
+## Probabilistic predictions
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: probabilistic predictions.
+The prediction $\hat p$ is called probabilistic if it is a **probability distribution** over the elements $\{0,1\}$.
+:::
+
+-   distribution over $\{0,1\}$ identified by $p=P(1)$
+
+    -   follows that $P(0) = 1 - p$
+
+### What is a good prediction (in hindsight)?
+
+-   easy, if y = 1 then
+
+    -   $\hat y=1$ is better than $\hat y = 0$
+    -   $\hat p=1$ is better than any $\hat p < 1$
+
+-   but this is **ex-post** (in hindsight)
+
+-   How does a **good prediction** look like in general?
+
+    - before the uncertainty around the target $y$ is resolved
+
+    - we need a more technical framework to handle this question!
+
+
+## The prediction space setting
+
+-   technically we understand the prediction target $y$ and the prediction $\hat y$ or $\hat p$ as **random variables**
+
+    -   this is called the **prediction space setting** [@gneiting2014probabilistic]
+
+    -   we judge the performance of a prediction via the relation between the random variables
+
+-   what would be good properties for a prediction?
+
+    -   perfect $\hat y = y$ (often unrealistic)
+    -   unbiased $E[\hat y - y] = 0$ (classic property)
+    -   error $e= y-\hat p$ should be small (note: $e$ is also a random variable)
+        -   e.g., mean absolute error $E[|e|]$ small
+
+
+### Notation summary
+
+-   uncertain outcome $y$
+
+-   its (unknown) distribution $p$
+
+    - we write $E_{y\sim p}[f(y)]$ or shorter $E_p[f(y)]$ 
+    
+    - $E[f(y)]$ normally means $E_{y\sim p}[f(y)]$
+
+-   a (point) prediction $\hat y$
+
+-   a probability prediction $\hat p$
+
+-   Example: 
+
+    - $y$ is income increasing next year. 
+    - $\hat y$ could be "Yes". 
+    - $\hat p= 0.8 = 80\%$.
+
+
+
+### Toy example
+
+-   Let's consider a toy example: Target $y \sim Bernoulli(0.5)$
+
+::: {.panel-tabset}
+## R
+```{r, echo=TRUE}
+# a random sample from the Bernoulli distribution
+set.seed(1)
+rbinom(n = 10, p = 0.5, size = 1)
+```
+## Python
+```python
+import numpy as np
+rng = np.random.default_rng(seed=1)
+rng.binomial(n=1, p=0.5, size=10)
+# [0, 0, 0, 1, 1, 0, 1, 1, 1, 1]
+```
+:::
+
+We will use these five cases as running examples throughout this section and compare them head-to-head at the end:
+
+-   perfect prediction $\hat p = y$
+
+-   unbiased prediction $\hat p = 0.5$
+
+-   biased prediction $\hat p=0.6$
+
+-   unbiased prediction with noise $\hat p \sim U[0,1]$ (and independent of $y$)
+
+-   unbiased prediction with maximum noise $\hat p = 1-y$ (depends on $y$)
+
+### The prediction space setting illustrated
+
+- Next we discuss two scenarios for which the prediction space setting is appropriate:
+
+    1. **sampling predictions from data** — $\hat p$ varies because data varies
+    2. **sampling from a population of prediction problems** — $\hat p$ varies across different forecasters or events
+
+    - in which sense is prediction $\hat p$ a random variable?
+
+
+### ... sampling predictions from data
+
+- one approach to predict an event $y$:
+
+    - take a sample of data $(y_1,\dots,y_n)$ 
+    
+    - compute **sample average** 
+     $\hat p = \frac 1 n \sum_{i=1}^n y_i$
+
+- if(!) data is **randomly sampled** from $p$, the prediction $\hat p$ 
+
+    - is unbiased
+    
+    - increases in accuracy with sample size $n$
+    
+- "sampling uncertainty": $\hat p$ is a random variable as a function of random data
+
+
+
+<!-- 
+td add population/sampling plot
+![](plots/sampling.pdf){width="100%,height=100%"} 
+-->
+
+### ... sampling from prediction problems
+
+-   there is another way to interpret the prediction space setting
+
+-   consider a population of prediction problems, where each draw consists of the pair (target outcome, prediction)
+  $$(y,\hat y) \text{ or } (y,\hat p)$$
+
+    
+-   Example: All the predictions generated from the CIA
+
+    -   our sample consists of all the recorded predictions
+    -   one observation might look like
+        -   Event: Does Russia annex Crimea in 2014?
+        -   prediction: "No" or "5%"
+    -   In the prediction space setting we can answer questions like
+        -   which expert in the CIA is doing best
+        -   what systemic mistakes can be detected from the data
+        -   how can we improve a raw prediction
+
+### Example: Yourself
+
+-   try to write down (subconscious) beliefs as predictions
+
+-   example targets
+
+    -   I will finish this project until xx.xx.xxxx. (too optimistic?)
+    -   Will I enjoy working on an exercise with a random student from this class? (too pessimistic?)
+    -   Next week, I will start to do xxx. ("planning you" more disciplined than "implementing you"?)
+
+![](plots/homer.jpg){height="7cm" fig-align="center"}
+
+
+### Conditional expectation: a reminder
+
+- ...**conditional expectation** given $x=c$, $$E[y|x=c]$$
+
+    - expected value with respect to conditional distribution $P(y|x=c)$
+
+    - known with Bayes rule
+
+    - is a real number
+
+- ...**conditional expectation**, $$E[y|x]$$
+
+    - is a function of $x$
+
+    - is a random variable
+
+---
+
+- Rules for the conditional expectation
+
+    - linear $$E[y_1 + y_2 | x] = E[y_1 | x] + E[y_2 | x]$$ $$E[c y | x]=cE[y|x]\text{ for } c \text{ constant}$$
+
+    - tower property $$E[E[y|x]] = E[y]$$
+
+        - *averaging a conditional expectation over all conditions gives back the unconditional expectation — double averaging collapses to single averaging*
+
+    - or more general $$E[E[y|\color{red}{x_1},\color{blue}{x_2}]|\color{blue}{x_2}] = E[y|\color{red}{x_1}]$$
+
+    - Functions $f$ of conditioning information are constant:
+    $$E[f(x)|x]=f(x)$$
+    $$E[f(x)y|x]=f(x)E[y|x]$$
+
+    - if $y$ and $x$ independent, then $$E[y|x] = E[y]$$
+
+
+## Calibration
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: Calibration
+A prediction $\hat p$ is **calibrated** for $y$ if $$E(y | \hat p) = \hat p.$$
+
+:::
+
+
+- The calibration condition is equivalent to $P( y = 1 | \hat p) = \hat p$
+
+- Calibration means that after observing a prediction (but nothing else), we cannot improve the prediction
+
+- can be expressed as property of the forecast error $e=y-\hat p$:
+$$E(y | \hat p) = \hat p \Leftrightarrow E(y- \hat p | \hat p) = 0$$
+Thus, calibration means that the forecast error is zero for all predicted values $\hat p$.
+
+### Calibration vs. Unbiasedness
+
+- **Unbiasedness**: a *global* (marginal) condition on the average prediction $$E[y] =E[\hat p] $$
+- **Calibration**: a *local* (conditional) condition for every value of $\hat p$:
+ $$E[y|\hat p] = \hat p$$
+
+**Calibration implies unbiasedness, but not vice versa.**
+
+- Calibration $\Rightarrow$ unbiasedness: by the tower property
+$$E[y] = E[E[y|\hat p]] = E[\hat p]$$
+
+- Unbiasedness $\not\Rightarrow$ calibration — counterexample:
+  - $y \sim Bernoulli(0.5)$, $\hat p \sim U[0,1]$ independent of $y$
+  - Unbiased: $E[\hat p] = 0.5 = E[y]$ ✓
+  - Not calibrated: $E[y|\hat p] = 0.5 \neq \hat p$ for most values of $\hat p$ ✗
+
+---
+
+-   One example of a calibrated prediction is the random sample predictor
+
+    -   assume we can sample from similar events (e.g., "does webpage visitor buy item A")
+    
+    -   predict next visitor with **sample average** $$\hat p = \frac 1 n \sum_{i=1}^{n}  y_i$$
+    
+    -   this prediction is calibrated
+
+### Proof (handwritten in lecture):
+
+
+---
+
+::: callout-tip
+## random sample predictor
+
+If $y_i \sim_{iid} p$ then $\hat p = \frac 1 n \sum_{i=1}^{n}  y_i$ is a calibrated prediction for $y_{n+1}$. \vspace{.5cm}
+
+-   Proof:
+
+$$\begin{align*}
+E[ y -\hat p| \hat p, p] =&  E[ y - \frac 1 n \sum_{i=1}^{n}  y_i| \hat p,p] \\
+=&E[ y|\hat p , p ] - E[\frac 1 n \sum_{i=1}^{n}  y_i| \hat p,p] = p - \frac 1 n np=0
+\end{align*}$$
+
+and thus $$E[ y -\hat p| \hat p] = E[ \underbrace{E[y -\hat p| \hat p,p]}_\text{=0} | \hat p] = 0$$
+:::
+
+### Calibration curve
+
+- We can understand calibration as a property of the **calibration curve** defined by the conditional expectation function $$f(\hat p) = E[y|\hat p].$$
+
+::: {#fig-example}
+```{r, fig.height=4}
+library(latex2exp)
+library(ggplot2)
+ggplot()+
+  geom_function(fun=identity,col="red",aes(linetype = "calibrated"))+
+  geom_function(fun=function(x) x*0.6+0.2,col="blue",aes(linetype = "uncalibrated 1")) +
+  geom_function(fun=function(x) exp(- (-log(x))^0.7),col="darkgreen",aes(linetype = "uncalibrated 2")) +
+  scale_linetype_discrete(name = "calibration functions")+
+  xlab(label = TeX("$\\hat{p}$"))+
+  ylab(label = TeX("$E[y|\\hat{p}]$"))+
+  geom_vline(xintercept = c(0,1))+
+  geom_hline(yintercept = c(0,1))
+
+```
+
+Some calibration curves. The [red]{.red} line is calibrated with $f(\hat p)=\hat p$.
+:::
+
+ 
+<!-- -   Note: Here we discuss only the properties of predictions. These properties are generally unobserved. In another lecture, we will see how to actually test these properties on data. -->
+
+### Summary: Calibration
+
+- A prediction is **calibrated** if $$E(y | \hat p) = \hat p.$$
+
+- The ratio of events happening in a **random sample** is a calibrated prediction
+
+- The **calibration curve** explains deviations from calibration
+
+- Open question: How does calibration relate to **decision-making**?
+
+
+## Accuracy
+
+-   consider the situation with two predictions (e.g., two experts) for the same event
+
+    -   who is the better prediction expert?
+
+-   if you know your decision problem, the best expert maximizes your utility
+
+    -   based on a prediciton $\hat p$ you take the action that maximizes your expected utility $$a^\star(\hat p) = arg max_a E_{y\sim\hat p}[u(a,y)]$$
+
+    -   so the better expert leads to higher expected utilies $$U(\hat p) = E[u(a^\star(\hat p),y)]$$
+
+    -   the highest expected utility can be achieved if $\hat p = p$ where $p$ is the actual distribution of $y$
+
+### Proper scoring rules
+
+-   there are also generic functions $s(\hat p, y)$ with the property that their **expected utility** is **maximized at the true distribution** of $y$
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: Proper scoring rule.
+
+A function $s(p,y)$ is called a **scoring rule**.
+
+A scoring rule is called **proper** if $f(\hat p)=E[s(\hat p,y)]$ has a maximum at $\hat p = p$.
+:::
+
+-   sidenotes: 
+
+    - Sometimes difference between proper and *strictly* proper
+    - Sometimes oriented differently such that proper means minimizing expected score ("loss function")
+    
+
+### Quadratic scoring rule
+
+-   the most famous proper scoring rule is the **quadratic scoring rule** (also called **Brier score**)
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: The quadratic scoring rule.
+
+$$s_{qsr}(\hat p, y) = 1-(\hat p - y)^2$$
+:::
+
+### 
+
+-   The quadrtic scoring rule $$s_{qsr}(\hat p, y) = 1-(\hat p - y)^2$$ is equivalent to $$s_{qsr}(\hat p, y) = 2\hat p_y - \hat p^2 - (1-\hat p)^2$$ where $\hat p_y=\hat p$ if $y=1$ and otherwise $\hat p_y = (1-\hat p)$
+
+    -   the first term $2 \hat p_y$ rewards probability put on the true event
+    -   the second term penalizes putting mass on the extremes
+
+    ```{r, fig.width = 4, fig.height = 2}
+
+    library(ggplot2)
+    library(latex2exp)
+
+    ggplot()+
+      geom_function(fun=function(x) x^2+(1-x)^2)+
+      xlab(TeX("$\\hat{p}$"))+
+      ylab(TeX("$\\hat{p}^2 + (1-\\hat{p})^2$"))+
+      theme(text = element_text(size=12))
+    ```
+
+
+### Proof (handwritten in lecture):
+
+
+
+### The QSR is proper
+
+::: callout-tip
+## Proof: The QRS is proper.
+
+Look at the FOC of $E[s_{qsr}(\hat p ,y)]$ to find optimal $\hat p$
+
+$$\partial \hat p E[ s_{qsr}(\hat p, y)]= E[\partial \hat p s_{qsr}(\hat p, y)]=E[ -2 (\hat p- y)]=-2 (\hat p - E[y])$$ and $$\partial \hat p E[ s_{qsr}(\hat p, y)]=0 \iff \hat p = E[y]$$ Thus, the expectation is maximized if true propability of $y$ is issued as prediction, i.e., the quadratic scoring rule is proper.
+
+(Using: $E[y]=p \times 1 + (1-p) \times 0=p$.)
+
+:::
+
+### What is wrong with a linear score?
+
+-   the most intuitive idea would be to consider scores
+
+$$s_l(\hat p, y) = |y-\hat p|$$
+
+The expected score is:
+
+$$
+\mathbb{E}[s(\hat{p}, y)] = p \cdot |1 - \hat{p}| + (1 - p) \cdot |\hat{p} - 0| = p(1 - \hat{p}) + (1 - p)\hat{p}
+$$
+
+Simplifying:
+
+$$\mathbb{E}[s(\hat{p}, y)] = p - p\hat{p} + \hat{p} - p\hat{p} = p - 2p\hat{p} + \hat{p}$$
+
+------------------------------------------------------------------------
+
+Taking the derivative with respect to $\hat{p}$:
+
+$$\frac{d}{d\hat{p}} \mathbb{E}[s(\hat{p}, y)] = -2p + 1 $$
+
+This derivative is constant in $\hat{p}$, indicating that the expected score is linear in $\hat{p}$:
+
+\begin{itemize}
+    \item If $p < \frac{1}{2}$, the derivative is positive, so the expected score is minimized at $\hat{p} = 0$.
+    \item If $p > \frac{1}{2}$, the derivative is negative, so the expected score is minimized at $\hat{p} = 1$.
+\end{itemize}
+
+(If $p = \frac{1}{2}$, the expected score is constant, so any $\hat{p} \in [0,1]$ minimizes the score.)
+
+-   Thus, the linear score is not proper. It incentivizes to report the event with the higher probability (a point prediction).
+
+
+
+### The logarithmic score
+
+-   another widely used proper scoring rule is the **logarithmic scoring rule** (also called **log score**)
+
+::: {.callout-caution appearance="default" icon="false"}
+## Definition: The logarithmic scoring rule.
+
+$$s_{log}(\hat p, y) = log(\hat p_y),$$
+where $\hat p_y$ is probability mass of $\hat p$ at the realized target value $y$, i.e. $\hat p_1=\hat p$ and $\hat p_0=1-\hat p$.
+:::
+
+- It is no coincidence that you know the quadratic score/loss from OLS and the logarithmic score from Maximum Likelihood estimation.
+
+
+### Summary: Accuracy
+
+- How do we compare two predictions (experts or systems)?
+
+    - If we have a decision and a utility we use the expected utility
+$$U(\hat p)=E[u(a^\star(\hat p),y)]$$
+
+    - If we do not have the specifics, we can use proper scoring rules
+$$S(\hat p) = E[s(\hat p,y)]$$
+
+- We can call a prediction $\hat p_A$ **more accurate than** $\hat p_B$ if
+$$S(\hat p_A) > S(\hat p_B)$$
+
+- One proper scoring rule is the quadratic scoring rule
+$$s_{qsr}(\hat p, y) = 1-(y-\hat p)^2$$
+
+
+## Sharpness
+
+-   sharpness describes the concentration of a probabilistic prediction
+
+    -   not applicable to point predictions (or point predictions are the sharpest of predictions)
+
+-   sharpness is a property of the prediction alone
+
+    -   not of prediction and target
+
+-   Sometimes also referred to as "boldness"
+
+### The variance of a distribution
+
+-   You already know **the variance** of $\hat p$ as **measure of sharpness**
+
+
+- the variance of a distribution is defined as
+$$var(p)=E_p[(y-E_p[y])^2]$$
+
+- For a probability $p$ for an event this is
+$$var(p) = p (1-p)^2 + (1- p) p^2
+= p(1-p) [(1-p)+p]= p (1-p)$$
+
+
+- For a prediction $\hat p$, we rescale and define
+$$\text{sharpness}(\hat p)=1-4 var(\hat p)$$
+
+### Illustrating sharpness
+
+$$\text{sharpness}(\hat p)=1-4 var(\hat p)$$
+
+-   High sharpness means the predictions are close to 0 or 1, indicating strong confidence in the outcome.
+-   Low sharpness means predictions are closer to 0.5, showing less confidence and more uncertainty.
+
+```{r, fig.width = 4, fig.height = 2}
+library(ggplot2)
+library(latex2exp)
+
+ggplot()+
+  geom_function(fun=function(p)1+4*(-p)*(1-p))+
+  xlab(TeX("$\\hat{p}$"))+
+  ylab(TeX("$1-4Var(\\hat{p})$"))+
+  theme(text = element_text(size=12))
+```
+
+### Expected score and variance
+
+- Sharpness can be interpreted in terms of scores and utilities
+
+- Consider the expected score under probability $p$
+$$S(p)=E_p[s(p,y)]$$
+where $E_p$ means the expectation assuming $y\sim p$.
+
+- If score $s$ is derived from decision and utility, then
+$$S(p) = \text{ expected utility under uncertainty } p$$
+
+- for the QSR:
+$$\begin{align*}
+S_{qsr}(p)&=E_p[s_{sqr}(p,y)]\\
+&=1 - p (1-p)^2+(1-p)p^2\\
+&=1 - p(1-p) [(1-p)+p]= \\
+&=1 - var(p)
+\end{align*}$$
+
+### Toy example revisited
+
+| prediction | Miscalibration function $|E[y|\hat p]-\hat p|$ | expected score $E[s_{qsr}(\hat p,y)]$ | Sharpness $1-4Var(\hat p)$ |
+|--------------------|:---------------------|:----------------|:----------------|
+| $\hat p = y$ | [$0$]{.green} | [$1$]{.green} | [$1$]{.green} |
+| $\hat p = 0.5$ | [$0$]{.green} | $0.75$ | $0$ |
+| $\hat p = 0.6$ | $0.1$ | $0.74$ | $0.04$ |
+| $\hat p \sim Bern(0.5)$ | $0.5$ | $0.5$ | [$1$]{.green} |
+
+*Note: $\hat p \sim Bern(0.5)$ achieves maximum sharpness (1) because it only takes the extreme values 0 and 1 — yet it is badly miscalibrated because it is independent of $y$. Sharpness alone is not enough.*
+
+### Sidenote: Entropy
+
+- if we take the negative expected score with respect to the **logarithmic scoring** rule $s_{log}(p,y)=log(p_y)$ we get the **entropy**
+
+- an information measure describing **randomness** or **uncertainty**
+
+    - the average amount of information required to describe the outcome of a random event
+
+    - measured in bits
+
+- also a physical concept describing the **disorder** of a system
+
+    - governed by the "second law of thermodynamics"
+
+    - total entropy of an isolated system tends to increase over time
+
+## Optimal: Sharpness subject to calibration
+
+In summary:
+
+-   Sharpness = Concentration of predictions (confidence level)
+-   Calibration = Agreement between predictions and actual outcomes
+
+Good probabilistic forecasts aim to be both sharp and well-calibrated.
+
+
+### Decomposition of accuracy
+
+-   The performance of a prediction in terms of a scoring rule can be decomposed into three parts
+
+    -   define $p_C = E[y|\hat p]$ a calibrated version of $\hat p$
+    -   define $p_R = E[y]$ a constant calibrated prediction (contains no information)
+    -   define $S(\hat p)=E[s(\hat p,y)]$
+
+-   Then the expected score is
+$$\begin{align*}
+S(\hat p) &= S(p_R) + [S(p_C) - S(p_R)] - [S(p_C) - S(\hat p)] \\
+&= \underbrace{S(p_R)}_{\text{UNC}} + \underbrace{[S(p_C) - S(p_R)]}_{\text{DSC}} - \underbrace{[S(p_C) - S(\hat p)]}_{\text{MSC}},
+\end{align*}$$
+- UNC (uncertainty): score from uncertainty in outcome
+- DSC (discrimination ability): score improvement by prediction
+- MSC (miscalibration): score loss because prediction is miscalibrated
+
+---
+
+-   Then the expected score is
+
+$$\begin{align*}
+S(\hat p) = \text{UNC} + \text{DSC} - \text{MSC},
+\end{align*}$$
+      
+- We want MSC to be small (ideally $\text{MSC}=0$) and DSC large
+
+- When is DSC large?
+
+  - if $\hat p$ far away from $p_r=E[y]$, i.e. if $\hat p$ is bold/sharp.
+  
+- In this sense, we want to maximize sharpness subject to calibration.
+
+
+
+
+## ideal predictions and information
+
+-   Another way to look at this is via information/input variables
+
+-   let's say $x$ denotes all the information necessary to predict $y$ perfectly
+
+    -   some part of $x$ is known to the forecaster, $x_k$
+
+    -   the remainder, say $x_u$, is unknown to the forecaster
+
+    -   we have $x=(x_k,x_u)$
+
+<!-- diagram x->y -->
+
+-   the prediction is a function of the known information
+
+    -   $\hat p=f(x_k)$
+
+---
+
+::: {.callout-caution appearance="default" icon="false"}
+## The conditional expectation is optimal.
+Among all functions of $x_k$, the conditional expectation
+    $$\hat p = E[y|x_k]$$
+maximizes any expected proper score $E[s(\hat p,y)]$ [@holzmann2014role]
+:::
+
+- $E[y|x_k]$ is also called the **ideal prediction** for information $x_k$
+
+::: {.callout-caution appearance="default" icon="false"}
+## Ideal implies calibrated.
+
+All ideal predictions are calibrated.
+
+- Proof:
+$$E[y- E[y|x_k] | \hat p]= E[y|\hat p] - E[ E[y|x_k]|\hat p] = 0$$ (as $E[ E[y|x_k]|\hat p]=E[y|\hat p]$ because $\hat p = f(x_k)$)
+:::
+
+
+
+### Summary: Optimal Predictions
+
+- the prediction space setting understands target $y$ and prediction $\hat p$ as random variables with a joint distribution
+
+- Properties of a prediction are
+
+  - sharpness: $1-4Var(\hat p)$
+  - calibration: $E[y|\hat p]=\hat p$
+  - idealness: $\hat p = E[y|x]$ for some information $x$
+  - accuracy: $E[s(\hat p,y)]$ for some score $s$ or utility function such that $s=u(a^\star(\hat p),y)$
+
+- A good prediction maximizes sharpness and calibration.
+  
+- Open question: What to do if there is a trade-off between sharpness and calibration?
+
+  - Machine learning predictions are often uncalibrated!
+
+
+# References
+
+::: {#refs}
+:::
+
+<!-- # Other stuff -->
+
+<!-- ------------------------------------------------------------------- -->
+<!-- New SECTION ------------------------------------------------------- -->
+<!-- ------------------------------------------------------------------- -->
+<!-- ## Beyond events: Distributions -->
+
+<!-- goals: -->
+
+<!-- - Introduce setting with $y \in R$ -->
+
+<!-- - Introduce point predictions and mean, median, mode, quantiles -->
+
+<!-- - introduce distributions on R -->
+
+<!-- ### Point predictions (deterministic) -->
+
+<!-- -   Definition (point predictions): The forecast $\hat y$ is an element of the potential outcomes. -->
+
+<!--     -   if target is event, potential outcomes = $\{0,1\}$ -->
+<!--     -   if target is categorical, potential outcomes = $\{E_1,E_2,\dots,E_k\}$ -->
+<!--     -   if target is real-valued, potential outcomes = $\mathbb{R}$ -->
+
+<!-- -   no direct connection to decision-making -->
+
+<!--     -   remember: Decisions are informed by probabilities -->
+
+<!-- -   one way to connect point predictions to probabilities is to assume that the point prediction is a function of the underlying (unobserved) probability $\hat y = f(P)$ -->
+
+<!-- -   e.g., $\hat y = 1 \iff P(1) > 0.5$ -->
+
+<!--     -   e.g., $\hat y = E_k \iff P(E_k)>E_j \text{ for all } j$ -->
+
+<!--     -   e.g., $\hat y = E[P]$ or $mode(P)$ or $median(P)$ or $quantile(P)$ -->
+
+<!--     -   if navigation app says "Route will take 2 hours.", what does it mean?! And does it propose to take the way with the shortes mean travel time or with the least risk (e.g., shortes higher quantile) -->
+
+<!-- ### Probabilistic predictions -->
+
+<!-- -   Definition (probabilistic predictions): The forecast $\hat p$ is a *probability distribution over* the elements of the potential outcomes. -->
+
+<!--     -   if target is event, potential outcomes = $\{0,1\}$, distribution identified by $p=P(1)$ -->
+<!--     -   if target is real-valued, potential outcomes = $\mathbb{R}$, distributions are identified by their cumulative distribution function $F(y)=P(Y\le y)$ or their density function $p(y)$ -->
+
+<!-- ```{r} -->
+<!-- #| echo: false -->
+
+
+<!-- # Set up the plot area -->
+<!-- par(mfrow = c(1, 2))  -->
+
+<!-- # --- First Plot --- -->
+
+<!-- # Create data for the normal distribution curve -->
+<!-- x1 <- seq(-3, 3, length.out = 1000) -->
+<!-- y1 <- dnorm(x1) -->
+
+<!-- # Calculate the area under the curve up to x = 1 -->
+<!-- x_shade <- seq(-3, 1, length.out = 1000) -->
+<!-- y_shade <- dnorm(x_shade) -->
+
+<!-- # Plot the normal distribution curve -->
+<!-- plot(x1, y1, type = "l", xlab = "x", ylab = expression(p(x)),  -->
+<!--      main = "", col = "black", lwd = 2, yaxt = "n")  -->
+<!-- axis(2, at = c(0), labels = c(0)) # Only label the x-axis -->
+
+<!-- # Shade the area under the curve -->
+<!-- polygon(c(x_shade, 1, -3), c(y_shade, 0, 0), col = "lightgray", border = NA) -->
+
+<!-- # Add lines for the axes -->
+<!-- abline(h = 0, col = "blue") -->
+<!-- abline(v = 0, col = "blue") -->
+
+<!-- # Add arrow and text for the area -->
+<!-- arrows(0.5, 0.1, 1.5, 0.3, length = 0.1) -->
+<!-- text(2, 0.35, expression(Phi(x))) -->
+
+
+<!-- # --- Second Plot --- -->
+
+<!-- # Create data for the cumulative distribution function -->
+<!-- x2 <- seq(-3, 3, length.out = 1000) -->
+<!-- y2 <- pnorm(x2) -->
+
+<!-- # Plot the cumulative distribution function -->
+<!-- plot(x2, y2, type = "l", xlab = "x", ylab = expression(Phi(x)),  -->
+<!--      main = "", col = "black", lwd = 2, yaxt = "n") -->
+<!-- axis(2, at = c(0, 1), labels = c(0,  1)) # Label the y-axis -->
+
+<!-- # Add lines for the axes -->
+<!-- abline(h = 0, col = "blue") -->
+<!-- abline(v = 0, col = "blue") -->
+
+
+
+
+<!-- ``` -->
+
+<!-- ### Calibration -->
+
+<!-- ### Accuracy -->
+
+<!-- ### Sharpness -->
+
+<!-- -   sharpness describes the concentration of a probabilistic prediction -->
+
+<!--     -   not applicable to point predictions (or point predictions are the sharpest of predictions) -->
+
+<!-- -   sharpness is a property of the prediction alone -->
+
+<!--     -   not of prediction and target -->
+
+<!-- -   for real-valued targets, we can also consider the variance of a distribution $\hat P$ defined as -->
+
+<!--     $$var(\hat P) = \int (y - \mu_{\hat P})^2 d\hat P(y)$$ where $\mu_{\hat P}$ is the expected value of $\hat P$. -->
+
+<!-- ### Toy example (point prediction) -->
+
+<!-- -   Let's consider some toy examples -->
+
+<!-- -   target $y \sim \mathcal N(0,1)$ -->
+
+<!-- -   perfect prediction $\hat y = y$ -->
+
+<!-- -   unbiased prediction $\hat y = 0$ -->
+
+<!-- -   independent prediction $\hat y \sim \mathcal N(0,1)$ (and independent of $y$) -->
+
+<!-- -   biased prediction $\hat y = y + 0.1$ -->
+
+<!-- ### Toy example (probability prediction) -->
+
+<!-- -   target $y \sim \mathcal N(0,1)$ -->
+
+<!-- -   perfect prediction $\hat P = \mathcal N(0,1)$ -->
+
+<!-- -   overprecise prediction $\hat P = \mathcal N(0,\frac 1 2)$ -->
+
+<!-- -   biased prediction $\hat P = \mathcal N(0.1,1)$ -->
+
