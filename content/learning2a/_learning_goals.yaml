@@ -7,10 +7,6 @@
 # script2.2 (Evaluation of predictions), Part II: Subjective judgement.
 goals:
   # --- Elicitation (script 2.1) ---
-  - id: clear_target
-    title: "Clearly defined targets"
-    goal: "Student can explain why the target of a prediction must be clearly (operationally) defined before it is elicited — everyday statements are usually ambiguous, and an ambiguous target cannot be scored or checked — and can turn a vague statement (e.g. 'The US will set tariffs on trade') into a clearly defined one (specific quantity, threshold, and date)."
-
   - id: event_target_properties
     title: "What to elicit for events"
     goal: "Student can distinguish the properties one may elicit for an event — a probability p̂, a point (yes/no) prediction, or a range of probabilities — rank them by information content (range of probabilities > probability > point prediction), and explain the opposing trade-off with ease of use, so the choice balances information against how reliably respondents can answer. Student can also explain why point predictions and unspecified verbal scales ('likely') are less informative (no weighing of utility differences; verbal terms mean different probabilities to different people)."
@@ -19,84 +15,27 @@ goals:
     title: "What to elicit for real-valued targets"
     goal: "Student can explain that for a real-valued target the ideal object is a full probability distribution (cdf or pdf), that common point predictions should be understood as properties of that distribution (mean, mode, maximum/minimum), and that because full distributions are hard to elicit we instead approximate them — e.g. by eliciting interval probabilities P(y ≤ c) or quantiles and fitting a distribution to them."
 
-  - id: second_order_uncertainty
-    title: "Confidence / second-order uncertainty"
-    goal: "Student can explain second-order uncertainty (confidence): a probability already expresses first-order uncertainty about the outcome, yet experts may feel more or less confident about that very probability. Student can give the IPCC as an example (probabilistic likelihood statements qualified by a separate confidence level, e.g. 'likely the warmest 30-year period … (medium confidence)') and connect it to model vs. parameter uncertainty in later model-based forecasting."
-
   - id: proper_scoring_incentive
     title: "Proper scoring rules as incentives"
     goal: "Student can describe the scoring-rule contract (expert issues p̂, outcome y realizes, expert is paid s(p̂,y)) and state the incentive result: if the expert maximizes expected payout and s is a proper scoring rule, then reporting the true belief p is optimal. Student can also explain the second advantage — proper rules reward gathering more information, since an ideal prediction using more information has a (weakly) higher expected score."
-    material: |
-      Contract:   expert reports p̂  →  outcome y realizes  →  bonus s(p̂, y)
-
-      Truthful reporting is optimal when s is a PROPER scoring rule and the
-      expert maximizes E[s(p̂, y)].
-
-      Information monotonicity (ideal predictions p̂₁ = E[y|x₁], p̂₂ = E[y|x₁,x₂]):
-          S(p̂₁) ≤ S(p̂₂)
 
   - id: scoring_rule_problems
     title: "When scoring-rule incentives fail"
     goal: "Student can name and explain the situations in which proper-scoring-rule incentives break down: the outcome must be observable; risk aversion means the expert maximizes expected utility of the payout rather than expected payout; personal stakes let the expert hedge (bias the report toward unfavorable outcomes); and reputation concerns (public performance) can push toward overly extreme or overly non-committal predictions."
 
   # --- Evaluation (script 2.2) ---
-  - id: theory_to_empirics
-    title: "From theory to empirics"
-    goal: "Student can explain how a theoretical property stated with expectations is tested on a sample ((y₁,p̂₁),…,(yₙ,p̂ₙ)) by replacing expectations E[·] with sample averages (1/n)Σ(·) — e.g. the calibration/unbiasedness condition E[y − p̂] = 0 is assessed via the average forecast error (1/n)Σ(yᵢ − p̂ᵢ)."
-
   - id: calibration_events
     title: "Calibration & the calibration curve"
-    goal: "Student can state the definition of calibration for an event prediction, E[y | p̂] = p̂, interpret it (the average outcome among all predictions of value c should equal c), and describe how the empirical calibration curve is built — for each predicted value c, average the realized y over the observations with p̂ᵢ = c — noting that inference on it requires confidence intervals/tests and care with multiple testing."
-    material: |
-      Calibration:            E[y | p̂] = p̂
-      Empirical curve at c:   calibration_curve(c) = (1/n_c) · Σ_{i: p̂ᵢ = c} yᵢ
-                              (n_c = number of predictions equal to c)
+    goal: "Student can state the definition of calibration for an event prediction, E[y | p̂] = p̂, and explain how to test it on data (the average outcome among all predictions of value c should equal c, or predictions close to c should be close to c), and describe how the empirical calibration curve is built — for each predicted value c, average the realized y over the observations with p̂ᵢ = c — noting that inference on it requires confidence intervals/tests and care with multiple testing."
 
   - id: pit_reals
     title: "PIT & PIT histograms"
-    goal: "Student can define the Probability Integral Transform PIT(y, P̂) = F̂(y), state that a calibrated probabilistic prediction for a continuous real-valued target implies PIT ~ Uniform[0,1], and read a PIT histogram: a hump/skew away from uniform signals miscalibration (e.g. a location shift ⇒ biased mean/overoptimistic; too-narrow predictive distribution ⇒ overprecise with too many extreme PITs; too-wide ⇒ underprecise with PITs bunched in the middle)."
-    material: |
-      PIT:  PIT(y, P̂) = F̂(y)          (F̂ = predictive cdf)
-
-      Calibrated (continuous target)  ⟹  PIT ~ Uniform[0,1]
-
-      Read the histogram vs. a flat uniform:
-        ∪-shaped (mass at 0 and 1)  → predictive distribution too narrow (overprecise)
-        ∩-shaped (mass in middle)   → too wide (underprecise)
-        shifted / skewed            → biased location (over/under-optimistic)
+    goal: "Student can define the Probability Integral Transform PIT(y, P̂) = F̂(y), state that a calibrated probabilistic prediction for a continuous real-valued target implies PIT ~ Uniform[0,1], and read a PIT histogram: a hump/skew away from uniform signals miscalibration (e.g. a location shift ⇒ biased mean/overoptimistic; too-narrow predictive distribution ⇒ overprecise with too many extreme PITs; too-wide ⇒ underprecise with PITs bunched in the middle). (The chat interface cannot show Figures, so you need to rely on text testing this.)"
 
   - id: interval_coverage
     title: "Coverage of prediction intervals"
     goal: "Student can define the empirical coverage of a (1−α) prediction interval as the fraction of observations whose outcome falls inside the interval, and interpret deviations from the nominal level: undercoverage (coverage < 1−α) means intervals are too narrow / overprecise, overcoverage (coverage > 1−α) means intervals are too wide / underprecise."
-    material: |
-      Interval from F̂:      [ F̂⁻¹(α/2),  F̂⁻¹(1−α/2) ]
-      Empirical coverage:   (1/n) · Σᵢ 1{ yᵢ ∈ [l̂ᵢ, ûᵢ] }
-
-      coverage < 1−α  → undercoverage → intervals too narrow (overprecise)
-      coverage > 1−α  → overcoverage  → intervals too wide  (underprecise)
 
   - id: accuracy_scores
     title: "Comparing accuracy with average scores"
-    goal: "Student can explain how predictive accuracy is measured empirically with a proper scoring rule — compute sᵢ = s(yᵢ, p̂ᵢ) and average to approximate S(p̂), the more accurate prediction earning the higher average score in the long run — and how two predictions are compared by testing the mean score difference Δs = s(y,p̂_A) − s(y,p̂_B) against H₀: equal expected scores (often against the ignorant benchmark p̂ = 0.5). Student can also explain why the linear score / Brier Index 1 − |y − p̂| is NOT proper."
-
-  - id: proper_scores_reals
-    title: "Log score & CRPS"
-    goal: "Student can name the two proper scoring rules for probabilistic predictions of real-valued targets — the log (ignorance) score log f̂(y) and the CRPS — and explain that the CRPS aggregates accuracy across all thresholds (an integral of Brier scores of the events {Y ≤ x}), equivalently across all quantile levels, so it is a single accuracy measure for a whole predictive distribution."
-    material: |
-      Log (ignorance) score:   S_log(y, P̂) = log f̂(y)          (f̂ = predictive density)
-
-      CRPS (threshold form):
-          CRPS(y, F̂) = ∫ ( F̂(x) − 1{y ≤ x} )² dx     ← Brier score of {Y ≤ x}, integrated over x
-
-      Both are proper: higher expected score = more accurate prediction.
-
-  - id: point_predictions
-    title: "Loss functions & MZ-calibration for point predictions"
-    goal: "Student can explain how point predictions of real-valued targets are evaluated: accuracy is measured with a loss function l(y, ŷ) that must be consistent for the targeted property (the quadratic loss (y−ŷ)² is consistent for the mean — so measuring a mean forecast with the absolute loss |y−ŷ| is a mistake), and mean-calibration is tested with a Mincer–Zarnowitz regression, where a calibrated forecast implies the regression coefficients are zero (testable with an F-test)."
-    material: |
-      Consistency (mean):   argmin_ŷ  E_{y∼P}[ l(y, ŷ) ]  =  E_{y∼P}[y]
-        quadratic loss l(y,ŷ) = (y − ŷ)²  is consistent for the mean.
-        match the loss to the property — do NOT score a mean forecast with |y − ŷ|.
-
-      Mincer–Zarnowitz:     E[ y − ŷ | x ] = β₀ + β₁ ŷ
-        mean-calibrated  ⟹  β₀ = 0 and β₁ = 0   (test with an F-test)
+    goal: "Student can explain how predictive accuracy is measured empirically with a proper scoring rule — compute sᵢ = s(yᵢ, p̂ᵢ) and average to approximate S(p̂), the more accurate prediction earning the higher average score in the long run — and how two predictions are compared by testing the mean score difference Δs = s(y,p̂_A) − s(y,p̂_B) against H₀: equal expected scores (often against the ignorant benchmark p̂ = 0.5)."
