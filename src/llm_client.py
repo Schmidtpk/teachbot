@@ -38,6 +38,13 @@ def _with_cache_control(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     it for providers that cache implicitly or not at all, so this is safe for every
     model in the student chooser (IID-STUDENT-MODEL-CHOICE).
 
+    System messages that already arrive as a content-block list (learning-goals mode
+    splits them into a stable lecture-content block + a per-goal block, see
+    `src/goals.py::build_goal_system_blocks`) get a breakpoint per text block, so the
+    lecture-content prefix is reused across goals and across concurrent students.
+    At most 3 blocks are marked per message — Anthropic allows 4 breakpoints per
+    request and the latest message uses one.
+
     The caller's message dicts are never mutated — history keeps plain-string content.
     """
     if not messages:
@@ -45,16 +52,25 @@ def _with_cache_control(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
     def _mark(msg: dict[str, Any]) -> dict[str, Any]:
         content = msg.get("content")
-        if not isinstance(content, str):
-            return msg  # already block-form (or unexpected) — leave untouched
-        return {
-            **msg,
-            "content": [{
-                "type": "text",
-                "text": content,
-                "cache_control": {"type": "ephemeral"},
-            }],
-        }
+        if isinstance(content, str):
+            return {
+                **msg,
+                "content": [{
+                    "type": "text",
+                    "text": content,
+                    "cache_control": {"type": "ephemeral"},
+                }],
+            }
+        if isinstance(content, list):
+            marked, budget = [], 3
+            for block in content:
+                if (budget > 0 and isinstance(block, dict)
+                        and block.get("type") == "text" and "cache_control" not in block):
+                    block = {**block, "cache_control": {"type": "ephemeral"}}
+                    budget -= 1
+                marked.append(block)
+            return {**msg, "content": marked}
+        return msg  # unexpected shape — leave untouched
 
     out = list(messages)
     if out[0].get("role") == "system":

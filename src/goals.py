@@ -57,11 +57,14 @@ def sample_goal(goals: list[dict], completed: set[str], seed_key: Optional[str] 
     return random.choice(remaining)
 
 
-def build_goal_system_prompt(course: CourseConfig, goal: dict) -> str:
-    """IID-LEARN-GOALS, IID-CONTENT-INJECT: Course system prompt + the single current goal.
+def build_goal_system_blocks(course: CourseConfig, goal: dict) -> list[dict]:
+    """IID-LEARN-GOALS, IID-CONTENT-INJECT, IID-COST-CACHE: system prompt as two content blocks.
 
-    Wraps `build_system_prompt` (instructions + injected lecture content) and appends only
-    the sampled learning goal, so the model sees exactly one goal at a time.
+    Block 1 — instructions + injected lecture content (`build_system_prompt`): identical for
+    every goal and every student of the course, so the cache breakpoint `_with_cache_control`
+    places on it (src/llm_client.py) is shared across goals and across concurrent sessions.
+    Block 2 — the single sampled goal: changes per goal, kept out of the stable prefix so a
+    goal switch only re-writes this small block instead of the whole system prompt.
     """
     base = build_system_prompt(course)
     title = goal.get("title", "")
@@ -72,8 +75,19 @@ def build_goal_system_prompt(course: CourseConfig, goal: dict) -> str:
         f"refer to it, do not reproduce it) ---\n{material}\n--- END MATERIAL ---\n"
         if material else ""
     )
-    return (
-        f"{base}\n"
-        f"--- CURRENT LEARNING GOAL ---\n{header}\n--- END LEARNING GOAL ---\n"
+    goal_part = (
+        f"\n--- CURRENT LEARNING GOAL ---\n{header}\n--- END LEARNING GOAL ---\n"
         f"{material_part}"
     )
+    return [
+        {"type": "text", "text": base},
+        {"type": "text", "text": goal_part},
+    ]
+
+
+def build_goal_system_prompt(course: CourseConfig, goal: dict) -> str:
+    """IID-LEARN-GOALS: plain-string form of `build_goal_system_blocks` (same bytes, joined).
+
+    Kept for callers that need a single string (tests/learn_goals.py harness).
+    """
+    return "".join(block["text"] for block in build_goal_system_blocks(course, goal))

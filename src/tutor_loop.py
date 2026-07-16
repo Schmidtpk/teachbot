@@ -85,10 +85,13 @@ def build_diagnose_messages(
     diagnose_prompt: str, lecture_content: str, goal: dict,
     big_question: str, student_answer: str,
     dialogue: list[dict[str, str]] | None = None,
-) -> list[dict[str, str]]:
-    """IID-LEARN-DIAGNOSE, IID-CONTENT-INJECT: assemble the diagnose call's messages.
+) -> list[dict[str, Any]]:
+    """IID-LEARN-DIAGNOSE, IID-CONTENT-INJECT, IID-COST-CACHE: assemble the diagnose call's messages.
 
-    System = diagnostic instructions + lecture content + the current goal + the anchor question.
+    System = diagnostic instructions + lecture content + the current goal + the anchor question,
+    split into two content blocks: a stable block (instructions + lecture content — identical
+    across goals and students, so `_with_cache_control` in src/llm_client.py can place a shared
+    cache breakpoint on it) and a per-goal block (goal + big question).
     User   = the dialogue so far for this goal (roles "student"/"tutor", excluding the latest
     answer) + the student's latest answer to grade, so the judge credits points the student
     already made earlier instead of flagging them as omissions. Kept as a pure function so the
@@ -105,12 +108,17 @@ def build_diagnose_messages(
             f"\n\n--- MATERIAL (shown to the student with the question) ---\n"
             f"{material}\n--- END MATERIAL ---"
         )
-    system = (
-        f"{diagnose_prompt}\n\n"
-        f"--- LECTURE CONTENT START ---\n{lecture_content}\n--- LECTURE CONTENT END ---\n\n"
-        f"--- CURRENT LEARNING GOAL ---\n{goal_block}\n--- END LEARNING GOAL ---\n\n"
-        f"--- BIG QUESTION ---\n{big_question}\n--- END BIG QUESTION ---\n"
-    )
+    # IID-COST-CACHE: stable prefix (block 1) vs per-goal part (block 2)
+    system_blocks = [
+        {"type": "text", "text": (
+            f"{diagnose_prompt}\n\n"
+            f"--- LECTURE CONTENT START ---\n{lecture_content}\n--- LECTURE CONTENT END ---\n\n"
+        )},
+        {"type": "text", "text": (
+            f"--- CURRENT LEARNING GOAL ---\n{goal_block}\n--- END LEARNING GOAL ---\n\n"
+            f"--- BIG QUESTION ---\n{big_question}\n--- END BIG QUESTION ---\n"
+        )},
+    ]
     transcript = _render_dialogue(dialogue) if dialogue else ""
     dialogue_block = (
         f"Dialogue so far on this goal (before the latest answer):\n\n"
@@ -124,7 +132,7 @@ def build_diagnose_messages(
         "Diagnose this answer as instructed and reply with ONLY the JSON object."
     )
     return [
-        {"role": "system", "content": system},
+        {"role": "system", "content": system_blocks},
         {"role": "user", "content": user},
     ]
 

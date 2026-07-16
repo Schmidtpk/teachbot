@@ -231,8 +231,13 @@ Two levers:
    growing history is cached incrementally turn-over-turn). OpenRouter forwards `cache_control` to
    providers with explicit caching (Anthropic bills cache reads at ~0.1x input price, 5-min TTL) and
    ignores it for providers that cache implicitly (OpenAI, DeepSeek, Gemini) — safe for every model
-   in the student chooser. Because the prefix is identical across students of the same course+model,
-   cache hits are shared across concurrent sessions.
+   in the student chooser. In learning-goals mode the system prompt is **split into two blocks**
+   (`src/goals.py::build_goal_system_blocks`, and analogously in `build_diagnose_messages`): a
+   stable block (instructions + lecture content) and a per-goal block. The stable block's
+   breakpoint is byte-identical across goals and across concurrent students of the same
+   course+model, so a goal switch or a second student re-reads it from cache instead of re-writing
+   the whole prefix. `_with_cache_control` marks at most 3 blocks per message (Anthropic allows 4
+   breakpoints/request; the latest message uses one).
 2. **Cheap diagnose model** — the learning-goals diagnose call (IID-LEARN-DIAGNOSE) is internal,
    non-streamed JSON whose input is dominated by lecture content; `llm.diagnose_model` routes it to
    a cheap model (default `google/gemini-3-flash-preview`) independent of the tutor model.

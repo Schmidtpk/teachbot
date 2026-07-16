@@ -20,7 +20,7 @@ from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, 
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_text
-from src.goals import GOAL_KICKOFF, build_goal_system_prompt, goal_material, sample_goal
+from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
 from src.llm_client import build_client, stream_response
 from src.progress_store import ProgressStore
 from src.tutor_loop import build_act_instruction, diagnose_answer
@@ -276,7 +276,8 @@ async def on_chat_start() -> None:
         cl.user_session.set("goal_seed", goal_seed)
         current_goal = sample_goal(course.learning_goals, completed, seed_key=goal_seed)
         if current_goal is not None:
-            system_prompt = build_goal_system_prompt(course, current_goal)
+            # IID-COST-CACHE: block form — stable lecture-content block cached across goals
+            system_prompt = build_goal_system_blocks(course, current_goal)
         # IID-LEARN-DIAGNOSE: cache the diagnose prompt + lecture content once so the two-step
         # turn (diagnose → act) needn't re-read them on every student answer.
         cl.user_session.set(
@@ -400,8 +401,9 @@ async def on_complete_goal(action: cl.Action) -> None:
         return
 
     # Reset context to the next goal so only one goal is ever in the LLM's context
+    # IID-COST-CACHE: block form — the lecture-content block stays cached across the goal switch
     cl.user_session.set("current_goal", next_goal)
-    new_prompt = build_goal_system_prompt(course, next_goal)
+    new_prompt = build_goal_system_blocks(course, next_goal)
     history = [{"role": "system", "content": new_prompt}]
     cl.user_session.set("history", history)
 
