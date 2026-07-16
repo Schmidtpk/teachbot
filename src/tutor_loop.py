@@ -134,15 +134,22 @@ async def diagnose_answer(
     goal: dict, big_question: str, student_answer: str,
     dialogue: list[dict[str, str]] | None = None,
 ) -> Diagnosis:
-    """IID-LEARN-DIAGNOSE: run the structured diagnose call and return a Diagnosis.
+    """IID-LEARN-DIAGNOSE, IID-COST-CACHE: run the structured diagnose call and return a Diagnosis.
 
-    Uses the course model (SID-LLM-PROVIDER via `complete_json`). Any failure yields
-    `Diagnosis.from_raw({})` → neutral, so the caller falls back to generic feedback.
+    Uses `diagnose_model` from the merged LLM config when set (a cheap model for this
+    non-streamed, never-shown JSON call — the lecture-content-heavy input dominates cost),
+    otherwise the course model (SID-LLM-PROVIDER via `complete_json`). The student's model
+    choice (IID-STUDENT-MODEL-CHOICE) intentionally does NOT affect the diagnose model.
+    Any failure yields `Diagnosis.from_raw({})` → neutral, so the caller falls back to
+    generic feedback.
     """
     messages = build_diagnose_messages(
         diagnose_prompt, lecture_content, goal, big_question, student_answer, dialogue
     )
-    raw = await complete_json(client, {"llm": course_llm}, messages)
+    diag_llm = dict(course_llm)
+    if course_llm.get("diagnose_model"):
+        diag_llm["model"] = course_llm["diagnose_model"]
+    raw = await complete_json(client, {"llm": diag_llm}, messages)
     return Diagnosis.from_raw(raw)
 
 

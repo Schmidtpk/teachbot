@@ -1,5 +1,5 @@
 """
-SID-LLM-PROVIDER, SID-API-CONFIG
+SID-LLM-PROVIDER, SID-API-CONFIG, IID-COST-CACHE
 Thin async wrapper around OpenRouter's OpenAI-compatible API.
 Model, base URL, and API key come from config + .env — never hardcoded.
 """
@@ -27,6 +27,43 @@ def build_client(cfg: dict[str, Any]) -> AsyncOpenAI:
     )
 
 
+def _with_cache_control(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """IID-COST-CACHE: mark the stable prompt prefix as cacheable.
+
+    Converts the system message (instructions + injected lecture content — by far the
+    largest part of every request) and the latest message (so the growing conversation
+    history is cached incrementally turn-over-turn) to content-block form with an
+    Anthropic `cache_control` breakpoint. OpenRouter forwards `cache_control` to
+    providers with explicit prompt caching (Anthropic: reads bill at ~0.1x) and drops
+    it for providers that cache implicitly or not at all, so this is safe for every
+    model in the student chooser (IID-STUDENT-MODEL-CHOICE).
+
+    The caller's message dicts are never mutated — history keeps plain-string content.
+    """
+    if not messages:
+        return messages
+
+    def _mark(msg: dict[str, Any]) -> dict[str, Any]:
+        content = msg.get("content")
+        if not isinstance(content, str):
+            return msg  # already block-form (or unexpected) — leave untouched
+        return {
+            **msg,
+            "content": [{
+                "type": "text",
+                "text": content,
+                "cache_control": {"type": "ephemeral"},
+            }],
+        }
+
+    out = list(messages)
+    if out[0].get("role") == "system":
+        out[0] = _mark(out[0])
+    if len(out) > 1:
+        out[-1] = _mark(out[-1])
+    return out
+
+
 async def stream_response(
     client: AsyncOpenAI,
     cfg: dict[str, Any],
@@ -39,7 +76,7 @@ async def stream_response(
     llm_cfg = cfg.get("llm", {})
     stream = await client.chat.completions.create(
         model=llm_cfg.get("model", "google/gemini-3-flash-preview"),
-        messages=messages,  # type: ignore[arg-type]
+        messages=_with_cache_control(messages),  # type: ignore[arg-type]  # IID-COST-CACHE
         temperature=llm_cfg.get("temperature", 0.3),
         max_tokens=llm_cfg.get("max_tokens", 2048),
         stream=True,
@@ -82,7 +119,7 @@ async def complete_json(
     try:
         resp = await client.chat.completions.create(
             model=llm_cfg.get("model", "google/gemini-3-flash-preview"),
-            messages=messages,  # type: ignore[arg-type]
+            messages=_with_cache_control(messages),  # type: ignore[arg-type]  # IID-COST-CACHE
             temperature=llm_cfg.get("temperature", 0.3),
             max_tokens=llm_cfg.get("max_tokens", 2048),
             response_format={"type": "json_object"},

@@ -22,5 +22,8 @@ auth:
 llm:
   base_url: https://openrouter.ai/api/v1
   model: anthropic/claude-sonnet-5   # SID-LLM-PROVIDER
+  # IID-LEARN-DIAGNOSE, IID-COST-CACHE: cheap model for the internal (never shown)
+  # diagnose call in learning-goals mode. Leave blank/remove to use `model` for both.
+  diagnose_model: google/gemini-3-flash-preview
   temperature: 0.3
   max_tokens: 2048

@@ -9,7 +9,7 @@ Missing `_meta.yaml` or missing `lecture_name` → loud startup failure.
 Fallback chain (see IID-MULTI-COURSE):
   _system_prompt.md : subfolder → root content dir
   _welcome.md       : subfolder → root content dir
-  model / temperature / max_tokens : _meta.yaml → config.yaml llm section
+  model / temperature / max_tokens / diagnose_model : _meta.yaml → config.yaml llm section
   lecture_name / {{course_name}}   : _meta.yaml → config.yaml course_name
   student_model_choices (IID-STUDENT-MODEL-CHOICE) : subfolder _meta.yaml → root content/_meta.yaml
 
@@ -208,9 +208,10 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             return local if local.exists() else root / filename
 
         # Merge LLM config: base_cfg["llm"] as defaults, _meta.yaml keys as overrides
+        # (diagnose_model: IID-LEARN-DIAGNOSE / IID-COST-CACHE — cheap model for the diagnose call)
         llm_overrides = {
             k: meta[k]
-            for k in ("model", "temperature", "max_tokens")
+            for k in ("model", "temperature", "max_tokens", "diagnose_model")
             if k in meta
         }
         merged_llm = {**base_llm, **llm_overrides}

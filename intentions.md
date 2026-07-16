@@ -214,8 +214,40 @@ Builds on IID-LEARN-GOALS, IID-LEARN-SOCRATIC, IID-CONTENT-INJECT; uses SID-LLM-
 `src/llm_client.py` (`complete_json`), `content/_diagnose_prompt.md` (default prompt),
 `src/course_loader.py` (`diagnose_prompt_path`), `app.py` (`_diagnostic_turn`, `on_message` branch,
 big-question capture in `_pose_goal_question`).
-**No-Goals:** Addressing several misconceptions per turn (top-1 only), a separate cheaper diagnose
-model (course model for both), an evolving/sharpening big question (kept fixed per goal).
+The diagnose call runs on `llm.diagnose_model` when set (`config.yaml` → per-course `_meta.yaml`
+override; see IID-COST-CACHE) — a cheap model for this internal, never-shown JSON call — and falls
+back to the course model otherwise. The student's model choice (IID-STUDENT-MODEL-CHOICE) does not
+affect the diagnose model.
+**No-Goals:** Addressing several misconceptions per turn (top-1 only), an evolving/sharpening big
+question (kept fixed per goal).
+
+### IID-COST-CACHE
+**Lifecycle:** IMPLEMENTED
+**Description:** Keep per-turn LLM cost low despite full-context stuffing (IID-CONTENT-INJECT).
+Two levers:
+1. **Prompt caching** — every request marks the stable prefix with Anthropic `cache_control`
+   breakpoints (`src/llm_client.py::_with_cache_control`): the system message (instructions +
+   injected lecture content, the dominant share of every request) and the latest message (so the
+   growing history is cached incrementally turn-over-turn). OpenRouter forwards `cache_control` to
+   providers with explicit caching (Anthropic bills cache reads at ~0.1x input price, 5-min TTL) and
+   ignores it for providers that cache implicitly (OpenAI, DeepSeek, Gemini) — safe for every model
+   in the student chooser. Because the prefix is identical across students of the same course+model,
+   cache hits are shared across concurrent sessions.
+2. **Cheap diagnose model** — the learning-goals diagnose call (IID-LEARN-DIAGNOSE) is internal,
+   non-streamed JSON whose input is dominated by lecture content; `llm.diagnose_model` routes it to
+   a cheap model (default `google/gemini-3-flash-preview`) independent of the tutor model.
+Motivation: a two-day exam-prep burst (2026-07-14/15, 17 students, ~1,100 assistant turns on
+Sonnet 5) cost ≈ $40, ~94% of it input tokens from re-sending lecture content on every call.
+**Success criteria:**
+- No visible change for students; a failed/ignored cache marker degrades to full-price tokens,
+  never to an error.
+- Cache reads appear in OpenRouter activity (cache discount > 0) for Anthropic models.
+**Key files:** `src/llm_client.py` (`_with_cache_control`, applied in `stream_response` +
+`complete_json`), `config.yaml` (`llm.diagnose_model`), `src/course_loader.py` (merge),
+`src/tutor_loop.py` (`diagnose_answer` model override).
+**No-Goals:** RAG/chunking (see IID-RAG-RETRIEVAL), trimming lecture content, provider-specific
+cache TTL tuning, caching for the test harness (`tests/` passes messages through unchanged paths
+and benefits automatically).
 
 ## Core Mode: Eval
 
