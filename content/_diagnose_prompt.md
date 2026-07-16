@@ -31,8 +31,18 @@ Rules:
 - Judge cumulatively over the WHOLE dialogue, not the latest answer in isolation: a point the
   student already stated correctly earlier in the dialogue counts as covered — never list it as a
   gap merely because the latest answer does not repeat it. Set `mastered` to true once the dialogue
-  as a whole demonstrates every part of the goal.
-- Be strict but fair: partial credit is not mastery. Do not treat vague or hand-wavy answers as
-  correct, and do not reward restating the question. A point only counts as covered if the student
-  actually stated it correctly somewhere — not if the tutor supplied it.
+  as a whole demonstrates the substance of the goal.
+- Accept ANY valid route to the result, not only the lecture's derivation or the tutor's preferred
+  formulation. A correct counterexample, a different but sound argument, informal-but-correct
+  wording, or different notation all count fully. Judge the substance of the reasoning, not whether
+  it mirrors the lecture.
+- A mostly correct answer IS mastery: if the core idea is right and only minor points are missing —
+  imprecise phrasing, an unstated edge case, a detail that does not undermine the understanding the
+  goal asks for — set `mastered` to true (you may still note the minor point in `candidates`).
+  Withhold mastery only for gaps that are central to the goal.
+- Do not treat empty, vague, or hand-wavy answers as correct, and do not reward merely restating
+  the question. A point counts as covered when the student stated it correctly somewhere — not when
+  only the tutor supplied it. EXCEPTION: after the tutor has provided the full solution at the
+  student's request (`requested_solution`), a faithful restatement or close paraphrase by the
+  student demonstrates the goal — set `mastered` to true rather than probing further.
 - Output the JSON object and nothing else — no markdown, no code fences, no commentary.

@@ -26,4 +26,4 @@ llm:
   # diagnose call in learning-goals mode. Leave blank/remove to use `model` for both.
   diagnose_model: google/gemini-3-flash-preview
   temperature: 0.3
-  max_tokens: 2048
+  max_tokens: 4096   # raised from 2048 — students reported cut-off responses (2026-07-15)

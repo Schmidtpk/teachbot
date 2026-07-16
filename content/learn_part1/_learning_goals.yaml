@@ -44,7 +44,7 @@ goals:
     material: |
       Quadratic (Brier) score:   s_qsr(p̂, y) = 1 − (p̂ − y)^2
       Logarithmic score:         s_log(p̂, y) = log(p̂_y),  where p̂_1 = p̂, p̂_0 = 1 − p̂
-      Linear (improper) score:   s_l(p̂, y)  = |y − p̂|
+      Linear (improper) score:   s_l(p̂, y)  = 1 − |y − p̂|
 
   - id: sharpness_and_optimality
     title: "Sharpness subject to calibration"

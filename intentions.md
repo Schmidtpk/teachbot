@@ -218,6 +218,11 @@ The diagnose call runs on `llm.diagnose_model` when set (`config.yaml` → per-c
 override; see IID-COST-CACHE) — a cheap model for this internal, never-shown JSON call — and falls
 back to the course model otherwise. The student's model choice (IID-STUDENT-MODEL-CHOICE) does not
 affect the diagnose model.
+**Mastery calibration** (student feedback 2026-07-15): the diagnose prompt accepts ANY valid route
+to the result (counterexamples, alternative derivations, informal-but-correct wording), treats
+mostly-correct answers as mastery (withholding only for gaps central to the goal), and counts a
+faithful restatement after a `requested_solution` hand-over as mastery instead of probing further.
+Vague/hand-wavy answers and restating the question still never count.
 **No-Goals:** Addressing several misconceptions per turn (top-1 only), an evolving/sharpening big
 question (kept fixed per goal).
 
