@@ -127,10 +127,13 @@ async def _send_actions(message_id: str, full_response: str, mode: str) -> None:
         payload={"flagged_message": full_response},
     ).send(for_id=message_id)
     if mode == "learning_goals":  # IID-LEARN-GOALS: let the student mark the goal complete
+        current_goal: dict | None = cl.user_session.get("current_goal")
+        # IID-LEARN-GOALS: carry the goal id so stale buttons (from earlier goals) can be
+        # detected in on_complete_goal instead of completing the *current* goal.
         await cl.Action(
             name="complete_goal",
             label="✅ Mark goal complete",
-            payload={},
+            payload={"goal_id": current_goal["id"] if current_goal else None},
         ).send(for_id=message_id)
 
 
@@ -382,6 +385,15 @@ async def on_complete_goal(action: cl.Action) -> None:
 
     if current_goal is None or course is None:
         return  # stale button (e.g. all goals already completed)
+
+    # IID-LEARN-GOALS: a button from an earlier goal (or a double-click) must not
+    # complete the current goal — completions cannot be undone by re-clicking.
+    if action.payload.get("goal_id") != current_goal["id"]:
+        await cl.Message(
+            content="That button belongs to a goal you already recorded — completions "
+                    "can't be undone. You're now working on the goal above."
+        ).send()
+        return
 
     # Persist completion and exclude this goal from further sampling
     if progress_store is not None:
