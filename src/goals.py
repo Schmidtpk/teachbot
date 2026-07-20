@@ -56,7 +56,7 @@ def sample_goal(goals: list[dict], completed: set[str]) -> Optional[dict]:
     return random.choice(remaining)
 
 
-def build_goal_system_blocks(course: CourseConfig, goal: dict) -> list[dict]:
+def build_goal_system_blocks(course: CourseConfig, goal: dict, base: str | None = None) -> list[dict]:
     """IID-LEARN-GOALS, IID-CONTENT-INJECT, IID-COST-CACHE: system prompt as two content blocks.
 
     Block 1 — instructions + injected lecture content (`build_system_prompt`): identical for
@@ -64,8 +64,15 @@ def build_goal_system_blocks(course: CourseConfig, goal: dict) -> list[dict]:
     places on it (src/llm_client.py) is shared across goals and across concurrent sessions.
     Block 2 — the single sampled goal: changes per goal, kept out of the stable prefix so a
     goal switch only re-writes this small block instead of the whole system prompt.
+
+    Accepts an optional pre-built `base` (from `build_system_prompt`) so a caller that
+    already computed it for this session doesn't trigger a second full content read —
+    on_chat_start always needs `build_system_prompt` output regardless of whether a goal
+    remains, so it passes its own result in here rather than have this function recompute
+    it (see IID-LEARN-DIAGNOSE, `agent/session_churn_fix_handoff.md`).
     """
-    base = build_system_prompt(course)
+    if base is None:
+        base = build_system_prompt(course)
     title = goal.get("title", "")
     header = f"{title}\n{goal['goal']}" if title else goal["goal"]
     material = goal_material(goal)

@@ -1,9 +1,20 @@
 # Handoff: fix learning-goals mode session churn (IID-LEARN-GOALS)
 
-You are picking up an **open, unfixed bug**. A prior session diagnosed it thoroughly but did
-not implement a fix (only reverted one unrelated aggravating factor — see "Already done"
-below). Read this whole file before touching code; it contains the evidence trail so you don't
-have to re-derive it.
+**UPDATE 2026-07-20 (plan `session_churn_timeouts`, see `agent/done/session_churn_timeouts.md`):**
+defensive timeouts + error-visibility logging have since been implemented on top of this
+diagnosis — see that plan file for exactly what shipped (timeouts on all 3 learning-goals LLM
+calls, the previously-silent exception in `complete_json` now logged, the redundant
+double/triple `load_content()` de-duplicated). **The root cause is still not confirmed** — those
+changes are defensive/diagnostic, not a proven fix. If you're picking this up because churn
+recurred, start by reading the new `[timing]`/error logs (Railway deploy logs, grep for
+`[complete_json]` / `[_stream_assistant]`) — the silent-failure problem that blocked this
+investigation before is now fixed, so the next episode should be traceable. Everything below is
+the original diagnosis; still accurate, just no longer fully "unfixed."
+
+You are picking up a bug that may or may not be fully resolved (see UPDATE above). A prior
+session diagnosed it thoroughly and a follow-up shipped a defensive fix without a fully confirmed
+root cause — see "Already done" below. Read this whole file before touching code; it contains
+the evidence trail so you don't have to re-derive it.
 
 ## The complaint that started this
 

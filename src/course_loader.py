@@ -292,15 +292,31 @@ def load_course_text(path: Path, course_name: str) -> str:
     return text.replace("{{course_name}}", course_name)
 
 
-def build_system_prompt(course: CourseConfig) -> str:
-    """IID-QNA-CORE, IID-CONTENT-INJECT, IID-EDUCATOR-CONFIG, IID-MULTI-COURSE:
-    Assemble the full system prompt for a course: instructions + injected lecture content.
+def load_course_content(course: CourseConfig) -> str:
+    """IID-CONTENT-INJECT, IID-MULTI-COURSE: course folder content, with `extra_content` merged in.
+
+    Extracted out of `build_system_prompt` so a caller that needs the raw content for more
+    than one purpose (learning-goals mode caches it separately for the diagnose call — see
+    IID-LEARN-DIAGNOSE, `agent/session_churn_fix_handoff.md`) can load and clean the files
+    once and reuse the string, instead of re-reading and re-cleaning them per use.
     """
-    instructions = load_course_text(course.system_prompt_path, course.lecture_name)
     content = load_content(course.content_dir)
     # IID-MULTI-COURSE: extra_content files (e.g. shared intro/syllabus) come first
     if course.extra_content:
         content = f"{load_files(course.extra_content)}\n\n---\n\n{content}"
+    return content
+
+
+def build_system_prompt(course: CourseConfig, content: str | None = None) -> str:
+    """IID-QNA-CORE, IID-CONTENT-INJECT, IID-EDUCATOR-CONFIG, IID-MULTI-COURSE:
+    Assemble the full system prompt for a course: instructions + injected lecture content.
+
+    Accepts optional pre-loaded `content` (from `load_course_content`) so a caller that
+    already has it doesn't trigger a redundant file read; defaults to loading it fresh.
+    """
+    instructions = load_course_text(course.system_prompt_path, course.lecture_name)
+    if content is None:
+        content = load_course_content(course)
     return (
         f"{instructions}\n\n"
         f"--- LECTURE CONTENT START ---\n{content}\n--- LECTURE CONTENT END ---\n"

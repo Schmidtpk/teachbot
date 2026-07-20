@@ -229,6 +229,27 @@ to the result (counterexamples, alternative derivations, informal-but-correct wo
 mostly-correct answers as mastery (withholding only for gaps central to the goal), and counts a
 faithful restatement after a `requested_solution` hand-over as mastery instead of probing further.
 Vague/hand-wavy answers and restating the question still never count.
+**Session-churn hardening** (student feedback 2026-07-20, plan `session_churn_timeouts`): a
+Chainlit-session-restart storm was traced to learning-goals mode being the only mode that makes an
+LLM call automatically at session start (posing the opening question) plus two calls per student
+turn thereafter, versus Q&A's zero-at-start/one-per-turn — any call left to hang risks exceeding
+Chainlit's Socket.IO ping_timeout (engine.io default 20s), causing a silent transport drop and
+reconnect that re-runs `on_chat_start` (see `agent/session_churn_fix_handoff.md` for the full
+evidence trail). Mitigations: (1) every learning-goals LLM call (`complete_json` in
+`src/llm_client.py`, and the shared `_stream_assistant` in `app.py` used for both the opening
+question and the act reply) now has an explicit timeout — `DIAGNOSE_TIMEOUT_S` /
+`FIRST_TOKEN_TIMEOUT_S`, both 15s — with a graceful fallback (existing empty-`Diagnosis` path for
+diagnose; a short "please retry" message for the streamed calls) instead of hanging past the ping
+window; (2) `complete_json`'s previously-silent `except Exception: return {}` now logs the
+exception type/message/elapsed time to stderr, and all three calls log their duration — prior
+investigations found zero error traces specifically because failures were swallowed silently;
+(3) the learning-goals branch of `on_chat_start` used to call `load_content`/`build_system_prompt`
+up to 3x per session start (once for the base prompt, again inside `build_goal_system_blocks`,
+again for the cached `lecture_content`) — now loaded once via `load_course_content` and reused
+(`build_system_prompt`/`build_goal_system_blocks` both accept an optional pre-loaded value).
+Verified byte-identical output between the reused and freshly-computed paths. Root cause of the
+underlying latency/disconnect is not fully confirmed — these are defensive + diagnostic changes;
+if churn persists, the new duration/error logs should show what's actually slow.
 **No-Goals:** Addressing several misconceptions per turn (top-1 only), an evolving/sharpening big
 question (kept fixed per goal).
 

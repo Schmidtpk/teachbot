@@ -4,12 +4,22 @@ Thin async wrapper around OpenRouter's OpenAI-compatible API.
 Model, base URL, and API key come from config + .env — never hardcoded.
 """
 
+import asyncio
 import json
 import os
+import sys
+import time
 from collections.abc import AsyncIterator
 from typing import Any
 
 from openai import AsyncOpenAI
+
+# IID-LEARN-DIAGNOSE: the diagnose call is non-streamed, so nothing is visible to the
+# student while it's in flight. Chainlit's Socket.IO layer uses engine.io's default
+# ping_timeout (20s) — a call left to hang indefinitely risks the session's transport
+# being dropped and reconnected (see agent/session_churn_fix_handoff.md). Fail well
+# before that window so the caller's existing empty-dict fallback engages instead.
+DIAGNOSE_TIMEOUT_S = 15
 
 
 def build_client(cfg: dict[str, Any]) -> AsyncOpenAI:
@@ -128,20 +138,36 @@ async def complete_json(
     IID-LEARN-DIAGNOSE, SID-LLM-PROVIDER: Non-streamed structured completion.
 
     Requests a JSON object and parses it defensively — any failure (network error,
-    empty output, invalid JSON) returns {} so a flaky model degrades gracefully to
-    the caller's fallback path rather than crashing the turn.
+    empty output, invalid JSON, or exceeding DIAGNOSE_TIMEOUT_S) returns {} so a flaky
+    or slow model degrades gracefully to the caller's fallback path rather than
+    crashing the turn or hanging the session. Every failure is logged with its type,
+    message, and elapsed time — previously this swallowed exceptions silently, which
+    is why past session-churn investigations found no error trace at all.
     """
     llm_cfg = cfg.get("llm", {})
+    model = llm_cfg.get("model", "google/gemini-3-flash-preview")
+    start = time.monotonic()
     try:
-        resp = await client.chat.completions.create(
-            model=llm_cfg.get("model", "google/gemini-3-flash-preview"),
-            messages=_with_cache_control(messages),  # type: ignore[arg-type]  # IID-COST-CACHE
-            temperature=llm_cfg.get("temperature", 0.3),
-            max_tokens=llm_cfg.get("max_tokens", 2048),
-            response_format={"type": "json_object"},
+        resp = await asyncio.wait_for(
+            client.chat.completions.create(
+                model=model,
+                messages=_with_cache_control(messages),  # type: ignore[arg-type]  # IID-COST-CACHE
+                temperature=llm_cfg.get("temperature", 0.3),
+                max_tokens=llm_cfg.get("max_tokens", 2048),
+                response_format={"type": "json_object"},
+            ),
+            timeout=DIAGNOSE_TIMEOUT_S,
         )
-    except Exception:
+    except Exception as exc:
+        elapsed = time.monotonic() - start
+        print(
+            f"[complete_json] model={model} failed after {elapsed:.1f}s: "
+            f"{type(exc).__name__}: {exc}",
+            file=sys.stderr,
+        )
         return {}
+    elapsed = time.monotonic() - start
+    print(f"[timing] complete_json model={model} took {elapsed:.1f}s", file=sys.stderr)
     content = (resp.choices[0].message.content or "").strip()
     if not content:
         return {}

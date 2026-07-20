@@ -5,7 +5,10 @@ Chainlit entry point for Lectos v1.
 Run with:  chainlit run app.py
 """
 
+import asyncio
 import json
+import sys
+import time
 import uuid
 from datetime import date
 from pathlib import Path
@@ -19,7 +22,7 @@ from dotenv import load_dotenv
 from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
-from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_text
+from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text
 from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
 from src.llm_client import build_client, stream_response
 from src.progress_store import ProgressStore
@@ -42,6 +45,13 @@ COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
 
 
 _AUTH_CFG = CFG.get("auth", {})
+
+# IID-LEARN-GOALS, IID-LEARN-DIAGNOSE: Chainlit's Socket.IO layer uses engine.io's
+# default ping_timeout (20s); a stalled LLM call with no visible activity risks the
+# session's transport being dropped and reconnected (see
+# agent/session_churn_fix_handoff.md). Bail out well before that window so the
+# student gets a clear retry prompt instead of a silent session restart.
+FIRST_TOKEN_TIMEOUT_S = 15
 
 
 @cl.set_chat_profiles
@@ -104,16 +114,41 @@ async def _stream_assistant(history: list[dict], course_llm: dict) -> tuple[cl.M
     """IID-QNA-CORE, IID-UI-RENDER: Stream one assistant turn, append it to history.
 
     Returns (message, full_response, active_model). Caller is responsible for logging.
+    If no token arrives within FIRST_TOKEN_TIMEOUT_S, aborts with a short apology
+    instead of leaving the session hanging (see module-level comment on that constant).
     """
     active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
     response_msg = cl.Message(content="")
     await response_msg.send()
 
-    full_response = ""
-    async for token in stream_response(LLM_CLIENT, {"llm": course_llm}, history):
+    start = time.monotonic()
+    token_stream = stream_response(LLM_CLIENT, {"llm": course_llm}, history).__aiter__()
+    try:
+        first_token = await asyncio.wait_for(token_stream.__anext__(), timeout=FIRST_TOKEN_TIMEOUT_S)
+    except StopAsyncIteration:
+        first_token = None
+    except asyncio.TimeoutError:
+        elapsed = time.monotonic() - start
+        print(
+            f"[_stream_assistant] model={active_model} no token after {elapsed:.1f}s — aborting",
+            file=sys.stderr,
+        )
+        full_response = "Sorry, that's taking too long to respond — please try sending your message again."
+        response_msg.content = full_response
+        await response_msg.update()
+        history.append({"role": "assistant", "content": full_response})
+        return response_msg, full_response, active_model
+
+    full_response = first_token or ""
+    if first_token:
+        await response_msg.stream_token(first_token)
+    async for token in token_stream:
         full_response += token
         await response_msg.stream_token(token)
     await response_msg.update()
+
+    elapsed = time.monotonic() - start
+    print(f"[timing] _stream_assistant model={active_model} took {elapsed:.1f}s", file=sys.stderr)
 
     history.append({"role": "assistant", "content": full_response})
     return response_msg, full_response, active_model
@@ -233,7 +268,11 @@ async def on_chat_start() -> None:
                         f"{course.availability_line()}".strip()
             ).send()
             return
-        system_prompt = build_system_prompt(course)
+        # IID-LEARN-DIAGNOSE: load once and reuse below (learning-goals mode used to read and
+        # clean these same files up to 3x per session start — see
+        # agent/session_churn_fix_handoff.md)
+        course_content = load_course_content(course)
+        system_prompt = build_system_prompt(course, content=course_content)
         welcome = load_course_text(course.welcome_path, course.lecture_name)
         course_llm = course.llm
         model_choices = course.student_model_choices  # IID-STUDENT-MODEL-CHOICE
@@ -274,16 +313,18 @@ async def on_chat_start() -> None:
         completed = await progress_store.completed_goal_ids()
         current_goal = sample_goal(course.learning_goals, completed)
         if current_goal is not None:
-            # IID-COST-CACHE: block form — stable lecture-content block cached across goals
-            system_prompt = build_goal_system_blocks(course, current_goal)
+            # IID-COST-CACHE: block form — stable lecture-content block cached across goals.
+            # Reuse course_content computed above instead of re-reading the files.
+            system_prompt = build_goal_system_blocks(course, current_goal, base=system_prompt)
         # IID-LEARN-DIAGNOSE: cache the diagnose prompt + lecture content once so the two-step
-        # turn (diagnose → act) needn't re-read them on every student answer.
+        # turn (diagnose → act) needn't re-read them on every student answer. Reuses
+        # course_content computed above instead of a third redundant file read.
         cl.user_session.set(
             "diagnose_prompt",
             load_course_text(course.diagnose_prompt_path, course.lecture_name)
             if course.diagnose_prompt_path else "",
         )
-        cl.user_session.set("lecture_content", load_content(course.content_dir))
+        cl.user_session.set("lecture_content", course_content)
 
     # Store in Chainlit user session
     cl.user_session.set("history", [{"role": "system", "content": system_prompt}])
