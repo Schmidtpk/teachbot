@@ -134,12 +134,19 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Lifecycle:** IN_PROGRESS
 **Description:** Learning-goals practice mode — a course behavioral mode (`mode: learning_goals` in
 `_meta.yaml`) that drills a student through a list of learning goals one at a time. At session start
-the app loads the student's already-completed goals, **picks one uncompleted goal deterministically per
-(student, course, completed-set)** — seeded pseudo-random, so goal order still varies across students but a
-mid-goal page reload (iPad Safari evicts the tab on app switch → new Chainlit session) re-serves the SAME
-goal instead of jumping to a different one; with auth disabled there is no stable seed and the pick is
-random per session — and injects **only that goal** into the system prompt (on top of the normal lecture
-content, IID-CONTENT-INJECT).
+the app loads the student's already-completed goals, **samples one uncompleted goal at random**, and
+injects **only that goal** into the system prompt (on top of the normal lecture content,
+IID-CONTENT-INJECT).
+**Known limitation:** a mid-goal page reload (e.g. iPad Safari evicting a backgrounded tab) starts a
+fresh Chainlit session and may re-sample a different goal than the one in progress. A deterministic
+per-student seed (`(student, course, completed-set)` → same goal across such reloads) was added
+2026-07-08 (plan `goal_sticky_on_reload`) and reverted 2026-07-20 (plan `goal_seed_rewind`): under a
+session-churn condition (frequent reconnects, root cause undiagnosed — see agent/done for the
+investigation) it instead relocked students onto one goal, silently regenerating/rewording its opening
+question dozens of times per hour while resetting in-session mastery progress (`goal_dialogue`,
+`current_big_question`) on every restart — a worse and more confusing failure than the occasional
+reload it fixed. Revisit only alongside a fix for the underlying reconnect churn, or via durable
+per-goal session state instead of hidden RNG determinism.
 The bot poses a test question on the goal, gives Socratic feedback, and — when it judges the goal
 demonstrated — *suggests* the student click the **"✅ Mark goal complete"** button. The button is the
 authoritative completion trigger (no LLM "done"-token parsing): clicking it records the goal to the
@@ -164,7 +171,6 @@ IID-AUTH-BASIC (the per-student key), and IID-SHEETS-LOG (durable store).
 - Backend 3: in-session only when no `user_email` (auth disabled) — nothing persists; logs a warning.
 **Success criteria:**
 - Only the sampled goal appears in the LLM context; completed goals are not re-sampled until all done.
-- Reconnecting or reloading mid-goal (same student, same completed-set) serves the same goal again.
 - Completion is recorded only on button click; the dialogue continues if the student keeps answering.
 - Re-login as the same student does not re-serve completed goals; all-done shows a completion message.
 - `mode: learning_goals` without a valid non-empty `_learning_goals.yaml` (unique ids) → loud SystemExit;

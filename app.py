@@ -272,12 +272,7 @@ async def on_chat_start() -> None:
     if mode == "learning_goals":
         progress_store = ProgressStore(sheets_id, user_email, course_name)
         completed = await progress_store.completed_goal_ids()
-        # IID-LEARN-GOALS: stable per-student seed so a page reload (iPad Safari evicts
-        # the tab on app switch → new Chainlit session) re-serves the SAME goal instead
-        # of a freshly randomised one. None (auth disabled) ⇒ random per session.
-        goal_seed = f"{user_email}:{course_name}" if user_email else None
-        cl.user_session.set("goal_seed", goal_seed)
-        current_goal = sample_goal(course.learning_goals, completed, seed_key=goal_seed)
+        current_goal = sample_goal(course.learning_goals, completed)
         if current_goal is not None:
             # IID-COST-CACHE: block form — stable lecture-content block cached across goals
             system_prompt = build_goal_system_blocks(course, current_goal)
@@ -401,9 +396,7 @@ async def on_complete_goal(action: cl.Action) -> None:
     completed.add(current_goal["id"])
     cl.user_session.set("completed", completed)
 
-    # IID-LEARN-GOALS: same deterministic seed as on_chat_start — the enlarged completed
-    # set changes the pick, so the next goal varies while staying reload-stable.
-    next_goal = sample_goal(course.learning_goals, completed, seed_key=cl.user_session.get("goal_seed"))
+    next_goal = sample_goal(course.learning_goals, completed)
     if next_goal is None:
         cl.user_session.set("current_goal", None)
         await cl.Message(

@@ -36,24 +36,23 @@ def goal_material(goal: dict) -> str:
     return str(goal.get("material") or "").strip()
 
 
-def sample_goal(goals: list[dict], completed: set[str], seed_key: Optional[str] = None) -> Optional[dict]:
-    """IID-LEARN-GOALS: Pick one goal whose id is not in `completed`.
+def sample_goal(goals: list[dict], completed: set[str]) -> Optional[dict]:
+    """IID-LEARN-GOALS: Uniformly pick one goal whose id is not in `completed`.
 
-    With `seed_key` (stable per student+course, e.g. "email:course") the pick is
-    deterministic for a given completed-set: a page reload mid-goal — iPad Safari
-    evicts the tab on app switch, restarting the Chainlit session — re-serves the
-    SAME goal instead of jumping to a different one. Completing a goal changes the
-    completed-set and thus the seed, so the next goal still varies per student.
-    Without `seed_key` (auth disabled → no stable identity) falls back to uniform
-    random per session. Returns None when every goal has been completed. Pure
-    function (no I/O) so it is unit-testable without network access.
+    Returns None when every goal has been completed. Pure function (no I/O) so it is
+    unit-testable without network access.
+
+    Note: a mid-goal page reload (e.g. iPad Safari evicting a backgrounded tab) starts a
+    fresh Chainlit session and may re-sample a different goal than the one in progress —
+    a deterministic per-student seed was tried (2026-07-08) to pin the same goal across
+    such reloads, but was reverted 2026-07-20 because under session-churn conditions it
+    instead relocked students onto one goal and silently regenerated/reworded its opening
+    question dozens of times per hour while resetting in-session mastery progress on every
+    restart — a worse and more confusing failure than the occasional reload it fixed.
     """
     remaining = [g for g in goals if g["id"] not in completed]
     if not remaining:
         return None
-    if seed_key is not None:
-        rng = random.Random(f"{seed_key}|{','.join(sorted(completed))}")
-        return rng.choice(remaining)
     return random.choice(remaining)
 
 
