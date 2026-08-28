@@ -1,0 +1,33 @@
+# IID-MULTI-DEPLOY, IID-EDUCATOR-CONFIG, SID-API-CONFIG
+# Config for the FREE PUBLIC deploy (Railway service `teachbot-public`).
+# Selected there via the env var TEACHBOT_CONFIG=config_public.yaml; the student
+# deploy (`teachbot`) keeps using config.yaml. Same repo, different personality.
+
+course_name: "Predictions: Economics, Empirics and Evaluations"
+
+# IID-MULTI-DEPLOY: each deploy points to its own content folder.
+# content_public/ has no subfolders → single-course mode, no profile chooser.
+content_dir: content_public   # IID-LECTURE-CONTENT
+logs_dir: logs                # IID-CHAT-LOG
+sheets_log_id: "1oPTljPJhkUl8nENurJ6e5YrhZXEPHQby-pRSk7YsX-Y"  # IID-SHEETS-LOG: "Lectos public logs" Sheet
+
+# IID-AUTH-BASIC: both lists empty → auth disabled, no login screen (public instance)
+auth:
+  allowed_domains: []
+  allowed_emails: []
+
+# LLM settings — SID-LLM-PROVIDER
+# The public service uses its OWN capped OpenRouter key (Railway variable on
+# teachbot-public only), so abuse cannot drain the student deploy's budget.
+llm:
+  base_url: https://openrouter.ai/api/v1
+  model: anthropic/claude-sonnet-5   # SID-LLM-PROVIDER: current latest Sonnet
+  temperature: 0.3
+  max_tokens: 4096
+
+# IID-PUBLIC-RATELIMIT: per-session caps for the no-login deploy.
+# Best-effort cost damping (a reload starts a fresh session) — the hard backstop
+# is the spend limit on this deploy's OpenRouter key.
+limits:
+  max_turns_per_session: 30
+  max_message_chars: 2000

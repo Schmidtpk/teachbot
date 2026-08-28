@@ -7,6 +7,7 @@ Run with:  chainlit run app.py
 
 import asyncio
 import json
+import os
 import sys
 import time
 import uuid
@@ -32,7 +33,12 @@ from src.tutor_loop import build_act_instruction, diagnose_answer
 load_dotenv()
 
 # Load educator config — IID-EDUCATOR-CONFIG, SID-API-CONFIG
-_cfg_path = Path(__file__).parent / "config.yaml"
+# IID-MULTI-DEPLOY: TEACHBOT_CONFIG selects this deploy's config file (default config.yaml).
+# Several Railway services can run this same repo, each with its own config → own content
+# folder, auth rules, model, and log sheet (e.g. teachbot-public → config_public.yaml).
+_cfg_path = Path(__file__).parent / os.environ.get("TEACHBOT_CONFIG", "config.yaml")
+if not _cfg_path.is_file():
+    sys.exit(f"TEACHBOT_CONFIG points to a missing config file: {_cfg_path}")
 with _cfg_path.open(encoding="utf-8") as fh:
     CFG: dict = yaml.safe_load(fh)
 
@@ -45,6 +51,11 @@ COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
 
 
 _AUTH_CFG = CFG.get("auth", {})
+
+# IID-PUBLIC-RATELIMIT: optional per-session caps, set only in no-login deploy configs
+# (e.g. config_public.yaml). Best-effort cost damping, not security — a page reload
+# starts a fresh session and resets the counter.
+_LIMITS = CFG.get("limits") or {}
 
 # IID-LEARN-GOALS, IID-LEARN-DIAGNOSE: Chainlit's Socket.IO layer uses engine.io's
 # default ping_timeout (20s); a stalled LLM call with no visible activity risks the
@@ -385,6 +396,25 @@ async def on_message(message: cl.Message) -> None:
     sheets_logger: SheetsLogger | None = cl.user_session.get("sheets_logger")
     course_llm: dict = cl.user_session.get("course_llm")  # IID-MULTI-COURSE
     mode: str = cl.user_session.get("mode", "qa")  # IID-LEARN-GOALS
+
+    # IID-PUBLIC-RATELIMIT: enforce per-session caps before any logging or LLM call
+    if _LIMITS:
+        max_chars = _LIMITS.get("max_message_chars")
+        if max_chars and len(message.content) > max_chars:
+            await cl.Message(
+                content=f"⚠️ Please keep messages under {max_chars} characters."
+            ).send()
+            return
+        max_turns = _LIMITS.get("max_turns_per_session")
+        if max_turns:
+            turns = cl.user_session.get("turn_count", 0) + 1
+            cl.user_session.set("turn_count", turns)
+            if turns > max_turns:
+                await cl.Message(
+                    content="⚠️ This session has reached its message limit. "
+                            "Please come back later to continue."
+                ).send()
+                return
 
     user_text = message.content.strip()
     history.append({"role": "user", "content": user_text})

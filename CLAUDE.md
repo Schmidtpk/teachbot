@@ -48,9 +48,23 @@ Plan/documentation should be intention-first:
 
 ## Deployment (Railway)
 
-- Project: `victorious-energy` on Railway, service: `teachbot`
-- Live URL: https://teachbot-production-2e85.up.railway.app
-- Deploys automatically on push to `master` via GitHub connection
+- Project: `victorious-energy` on Railway — **two services from this one repo** (IID-MULTI-DEPLOY):
+
+| Service | Config (via `TEACHBOT_CONFIG`) | Content | Auth | URL |
+|---------|-------------------------------|---------|------|-----|
+| `teachbot` | `config.yaml` (default) | `content/` | login required | https://teachbot-production-2e85.up.railway.app |
+| `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | see `railway domain --service teachbot-public` |
+
+- Both deploy automatically on every push to `master` via the GitHub connection.
+- Each service has its **own** `OPENROUTER_API_KEY` (the public one is spend-capped) and its own
+  log Sheet ("Lectos public logs" for the public instance). CLI commands need `--service`.
+- The public instance's lecture material is published as viewable HTML at
+  https://schmidtpk.github.io/materials/predictions-part1/ (repo `Schmidtpk/materials`,
+  rendered with Quarto from the same `.qmd` sources; linked in `content_public/_welcome.md`).
+- **Re-sync public content** after editing the Part I originals:
+  `Copy-Item content\_shared\script0.qmd,content\qna_part1\script1.1.qmd,content\qna_part1\script1.2.qmd content_public\`
+  then re-render/push the HTML in `Schmidtpk/materials` (needs the `plots/` folder from
+  `Dropbox\teaching\Lecture Predictions 2026\Rproj Predictions`).
 
 ```bash
 # Link project (once per machine, after railway login)

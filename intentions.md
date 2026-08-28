@@ -377,6 +377,44 @@ student_model_choices:               # optional; IID-STUDENT-MODEL-CHOICE
 **Description:** Per-course educator-defined list of LLM models students can choose from during a session. Configured via `student_model_choices` in `_meta.yaml` (list of `{id, label}` entries). When set, Chainlit's Chat Settings gear exposes a model dropdown; changes apply from the next message. The active model is stored in every assistant log entry (JSONL `model` field + Google Sheet `model` column) and displayed as a chip below assistant bubbles in the HTML chat viewer. Inactive when `student_model_choices` is absent or empty.
 **Key files:** `src/course_loader.py` (`CourseConfig` field + parsing), `src/chat_logger.py` (`model` column), `app.py` (`on_chat_start` ChatSettings + `on_settings_update`), `scripts/render_chats.py` (model chip)
 
+### IID-MULTI-DEPLOY
+**Lifecycle:** DONE
+**Description:** Run several Railway services from this one repo, each with its own URL, content
+folder, auth rules, model, and log sheet. The whole mechanism is one env var: `TEACHBOT_CONFIG`
+names the config file to load (default `config.yaml`); each Railway service sets it to its own
+file (e.g. `teachbot-public` → `config_public.yaml`). Everything downstream — `content_dir`,
+`auth`, `llm`, `sheets_log_id`, `limits` — already flows from the loaded config, so no other code
+branches on the deploy. All services track `master` and auto-deploy on every push; a missing
+config file fails loudly at startup.
+**Deploys:**
+- `teachbot` (student instance): `config.yaml`, `content/`, login required, per-course profiles.
+- `teachbot-public` (free public instance): `config_public.yaml`, `content_public/` (Part I
+  scripts, single-course mode), no login, own capped OpenRouter key, own log Sheet
+  ("Lectos public logs"), session caps (IID-PUBLIC-RATELIMIT). Lecture material for this
+  instance is published as viewable HTML at https://schmidtpk.github.io/materials/predictions-part1/
+  (rendered from the same `.qmd` sources; linked in its `_welcome.md`).
+**Content mirroring:** `content_public/` holds snapshot copies of `content/_shared/script0.qmd` +
+`content/qna_part1/script1.1.qmd`/`script1.2.qmd`. Re-sync after editing the originals by
+re-copying (see CLAUDE.md) and re-rendering the HTML site.
+**Success criteria:**
+- The default deploy behaves identically with the env var unset.
+- Each service's secrets (OpenRouter key) are Railway variables on that service only.
+**Key files:** `app.py` (config selection), `config_public.yaml`, `content_public/`
+**No-Goals:** Per-course auth inside one instance (Chainlit auth is app-global), shared user
+registry across deploys, a deploy-management UI.
+
+### IID-PUBLIC-RATELIMIT
+**Lifecycle:** DONE
+**Description:** Per-session usage caps for no-login deploys (IID-MULTI-DEPLOY), configured via an
+optional `limits:` block (`max_turns_per_session`, `max_message_chars`) — set in
+`config_public.yaml`, absent from `config.yaml` so the student deploy is unaffected. Enforced at
+the top of `on_message` before any logging or LLM call; exceeding a cap yields a polite refusal
+message. Best-effort cost damping, not security: a page reload starts a fresh session and resets
+the counter. The hard backstop against abuse is the spend limit on the public deploy's own
+OpenRouter API key.
+**Key files:** `app.py` (`_LIMITS`, `on_message` guard), `config_public.yaml` (`limits:` block)
+**No-Goals:** IP-based limiting, persistent quotas, CAPTCHA, abuse detection.
+
 ---
 
 ## Data storage and management
