@@ -384,8 +384,10 @@ folder, auth rules, model, and log sheet. The whole mechanism is one env var: `T
 names the config file to load (default `config.yaml`); each Railway service sets it to its own
 file (e.g. `teachbot-public` → `config_public.yaml`). Everything downstream — `content_dir`,
 `auth`, `llm`, `sheets_log_id`, `limits` — already flows from the loaded config, so no other code
-branches on the deploy. All services track `master` and auto-deploy on every push; a missing
-config file fails loudly at startup.
+branches on the deploy. A missing config file fails loudly at startup. `teachbot` auto-deploys
+on every push to `master`; `teachbot-public` must be deployed manually with
+`railway up --service teachbot-public` (Railway refuses to attach the GitHub repo to a second
+service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see CLAUDE.md).
 **Deploys:**
 - `teachbot` (student instance): `config.yaml`, `content/`, login required, per-course profiles.
 - `teachbot-public` (free public instance): `config_public.yaml`, `content_public/` (Part I

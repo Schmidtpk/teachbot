@@ -53,9 +53,20 @@ Plan/documentation should be intention-first:
 | Service | Config (via `TEACHBOT_CONFIG`) | Content | Auth | URL |
 |---------|-------------------------------|---------|------|-----|
 | `teachbot` | `config.yaml` (default) | `content/` | login required | https://teachbot-production-2e85.up.railway.app |
-| `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | see `railway domain --service teachbot-public` |
+| `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
 
-- Both deploy automatically on every push to `master` via the GitHub connection.
+- `teachbot` deploys automatically on every push to `master` via the GitHub connection.
+- **`teachbot-public` does NOT auto-deploy** — Railway refuses to attach the GitHub repo to the
+  second service ("Auto deploy unavailable", a Railway↔GitHub App state mismatch, unresolved
+  2026-08-28). After pushing changes that should reach the public instance, deploy it manually
+  from a clean checkout of `master`:
+
+  ```bash
+  railway up --service teachbot-public --detach
+  ```
+
+  (Uploads the local working tree — make sure it matches the pushed commit. Alternative if this
+  becomes annoying: a GitHub Actions job running `railway up` with a Railway project token.)
 - Each service has its **own** `OPENROUTER_API_KEY` (the public one is spend-capped) and its own
   log Sheet ("Lectos public logs" for the public instance). CLI commands need `--service`.
 - The public instance's lecture material is published as viewable HTML at
