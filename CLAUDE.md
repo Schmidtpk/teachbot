@@ -102,7 +102,7 @@ railway logs --build --service teachbot
 railway variables set KEY=value --service teachbot
 
 # Trigger a manual redeploy
-railway redeploy --yes
+railway redeploy --yes --service teachbot
 ```
 
 - Secrets must be set as Railway variables — never committed to git:
