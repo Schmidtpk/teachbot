@@ -126,7 +126,22 @@ first_date: 2026-05-01                # optional; inclusive lower bound (server 
 last_date:  2026-05-15                # optional; inclusive upper bound (server local date)
 extra_content:                        # optional; shared files (relative to content/ root)
   - _shared/script0.qmd               #   injected BEFORE the course's own folder content
+access:                               # optional; IID-COURSE-ACCESS — who may SEE this course
+  allowed_domains:                    #   (omit the whole block = everyone who can log in)
+    - stud.uni-heidelberg.de
+  allowed_emails:
+    - tutor@gmail.com
 ```
+
+**Per-course access (`access`, IID-COURSE-ACCESS):** restricts which logged-in users see the
+course in the profile chooser. Matching uses the same rule as the login allowlist
+(IID-AUTH-BASIC): the user's email domain must be in `allowed_domains` or the address in
+`allowed_emails` (case-insensitive). A user still has to pass the global login allowlist
+first — `access` narrows, it never widens. Omit the block for the previous behaviour
+(visible to everyone). A block that admits nobody, a non-mapping value, an unknown key, or a
+non-list entry → loud startup failure naming the folder. With auth disabled (public instance)
+a restricted course is hidden from everyone and a startup WARNING is printed. `on_chat_start`
+re-checks the rule, so a stale tab cannot open a hidden course.
 
 **Shared content (`extra_content`):** files listed here are loaded in addition to the course
 folder — used to share one file across courses without duplication (e.g. the intro/syllabus
@@ -214,7 +229,7 @@ the turn. Both calls use the course model.
 | `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `chainlit.md` | IID-EDUCATOR-CONFIG | Editable sidebar/welcome panel (Chainlit requires it at project root) |
-| `src/course_loader.py` | IID-MULTI-COURSE, IID-LEARN-GOALS | Discovers course subfolders, loads `_meta.yaml` (incl. `mode` + `_learning_goals.yaml`), merges LLM config, resolves fallback paths for system prompt and welcome text |
+| `src/course_loader.py` | IID-MULTI-COURSE, IID-COURSE-ACCESS, IID-LEARN-GOALS | Discovers course subfolders, loads `_meta.yaml` (incl. `mode`, `access` + `_learning_goals.yaml`), merges LLM config, resolves fallback paths for system prompt and welcome text |
 | `src/goals.py` | IID-LEARN-GOALS | Samples one uncompleted learning goal; builds the per-goal system prompt (only one goal in context) |
 | `src/tutor_loop.py` | IID-LEARN-DIAGNOSE | Two-step turn: structured `diagnose_answer` (ranks misconceptions, picks top-1 + tactic) + `build_act_instruction` seeding the streamed reply |
 | `content/_diagnose_prompt.md` | IID-LEARN-DIAGNOSE | Editable diagnostic instructions (JSON output); default fallback for goals courses that omit their own copy |

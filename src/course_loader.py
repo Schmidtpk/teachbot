@@ -16,6 +16,10 @@ Fallback chain (see IID-MULTI-COURSE):
 Optional `extra_content` in _meta.yaml: list of file paths relative to the content
 root (e.g. `_shared/script0.qmd`) injected before the course's own folder content —
 lets several courses share one file without duplication.
+
+Optional `access` in _meta.yaml (IID-COURSE-ACCESS): `allowed_domains` / `allowed_emails`
+lists restricting which logged-in users see the course (same matching as the login
+allowlist in IID-AUTH-BASIC). Absent → visible to everyone who can log in.
 """
 
 import sys
@@ -25,6 +29,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from src.auth import auth_enabled, is_email_allowed
 from src.content_loader import load_content, load_files
 
 
@@ -46,6 +51,22 @@ class CourseConfig:
     mode: str = "qa"  # IID-LEARN-GOALS: "qa" (default) or "learning_goals"
     learning_goals: list[dict] = field(default_factory=list)  # IID-LEARN-GOALS: [{id, title, goal, material?}, ...]
     extra_content: list[Path] = field(default_factory=list)  # IID-MULTI-COURSE: shared files injected before folder content
+    access: dict | None = None  # IID-COURSE-ACCESS: {allowed_domains, allowed_emails} or None (= everyone)
+
+    def is_accessible(self, user_email: str | None) -> bool:
+        """IID-COURSE-ACCESS: True iff the logged-in user may see this course.
+
+        No `access` block → open to every authenticated (or anonymous) user, so all
+        pre-existing courses behave exactly as before. With an `access` block, the
+        user's email must match one of its domains/emails (same matching rule as the
+        login allowlist, IID-AUTH-BASIC). No email (auth disabled) → restricted courses
+        are hidden, since there is no identity to check against.
+        """
+        if not self.access:
+            return True
+        if not user_email:
+            return False
+        return is_email_allowed(user_email, self.access)
 
     def is_available(self, today: date) -> bool:
         """IID-MULTI-COURSE: True iff today falls inside the (optional) availability window."""
@@ -64,6 +85,56 @@ class CourseConfig:
         if self.last_date:
             return f"_Available until {self.last_date.isoformat()}_"
         return ""
+
+
+_ACCESS_KEYS = ("allowed_domains", "allowed_emails")
+
+
+def _parse_access(value: Any, folder_name: str, auth_on: bool) -> dict | None:
+    """IID-COURSE-ACCESS: Validate the optional `access` block of _meta.yaml.
+
+    Returns None when absent (course open to everyone) or a normalised dict
+    {"allowed_domains": [...], "allowed_emails": [...]} with lower-cased entries.
+    Loud SystemExit on a malformed block or one that admits nobody, so a typo
+    never silently hides or exposes a course. Prints a warning (not an error)
+    when auth is disabled, because the course will then be invisible to all.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        sys.exit(
+            f"[Lectos] ERROR: '_meta.yaml' in '{folder_name}' field 'access' must be a "
+            f"mapping with 'allowed_domains' and/or 'allowed_emails' lists."
+        )
+    unknown = set(value) - set(_ACCESS_KEYS)
+    if unknown:
+        sys.exit(
+            f"[Lectos] ERROR: '_meta.yaml' in '{folder_name}' field 'access' has unknown "
+            f"key(s) {sorted(unknown)}; allowed: {list(_ACCESS_KEYS)}."
+        )
+    access: dict[str, list[str]] = {}
+    for key in _ACCESS_KEYS:
+        raw = value.get(key) or []
+        if not isinstance(raw, list) or not all(isinstance(x, str) and x.strip() for x in raw):
+            sys.exit(
+                f"[Lectos] ERROR: '_meta.yaml' in '{folder_name}' field 'access.{key}' "
+                f"must be a list of non-empty strings."
+            )
+        access[key] = [x.strip().lower() for x in raw]
+    if not access["allowed_domains"] and not access["allowed_emails"]:
+        sys.exit(
+            f"[Lectos] ERROR: '_meta.yaml' in '{folder_name}' has an 'access' block that "
+            f"admits nobody. List at least one domain/email, or remove the block to "
+            f"allow everyone."
+        )
+    if not auth_on:
+        print(
+            f"[Lectos] WARNING: course '{folder_name}' restricts access, but auth is "
+            f"disabled (config.yaml auth lists empty) — the course will be hidden from "
+            f"everyone until auth is enabled.",
+            file=sys.stderr,
+        )
+    return access
 
 
 def _parse_meta_date(value: Any, folder_name: str, field: str) -> date | None:
@@ -162,6 +233,7 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         return []
 
     base_llm = dict(base_cfg.get("llm", {}))
+    auth_on = auth_enabled(base_cfg.get("auth", {}) or {})  # IID-COURSE-ACCESS
 
     # IID-STUDENT-MODEL-CHOICE: load global model choices from root content/_meta.yaml
     global_model_choices: list[dict] = []
@@ -225,6 +297,9 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
                 f"({first_date.isoformat()}) after last_date ({last_date.isoformat()})."
             )
 
+        # IID-COURSE-ACCESS: optional per-course login allowlist
+        access = _parse_access(meta.get("access"), folder.name, auth_on)
+
         # IID-STUDENT-MODEL-CHOICE: per-course list; falls back to root content/_meta.yaml
         raw_choices = meta.get("student_model_choices", [])
         if raw_choices:
@@ -274,6 +349,7 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             mode=mode,
             learning_goals=learning_goals,
             extra_content=extra_content,
+            access=access,
         ))
 
     # Sort by order field (from _meta.yaml) then lecture_name for deterministic profile ordering

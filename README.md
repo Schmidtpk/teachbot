@@ -65,6 +65,11 @@ student_model_choices:                     # optional; lets students pick a mode
     label: "Gemini Flash"
   - id: "openai/gpt-4o-mini"
     label: "GPT-4o Mini"
+access:                                    # optional; only these logged-in users see the course
+  allowed_domains:
+    - stud.uni-heidelberg.de
+  allowed_emails:
+    - tutor@gmail.com
 ```
 
 To share one file across several courses (e.g. an intro/syllabus), put it in `content/_shared/` and list it under `extra_content` in each course's `_meta.yaml`.
@@ -72,6 +77,8 @@ To share one file across several courses (e.g. an intro/syllabus), put it in `co
 A `_meta.yaml` at the `content/` root can define a global `student_model_choices` list; courses without their own list fall back to it.
 
 **Availability window:** `first_date` / `last_date` are both optional and inclusive (server local date). A course outside its window is hidden from the profile chooser; when at least one bound is set, an "Available …" line is shown in the chooser.
+
+**Per-course access:** add an `access` block with `allowed_domains` and/or `allowed_emails` to show a course only to matching logged-in users (same matching rule as the login allowlist; case-insensitive). Omit the block to keep the course visible to everyone who can log in. Requires authentication to be enabled — with auth disabled, a restricted course is hidden from everyone and a warning is printed at startup.
 
 **Learn mode:** add `mode: learning_goals` to the course's `_meta.yaml` plus a `_learning_goals.yaml`:
 

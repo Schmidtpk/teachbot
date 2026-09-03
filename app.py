@@ -74,11 +74,15 @@ async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None
     window in `_meta.yaml` are filtered out. If COURSES is non-empty but every course
     is currently out of window, returns [] (empty chooser) rather than None — falling
     back to single-course mode would silently load root content/, which is wrong.
+
+    IID-COURSE-ACCESS: courses with an `access` block are additionally filtered by the
+    logged-in user's email (None when auth is disabled → restricted courses hidden).
     """
     if not COURSES:
         return None
     today = date.today()
-    visible = [c for c in COURSES if c.is_available(today)]
+    user_email = user.identifier if user else None
+    visible = [c for c in COURSES if c.is_available(today) and c.is_accessible(user_email)]
     profiles: list[cl.ChatProfile] = []
     for i, course in enumerate(visible):
         base_desc = course.description or f"**{course.lecture_name}**"
@@ -277,6 +281,14 @@ async def on_chat_start() -> None:
             await cl.Message(
                 content=f"**{course.lecture_name}** is not available right now. "
                         f"{course.availability_line()}".strip()
+            ).send()
+            return
+        # IID-COURSE-ACCESS: same defensive guard for the per-course login allowlist —
+        # the chooser never offers a restricted course, but never trust the client.
+        if not course.is_accessible(user_email):
+            await cl.Message(
+                content=f"**{course.lecture_name}** is not available for your account. "
+                        f"Please pick another course from the profile chooser."
             ).send()
             return
         # IID-LEARN-DIAGNOSE: load once and reuse below (learning-goals mode used to read and

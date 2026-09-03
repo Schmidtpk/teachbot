@@ -329,7 +329,7 @@ and benefits automatically).
 
 ### IID-MULTI-COURSE
 **Lifecycle:** IN_PROGRESS
-**Description:** Multi-course support via `content/` subfolders. Each non-`_`-prefixed subfolder is a separate course. `_meta.yaml` (required: `lecture_name`; optional: `description`, `order`, `model`, `temperature`, `max_tokens`, `first_date`, `last_date`) configures it. At startup, `src/course_loader.py` discovers courses; Chainlit's `@cl.set_chat_profiles` presents a profile chooser when courses exist. Courses outside their availability window are hidden from the chooser. Falls back to existing single-course behavior when no subfolders are present.
+**Description:** Multi-course support via `content/` subfolders. Each non-`_`-prefixed subfolder is a separate course. `_meta.yaml` (required: `lecture_name`; optional: `description`, `order`, `model`, `temperature`, `max_tokens`, `first_date`, `last_date`, `access` → IID-COURSE-ACCESS) configures it. At startup, `src/course_loader.py` discovers courses; Chainlit's `@cl.set_chat_profiles` presents a profile chooser when courses exist. Courses outside their availability window are hidden from the chooser. Falls back to existing single-course behavior when no subfolders are present.
 **Fallback chain:**
 - `_system_prompt.md`: subfolder → `content/` root
 - `_welcome.md`: subfolder → `content/` root
@@ -370,7 +370,26 @@ student_model_choices:               # optional; IID-STUDENT-MODEL-CHOICE
 - A course is hidden from the profile chooser when `first_date` is in the future or `last_date` is in the past (server local date, both inclusive). When at least one date is set, an "Available …" line is appended to the course description in the chooser.
 - Invalid date format or `first_date > last_date` → loud SystemExit naming the folder and field.
 **Key files:** `src/course_loader.py` (new), `app.py`
-**No-Goals:** Per-course auth rules, per-course Google Sheet routing, nested course folder hierarchies, hour/timezone-precise availability windows, per-student access overrides.
+**No-Goals:** Per-course Google Sheet routing, nested course folder hierarchies, hour/timezone-precise availability windows. (Per-course login allowlists are covered by IID-COURSE-ACCESS.)
+
+### IID-COURSE-ACCESS
+**Lifecycle:** DONE
+**Description:** Restrict which logged-in users can *see* (and open) a course. Optional `access` block in a course's `_meta.yaml`:
+```yaml
+access:
+  allowed_domains:            # either list may be omitted; at least one entry overall
+    - stud.uni-heidelberg.de
+  allowed_emails:
+    - tutor@gmail.com
+```
+Matching reuses `is_email_allowed` from IID-AUTH-BASIC (domain in `allowed_domains` or full address in `allowed_emails`, case-insensitive). `CourseConfig.is_accessible(user_email)` is applied in two places in `app.py`: the `@cl.set_chat_profiles` chooser (which receives the Chainlit user) and the `on_chat_start` guard (so a stale tab cannot open a hidden course). The global login allowlist still gates login; `access` only narrows what a logged-in user sees. Courses without an `access` block are unaffected (visible to everyone), so all pre-existing courses behave exactly as before.
+**Success criteria:**
+- A course with an `access` block appears in the chooser only for users whose email matches; other users see neither the profile nor its content.
+- A course without `access` is visible to every user who can log in (unchanged behaviour).
+- With auth disabled (public instance) a restricted course is hidden from everyone; a startup WARNING names the folder.
+- Malformed block (non-mapping, unknown key, non-list entry, or a block that admits nobody) → loud SystemExit naming the folder.
+**Key files:** `src/course_loader.py` (`_parse_access`, `CourseConfig.access`, `is_accessible`), `app.py` (`set_chat_profiles`, `on_chat_start`), `src/auth.py` (`is_email_allowed`, reused)
+**No-Goals:** Per-course passwords, role/group management UI, per-student progress visibility, restricting individual files inside a course.
 
 ### IID-STUDENT-MODEL-CHOICE
 **Lifecycle:** DONE
