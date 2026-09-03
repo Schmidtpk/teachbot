@@ -68,7 +68,12 @@ Plan/documentation should be intention-first:
   (Uploads the local working tree — make sure it matches the pushed commit. Alternative if this
   becomes annoying: a GitHub Actions job running `railway up` with a Railway project token.)
 - Each service has its **own** `OPENROUTER_API_KEY` (the public one is spend-capped) and its own
-  log Sheet ("Lectos public logs" for the public instance). CLI commands need `--service`.
+  log Sheet ("Lectos public logs" for the public instance).
+- **Always pass `--service teachbot` / `--service teachbot-public`** to `railway deployment list`,
+  `railway logs`, `railway variables`, `railway redeploy`. The CLI on this machine is linked to
+  **`teachbot-public`** by default (`railway status` shows it), so a bare command silently reports
+  on the public instance — e.g. polling `railway deployment list` for a push-triggered build will
+  never see it (2026-09-03).
 - The public instance's lecture material is published as viewable HTML at
   https://schmidtpk.github.io/materials/predictions-part1/ (repo `Schmidtpk/materials`,
   rendered with Quarto from the same `.qmd` sources; linked in `content_public/_welcome.md`).
@@ -81,17 +86,20 @@ Plan/documentation should be intention-first:
 # Link project (once per machine, after railway login)
 railway link --project victorious-energy
 
-# Check deployment status
-railway deployment list
+# Which service is the CLI linked to? (currently teachbot-public)
+railway status
+
+# Check deployment status of the MAIN instance (omit --service = public instance!)
+railway deployment list --service teachbot
 
 # Stream runtime logs
-railway logs
+railway logs --service teachbot
 
 # Stream build logs
-railway logs --build
+railway logs --build --service teachbot
 
 # Set/update an environment variable
-railway variables set KEY=value
+railway variables set KEY=value --service teachbot
 
 # Trigger a manual redeploy
 railway redeploy --yes
