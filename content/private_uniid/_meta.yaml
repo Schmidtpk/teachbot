@@ -1,0 +1,6 @@
+lecture_name: "Private: UniID"
+order: 90
+description: "Private course — visible only to one student account."
+access:                         # IID-COURSE-ACCESS: only this login sees the course
+  allowed_emails:
+    - UniID@stud.uni-heidelberg.de
