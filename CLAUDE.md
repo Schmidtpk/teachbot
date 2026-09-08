@@ -62,6 +62,11 @@ Plan/documentation should be intention-first:
   notes (`content_dcm/dcm_intro.md`); replace/extend with the actual lecture material and
   redeploy manually (same procedure as `teachbot-public`, `--service teachbot-dcm`). Log Sheet:
   "Lectos DCM logs".
+- **Start command:** `railway.toml` (nixpacks + `chainlit run ...`) is honoured by the two older
+  services, but a service created via `railway add` in 2026-09 (`teachbot-dcm`) builds with
+  Railpack and ignored `railway.toml` completely (ran `python app.py` → HTTP 502). `Procfile`
+  (`web: chainlit run app.py --host 0.0.0.0 --port $PORT`) is read by both builders and fixes
+  this — keep it in sync with `railway.toml`.
 - **`teachbot-public` and `teachbot-dcm` do NOT auto-deploy** — Railway refuses to attach the GitHub repo to the
   second service ("Auto deploy unavailable", a Railway↔GitHub App state mismatch, unresolved
   2026-08-28). After pushing changes that should reach the public instance, deploy it manually
