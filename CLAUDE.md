@@ -62,6 +62,8 @@ Plan/documentation should be intention-first:
   notes (`content_dcm/dcm_intro.md`); replace/extend with the actual lecture material and
   redeploy manually (same procedure as `teachbot-public`, `--service teachbot-dcm`). Log Sheet:
   "Lectos DCM logs".
+- **QR codes** for handing out links: `python scripts/make_qr.py` (needs `pip install "qrcode[pil]"`)
+  writes `qr/teachbot_<name>_qr.png/.svg`; URLs are listed in the script's `DEPLOYS` dict.
 - **Start command:** `railway.toml` (nixpacks + `chainlit run ...`) is honoured by the two older
   services, but a service created via `railway add` in 2026-09 (`teachbot-dcm`) builds with
   Railpack and ignored `railway.toml` completely (ran `python app.py` → HTTP 502). `Procfile`
@@ -259,6 +261,7 @@ the turn. Both calls use the course model.
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
 | `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
+| `scripts/make_qr.py` | IID-MULTI-DEPLOY | Generates QR codes for every deployed instance into `qr/` (PNG + SVG). QR codes live **only** in `qr/`, never in `public/` (Chainlit static assets, deployed) |
 | `scripts/archive_sheet.py` | IID-SHEETS-LOG | Downloads Sheet → `exports/sheets_backup_<date>.csv`, then clears it |
 | `scripts/archive_sheet.bat` | IID-SHEETS-LOG | Windows Task Scheduler wrapper for the archive script |
 | `scripts/render_chats.py` | IID-CHAT-VIEW | Reads all `exports/*.csv` backups → `exports/chats.html` self-contained viewer |
