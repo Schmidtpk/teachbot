@@ -1,0 +1,34 @@
+# IID-MULTI-DEPLOY, IID-EDUCATOR-CONFIG, SID-API-CONFIG
+# Config for the FREE PUBLIC discrete-choice deploy (Railway service `teachbot-dcm`).
+# Selected there via the env var TEACHBOT_CONFIG=config_dcm.yaml. Same repo as the
+# student deploy (config.yaml) and the Part I public deploy (config_public.yaml).
+# Link is handed out via QR code in an introductory discrete choice modelling class.
+
+course_name: "Introduction to Discrete Choice Modelling"
+
+# IID-MULTI-DEPLOY: each deploy points to its own content folder.
+# content_dcm/ has no subfolders → single-course mode, plain Q&A (IID-QNA-CORE).
+content_dir: content_dcm      # IID-LECTURE-CONTENT
+logs_dir: logs                # IID-CHAT-LOG
+sheets_log_id: "1SoUMIVgTSR3Kfhl8SmU05hXQdG3mP9r_QGYuZNwGcno"  # IID-SHEETS-LOG: "Lectos DCM logs" Sheet
+
+# IID-AUTH-BASIC: both lists empty → auth disabled, no login screen (public instance)
+auth:
+  allowed_domains: []
+  allowed_emails: []
+
+# LLM settings — SID-LLM-PROVIDER
+# Uses the same spend-capped OpenRouter key as teachbot-public (Railway variable on
+# this service only), so abuse cannot drain the student deploy's budget.
+llm:
+  base_url: https://openrouter.ai/api/v1
+  model: anthropic/claude-sonnet-5   # SID-LLM-PROVIDER
+  temperature: 0.3
+  max_tokens: 4096
+
+# IID-PUBLIC-RATELIMIT: per-session caps for the no-login deploy.
+# Best-effort cost damping (a reload starts a fresh session) — the hard backstop
+# is the spend limit on this deploy's OpenRouter key.
+limits:
+  max_turns_per_session: 30
+  max_message_chars: 2000

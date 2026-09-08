@@ -414,13 +414,18 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   ("Lectos public logs"), session caps (IID-PUBLIC-RATELIMIT). Lecture material for this
   instance is published as viewable HTML at https://schmidtpk.github.io/materials/predictions-part1/
   (rendered from the same `.qmd` sources; linked in its `_welcome.md`).
+- `teachbot-dcm` (free public instance, plain Q&A): `config_dcm.yaml`, `content_dcm/`
+  (single-course mode, introductory discrete choice modelling notes), no login, same capped
+  OpenRouter key as `teachbot-public`, own log Sheet ("Lectos DCM logs"), session caps
+  (IID-PUBLIC-RATELIMIT). Link distributed via QR code in an intro class (2026-09). Content is
+  a generic primer until the actual lecture material is dropped into `content_dcm/`.
 **Content mirroring:** `content_public/` holds snapshot copies of `content/_shared/script0.qmd` +
 `content/qna_part1/script1.1.qmd`/`script1.2.qmd`. Re-sync after editing the originals by
 re-copying (see CLAUDE.md) and re-rendering the HTML site.
 **Success criteria:**
 - The default deploy behaves identically with the env var unset.
 - Each service's secrets (OpenRouter key) are Railway variables on that service only.
-**Key files:** `app.py` (config selection), `config_public.yaml`, `content_public/`
+**Key files:** `app.py` (config selection), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`
 **No-Goals:** Per-course auth inside one instance (Chainlit auth is app-global), shared user
 registry across deploys, a deploy-management UI.
 

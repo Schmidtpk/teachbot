@@ -48,15 +48,21 @@ Plan/documentation should be intention-first:
 
 ## Deployment (Railway)
 
-- Project: `victorious-energy` on Railway — **two services from this one repo** (IID-MULTI-DEPLOY):
+- Project: `victorious-energy` on Railway — **three services from this one repo** (IID-MULTI-DEPLOY):
 
 | Service | Config (via `TEACHBOT_CONFIG`) | Content | Auth | URL |
 |---------|-------------------------------|---------|------|-----|
 | `teachbot` | `config.yaml` (default) | `content/` | login required | https://teachbot-production-2e85.up.railway.app |
 | `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
+| `teachbot-dcm` | `config_dcm.yaml` | `content_dcm/` | none (free public) | https://teachbot-dcm-production.up.railway.app |
 
 - `teachbot` deploys automatically on every push to `master` via the GitHub connection.
-- **`teachbot-public` does NOT auto-deploy** — Railway refuses to attach the GitHub repo to the
+- `teachbot-dcm` is a second free public Q&A instance for an introductory discrete choice modelling
+  class (link handed out via QR code). Its content folder currently holds generic introductory
+  notes (`content_dcm/dcm_intro.md`); replace/extend with the actual lecture material and
+  redeploy manually (same procedure as `teachbot-public`, `--service teachbot-dcm`). Log Sheet:
+  "Lectos DCM logs".
+- **`teachbot-public` and `teachbot-dcm` do NOT auto-deploy** — Railway refuses to attach the GitHub repo to the
   second service ("Auto deploy unavailable", a Railway↔GitHub App state mismatch, unresolved
   2026-08-28). After pushing changes that should reach the public instance, deploy it manually
   from a clean checkout of `master`:
