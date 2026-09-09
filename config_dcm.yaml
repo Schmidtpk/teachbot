@@ -4,7 +4,7 @@
 # student deploy (config.yaml) and the Part I public deploy (config_public.yaml).
 # Link is handed out via QR code in an introductory discrete choice modelling class.
 
-course_name: "Introduction to Discrete Choice Modelling"
+course_name: "Introduction to Binary Choice Modelling"
 
 # IID-MULTI-DEPLOY: each deploy points to its own content folder.
 # content_dcm/ has no subfolders → single-course mode, plain Q&A (IID-QNA-CORE).
