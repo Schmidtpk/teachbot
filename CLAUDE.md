@@ -48,13 +48,14 @@ Plan/documentation should be intention-first:
 
 ## Deployment (Railway)
 
-- Project: `victorious-energy` on Railway — **three services from this one repo** (IID-MULTI-DEPLOY):
+- Project: `victorious-energy` on Railway — **four services from this one repo** (IID-MULTI-DEPLOY):
 
 | Service | Config (via `TEACHBOT_CONFIG`) | Content | Auth | URL |
 |---------|-------------------------------|---------|------|-----|
 | `teachbot` | `config.yaml` (default) | `content/` | login required | https://teachbot-production-2e85.up.railway.app |
 | `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
 | `teachbot-dcm` | `config_dcm.yaml` | `content_dcm/` | none (free public) | https://teachbot-dcm-production.up.railway.app |
+| `teachbot-timeseries` | `config_timeseries.yaml` | `content_timeseries/` | login (`stud.unibas.ch`) | https://teachbot-timeseries-production.up.railway.app |
 
 - `teachbot` deploys automatically on every push to `master` via the GitHub connection.
 - `teachbot-dcm` is a second free public Q&A instance for an introductory discrete choice modelling
@@ -62,6 +63,12 @@ Plan/documentation should be intention-first:
   notes (`content_dcm/dcm_intro.md`); replace/extend with the actual lecture material and
   redeploy manually (same procedure as `teachbot-public`, `--service teachbot-dcm`). Log Sheet:
   "Lectos DCM logs".
+- `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
+  Analysis" (domain `stud.unibas.ch`, model `deepseek/deepseek-v4-flash-0731`, own OpenRouter key,
+  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` holds a placeholder until the
+  lecture slides (`.qmd`) are added — delete `placeholder_intro.md` then. Manual deploys like the
+  public instances (`--service teachbot-timeseries`). Log Sheet: "Lectos Timeseries logs".
+  The weekly archive script only covers the main Sheet.
 - **QR codes** for handing out links: `python scripts/make_qr.py` (needs `pip install "qrcode[pil]"`)
   writes `qr/teachbot_<name>_qr.png/.svg`; URLs are listed in the script's `DEPLOYS` dict.
 - **Start command:** `railway.toml` (nixpacks + `chainlit run ...`) is honoured by the two older
@@ -69,7 +76,7 @@ Plan/documentation should be intention-first:
   Railpack and ignored `railway.toml` completely (ran `python app.py` → HTTP 502). `Procfile`
   (`web: chainlit run app.py --host 0.0.0.0 --port $PORT`) is read by both builders and fixes
   this — keep it in sync with `railway.toml`.
-- **`teachbot-public` and `teachbot-dcm` do NOT auto-deploy** — Railway refuses to attach the GitHub repo to the
+- **`teachbot-public`, `teachbot-dcm` and `teachbot-timeseries` do NOT auto-deploy** — Railway refuses to attach the GitHub repo to the
   second service ("Auto deploy unavailable", a Railway↔GitHub App state mismatch, unresolved
   2026-08-28). After pushing changes that should reach the public instance, deploy it manually
   from a clean checkout of `master`:

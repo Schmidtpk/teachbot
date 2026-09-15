@@ -1,0 +1,27 @@
+# IID-MULTI-DEPLOY, IID-EDUCATOR-CONFIG, SID-API-CONFIG
+# Config for the Basel time-series deploy (Railway service `teachbot-timeseries`).
+# Selected there via the env var TEACHBOT_CONFIG=config_timeseries.yaml. Same repo as
+# the Heidelberg student deploy (config.yaml) and the free public deploys.
+# Login required (stud.unibas.ch), plain Q&A only.
+
+course_name: "Univariate Time Series Analysis"
+
+# IID-MULTI-DEPLOY: each deploy points to its own content folder.
+# content_timeseries/ has no subfolders → single-course mode, plain Q&A (IID-QNA-CORE).
+content_dir: content_timeseries   # IID-LECTURE-CONTENT
+logs_dir: logs                    # IID-CHAT-LOG
+sheets_log_id: "16xdFMSLu7T4Cgy3pu10JKn78EKCe8vz1tGkDa8xcq1g"  # IID-SHEETS-LOG: "Lectos Timeseries logs" Sheet
+
+# IID-AUTH-BASIC: students log in with their Basel address; first login = registration.
+auth:
+  allowed_domains:
+    - stud.unibas.ch
+  allowed_emails: []
+
+# LLM settings — SID-LLM-PROVIDER
+# This service has its own OPENROUTER_API_KEY (Railway variable), separate budget.
+llm:
+  base_url: https://openrouter.ai/api/v1
+  model: deepseek/deepseek-v4-flash-0731   # SID-LLM-PROVIDER
+  temperature: 0.3
+  max_tokens: 4096

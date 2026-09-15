@@ -419,13 +419,18 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   OpenRouter key as `teachbot-public`, own log Sheet ("Lectos DCM logs"), session caps
   (IID-PUBLIC-RATELIMIT). Link distributed via QR code in an intro class (2026-09). Content is
   a generic primer until the actual lecture material is dropped into `content_dcm/`.
+- `teachbot-timeseries` (login-protected Q&A, Basel): `config_timeseries.yaml`,
+  `content_timeseries/` (single-course mode), login for `stud.unibas.ch`, model
+  `deepseek/deepseek-v4-flash-0731`, own OpenRouter key + own `CHAINLIT_AUTH_SECRET`, own log
+  Sheet ("Lectos Timeseries logs"). No session caps (authenticated). Set up 2026-09-15 with a
+  placeholder content file until the lecture slides are added.
 **Content mirroring:** `content_public/` holds snapshot copies of `content/_shared/script0.qmd` +
 `content/qna_part1/script1.1.qmd`/`script1.2.qmd`. Re-sync after editing the originals by
 re-copying (see CLAUDE.md) and re-rendering the HTML site.
 **Success criteria:**
 - The default deploy behaves identically with the env var unset.
 - Each service's secrets (OpenRouter key) are Railway variables on that service only.
-**Key files:** `app.py` (config selection), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`
+**Key files:** `app.py` (config selection), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`, `config_timeseries.yaml`, `content_timeseries/`
 **No-Goals:** Per-course auth inside one instance (Chainlit auth is app-global), shared user
 registry across deploys, a deploy-management UI.
 

@@ -19,6 +19,7 @@ DEPLOYS = {
     "teachbot": "https://teachbot-production-2e85.up.railway.app",
     "public": "https://teachbot-public-production.up.railway.app",
     "dcm": "https://teachbot-dcm-production.up.railway.app",
+    "timeseries": "https://teachbot-timeseries-production.up.railway.app",
 }
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "qr"
