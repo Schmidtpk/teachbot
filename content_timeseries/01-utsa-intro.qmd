@@ -1,0 +1,818 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Ch. 1 – Introduction <br><br> HS 2026 · based on material by Christian Kleiber (University of Basel)"
+format:
+  clean-revealjs:
+    self-contained: true
+    css: styles.css
+    width: 1600
+    height: 900
+    scrollable: true
+author:
+  - name: Patrick Schmidt
+    email: patrick.schmidt@awi.uni-heidelberg.de
+    affiliations: University of Heidelberg
+execute:
+  cache: true
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(fig.width = 12, fig.height = 6, fig.align = "center", dpi = 150)
+# larger fonts for every base R plot, without cluttering the code shown on the slides
+knitr::knit_hooks$set(par_ts = function(before, options, envir) {
+  if (before) par(mar = c(4.5, 4.5, 3, 1), cex.main = 1.6, cex.lab = 1.4, cex.axis = 1.3)
+})
+knitr::opts_chunk$set(par_ts = TRUE)
+```
+
+## Contents
+
+1. What are time series?
+2. Time series in econom(etr)ics
+3. Examples
+4. Data features
+5. Data transformations in time series analysis
+6. Time series modeling
+7. Remarks on software
+8. Further reading
+
+# What are time series?
+
+## What are time series?
+
+**time series analysis** is a multidisciplinary field: economics, business, finance, physics, life sciences, ...
+
+**examples:**
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- business: yearly sales figures, monthly advertising expenditures, ...
+- economics: quarterly GDP, monthly price indices, weekly interest rates, ...
+- finance: tick-by-tick stock prices, daily currency exchange rates, ...
+- agriculture: annual figures for crop and livestock production, soil erosion, export sales, ...
+- meteorology: daily high and low temperatures, annual precipitation and drought indices, hourly wind speeds, ...
+:::
+
+::: {.column width="50%"}
+- hydrology: hourly river levels, ...
+- medicine: electrical activity of the heart at millisecond intervals, ...
+:::
+
+::::
+
+## What are time series?
+
+:::{.clean-box}
+**time series:** data obtained from observations collected sequentially over time
+
+**notation:** observations $y_t$, at time $t = 1, \dots, T$
+:::
+
+:::: {.columns}
+
+::: {.column width="45%"}
+**some terminology.** We focus on
+
+- **univariate** vs. multivariate
+- **regular (equidistant)** vs. irregular
+- **discrete time** vs. continuous time
+:::
+
+::: {.column width="55%"}
+**goals of time series analysis**
+
+- [modeling]{.alert}: understand or model the stochastic mechanism underlying a series
+- [forecasting]{.alert}: predict future values of a series based on its own history or on (the history of) other series
+- [statistical inference]{.alert}: e.g., does the data suggest an upward trend?
+:::
+
+::::
+
+# Time series in econom(etr)ics
+
+## Time series in econom(etr)ics
+
+**types of data in economics**
+
+- cross-section data: data for 5,000 households for the year 2025
+- time series data: data for one country over 25 years
+- panel data: 5,000 households over 5 years ("micro panel"), or 12 countries over 25 years ("macro panel")
+
+**terminology**
+
+- microeconometrics: cross-sectional data and micro panels
+- macroeconometrics: time series data and macro panels
+
+## Time series in econom(etr)ics
+
+- Nobel Prize in Economics (actually "Bank of Sweden Prize in Economic Sciences in Memory of Alfred Nobel") in 2003 went to two "time series econometricians":
+  - *Robert F. Engle III* ("for methods of analyzing economic time series with time-varying volatility (ARCH)")
+  - *Clive W.J. Granger* ("for methods of analyzing economic time series with common trends (cointegration)")
+
+  see also <https://www.nobelprize.org/prizes/economic-sciences/2003/summary/>
+
+- Thomas J. Sargent and especially Christopher A. Sims (2011) may be seen as time series econometricians
+
+## Time series in econom(etr)ics
+
+:::: {.columns}
+
+::: {.column width="50%"}
+![](images/engle.jpg){fig-align="center" height="500"}
+
+<!-- figure: portrait photo of Robert F. Engle, an older man with white hair, smiling, wearing a suit and tie, outdoors. -->
+
+::: {style="text-align: center;"}
+**Robert F. Engle III** (born 1942)
+
+[photo: Jon Demske, 2022, CC BY-SA 4.0, Wikimedia Commons]{style="font-size: 0.5em; color: #888;"}
+:::
+:::
+
+::: {.column width="50%"}
+![](images/granger.jpg){fig-align="center" height="500"}
+
+<!-- figure: portrait photo of Clive Granger, an older man with grey hair, beard and glasses, speaking at a lectern with a microphone. -->
+
+::: {style="text-align: center;"}
+**Clive W. J. Granger** (1934–2009)
+
+[photo: Olaf Storbeck, 2008, CC BY-SA 2.0, Wikimedia Commons]{style="font-size: 0.5em; color: #888;"}
+:::
+:::
+
+::::
+
+# Examples
+
+## Time series data sets in R packages
+
+- `AirPassengers`: monthly airline passenger numbers (in thousands) from 1949(1) to 1960(12), from Box & Jenkins (1976)
+- `UKDriverDeaths`: monthly totals of car drivers in Great Britain killed or seriously injured from 1969(1) to 1984(12)
+- `bev`: annual Beveridge Wheat Price Index, 1500 to 1869
+- `MarkPound`: daily DEM/GBP exchange rate returns (in %) from 1984-01-03 through 1991-12-31
+- `USMacroG`: quarterly US macroeconomic variables (e.g., income, consumption, ...) from 1950(1) to 2000(4), from Greene (2003)
+- `PepperPrice`: average monthly European spot prices for black and white pepper (USD/ton) from 1973(10) to 1996(4)
+- `EuStockMarkets`: daily closing prices (in business days) of major European stock indices: DAX, SMI, CAC, FTSE
+
+`bev` is from **tseries**. `MarkPound`, `USMacroG`, `PepperPrice` are from **AER**. the rest is from base R.
+
+## Examples: `AirPassengers`
+
+```{r airpassengers-code}
+#| eval: false
+plot(AirPassengers, main = "Airline passenger totals")
+```
+
+## Examples: `AirPassengers`
+
+```{r airpassengers}
+#| echo: false
+#| ref.label: airpassengers-code
+```
+
+<!-- figure: line plot of the monthly AirPassengers series. x axis: Time, 1949 to 1960. y axis: passengers in thousands, about 100 to 620. Clear upward trend and a regular yearly seasonal pattern (peak each summer); the seasonal swings grow with the level, i.e. multiplicative seasonality. -->
+
+## Examples: `UKDriverDeaths`
+
+```{r ukdriverdeaths-code}
+#| eval: false
+plot(UKDriverDeaths, main = "UK car drivers killed or seriously injured")
+```
+
+## Examples: `UKDriverDeaths`
+
+```{r ukdriverdeaths}
+#| echo: false
+#| ref.label: ukdriverdeaths-code
+```
+
+<!-- figure: line plot of monthly UKDriverDeaths. x axis: Time, 1969 to 1984. y axis: about 1000 to 2650. Level roughly stable to slightly declining with strong yearly seasonality (peaks around December, troughs in spring). Abrupt drop at the start of 1983 (seat belt law) to a lower level of about 1200 to 1500: a level shift / structural change. -->
+
+## Examples: `bev`
+
+```{r bev-code}
+#| eval: false
+library("tseries")
+data("bev")
+plot(bev, main = "Beveridge Wheat Price Index")
+```
+
+## Examples: `bev`
+
+```{r bev}
+#| echo: false
+#| ref.label: bev-code
+```
+
+<!-- figure: line plot of the annual Beveridge wheat price index. x axis: Time, 1500 to 1869. y axis: about 10 to 370. Slow long-run increase (around 20 to 50 in the 1500s, around 100 in the 1700s, above 200 after 1800) with increasing volatility; erratic spikes throughout and a pronounced peak of about 370 around 1812 to 1817. -->
+
+## Examples: `MarkPound`
+
+```{r markpound-code}
+#| eval: false
+library("AER")
+data("MarkPound")
+plot(MarkPound, main = "DEM/GBP exchange rate returns")
+```
+
+## Examples: `MarkPound`
+
+```{r markpound}
+#| echo: false
+#| ref.label: markpound-code
+```
+
+<!-- figure: line plot of daily DEM/GBP returns in percent. x axis: Time as observation index 0 to about 2000 (no calendar dates). y axis: about -2.5 to 3. Fluctuates around zero with no trend; volatility clustering (calm stretches alternate with turbulent ones, e.g. around observations 500 to 700) and a few outliers, the largest about +3 near observation 1700. -->
+
+## Examples: `USMacroG`
+
+```{r usmacrog-code}
+#| eval: false
+library("AER")
+data("USMacroG")
+plot(USMacroG[, c("dpi", "consumption")], plot.type = "single",
+  col = c("black", "slategray"), main = "US macroeconomic data", ylab = "")
+legend("topleft", c("Income", "Consumption"), lty = 1,
+  col = c("black", "slategray"), bty = "n")
+```
+
+## Examples: `USMacroG`
+
+```{r usmacrog}
+#| echo: false
+#| ref.label: usmacrog-code
+```
+
+<!-- figure: two smooth lines: US disposable income (black) and consumption (slategray), quarterly. x axis: Time, 1950 to 2000. y axis: about 1000 to 6500 (billions of USD, no label). Both series trend upward almost exponentially, income lies above consumption throughout, and the gap widens slightly over time; small dips at recessions. Legend top left. -->
+
+## Examples: `PepperPrice`
+
+```{r pepperprice-code}
+#| eval: false
+library("AER")
+data("PepperPrice")
+plot(PepperPrice[, c("white", "black")], plot.type = "single",
+  col = c("slategray", "black"), main = "Rotterdam pepper prices",
+  ylab = "Average monthly spot price")
+legend("topleft", c("white", "black"), lty = 1,
+  col = c("slategray", "black"), bty = "n")
+```
+
+## Examples: `PepperPrice`
+
+```{r pepperprice}
+#| echo: false
+#| ref.label: pepperprice-code
+```
+
+<!-- figure: two lines: monthly white pepper (slategray) and black pepper (black) prices in Rotterdam. x axis: Time, 1973 to 1996. y axis: average monthly spot price in USD/ton, about 1000 to 7000. White pepper always above black; both move together. Low around 1000 to 2000 in the 1970s with a hump around 1977 to 1978, sharp rise from 1984 to a plateau in 1986 to 1988 (white about 7000, black about 5000), decline to about 1000 to 2000 by 1991 to 1993, rise again in 1995 to 1996. Legend top left. -->
+
+## Examples: Bitcoin
+
+```{r bitcoin-code}
+#| eval: false
+library("quantmod")
+btc <- getSymbols("BTC-USD", src = "yahoo", from = "2019-09-01", auto.assign = FALSE)
+plot(Cl(btc), main = "Bitcoin closing prices")
+```
+
+## Examples: Bitcoin
+
+```{r bitcoin}
+#| echo: false
+#| ref.label: bitcoin-code
+```
+
+<!-- figure: xts line plot of daily Bitcoin closing prices in USD, downloaded at render time (open-ended, so the right end moves). x axis: Sep 2019 to the render date (Sep 2026 at the last render). y axis: about 5,000 to 125,000. Around 10,000 in 2019 to 2020, run-up to two peaks near 60,000 in 2021, fall to about 20,000 in 2022, recovery from 2023, above 100,000 in 2025 with a peak near 120,000, then back to about 60,000 to 90,000 in 2026. Strong trend, huge level changes and changing volatility. -->
+
+## Examples: French mortality
+
+```{r frmort-code}
+#| eval: false
+library("demography")  # fr.mort: French mortality data (HMD), 1816-2006
+fr <- extract.ages(extract.years(fr.mort, 1899:2006), 0:95)
+lr <- log(fr$rate$total)
+cols <- colorRampPalette(c("#08306b", "#c6dbef"))(length(fr$year))
+matplot(fr$age, lr, type = "l", lty = 1, col = cols, xlab = "Age",
+  ylab = "Log death rate", main = "Total death rates, France 1899-2006")
+lines(fr$age, lr[, 1], lty = 2, lwd = 2.5)
+lines(fr$age, lr[, ncol(lr)], lty = 2, lwd = 2.5)
+idx <- round(seq(1, length(fr$year), length.out = 5))
+legend("bottomright", legend = c(fr$year[idx], "first / last year"),
+  col = c(cols[idx], "black"), lty = c(rep(1, 5), 2), lwd = c(rep(2, 5), 2.5),
+  title = "year", bty = "n")
+```
+
+## Examples: French mortality
+
+```{r frmort}
+#| echo: false
+#| ref.label: frmort-code
+```
+
+<!-- figure: matplot of French log death rates by age, one line per year 1899 to 2006, coloured from dark blue (early years) to light blue (recent years); first and last year dashed black. x axis: Age, 0 to 95. y axis: log death rate, about -9 to -1. Typical shape: high at age 0 (infant mortality), minimum around age 10, small accident hump around age 20, then roughly linear increase in the log (exponential in levels) up to old age. Over time the whole curve shifts down, most strongly at young ages; early-20th-century years show extra bumps at ages 20 to 40 from the world wars. Legend bottom right with years 1899, 1926, 1952, 1979, 2006. -->
+
+## Examples: METR time horizon of AI agents
+
+```{r metr-code}
+#| eval: false
+library("yaml")
+metr <- read_yaml("https://metr.org/assets/benchmark_results_1_1.yaml")$results
+th <- data.frame(
+  date = as.Date(sapply(metr, `[[`, "release_date")),
+  p50 = sapply(metr, function(m) m$metrics$p50_horizon_length$estimate))
+th <- th[order(th$date), ]
+plot(th$date, th$p50, log = "y", pch = 19, yaxt = "n", xlab = "Model release date",
+  ylab = "", main = "METR: 50% time horizon of AI agents")
+axis(2, at = c(0.1, 1, 10, 60, 480), labels = c("6 sec", "1 min", "10 min", "1 h", "8 h"), las = 1)
+fit <- lm(log(p50) ~ date, data = th)
+lines(th$date, exp(fitted(fit)), col = "slategray", lwd = 2)
+```
+
+## Examples: METR time horizon of AI agents
+
+:::: {.columns}
+
+::: {.column width="32%"}
+**METR (2025, 2026):** how long are the tasks that AI agents can do?
+
+- tasks: software and research tasks, timed by human experts
+- [50% time horizon]{.alert}: task length (in human time) at which a model succeeds with 50% probability
+- one observation per model, at its release date: irregular series
+- log scale, fitted line: exponential trend, doubling roughly every 6 months
+:::
+
+::: {.column width="68%"}
+```{r metr}
+#| echo: false
+#| ref.label: metr-code
+#| fig-width: 6.5
+#| fig-height: 5
+#| out-width: "100%"
+```
+
+<!-- figure: scatter plot of the METR 50% time horizon per AI model against release date, data downloaded at render time. x axis: model release date, 2019 to 2026. y axis on log scale with tick labels 6 sec, 1 min, 10 min, 1 h, 8 h. Points start around 6 sec in 2019 and reach above 8 h in 2026, irregularly spaced in time; a slategray straight fitted line (exponential trend on the log scale) runs through them. As of the last render the newest points lie slightly above the line. -->
+:::
+
+::::
+
+# Data features
+
+## Data features
+
+examples exhibit certain features (some more than one):
+
+- trend
+- season
+- structural change: changing trend, changing level, changing season, changing volatility
+- volatility
+- 'random' fluctuations
+
+time series analysis is concerned with modeling, extracting, removing, etc. such features
+
+# Data transformations
+
+## Data transformations
+
+**operators in time series analysis:**
+
+- backshift operator $B$ (also called lag operator, then denoted $L$): $\quad B y_t = y_{t-1}$
+- differencing operator $\Delta := 1 - B$: $\quad \Delta y_t = y_t - y_{t-1}$
+- seasonal differencing operator $\Delta_S := 1 - B^S$: $\quad \Delta_S y_t = y_t - y_{t-S}$
+
+**examples:**
+
+a. macroeconomics: often quarterly or monthly data ($S = 4$ or $S = 12$)
+b. finance: returns (continuous or "log returns") are $\quad \Delta \log y_t = \log y_t - \log y_{t-1}$
+
+## Data transformations: The return zoo
+
+**example:** many time series in economics and finance are positive (prices, etc.). often consider [returns]{.alert}
+
+- there are several definitions for returns
+
+- **'returns in continuous time'** or 'continuously compounded returns': 
+$$r_t := \Delta \log y_t = \log y_t - \log y_{t-1}$$
+    
+    - growth at constant rate $r$ compounded continuously over one period gives $y_t = y_{t-1} e^{r}$, hence $r = \log(y_t / y_{t-1}) = r_t$
+    - sometimes called *log-returns* because it is the log of the gross return $y_t/y_{t-1}$
+    - warning: differencing and taking logs must not be interchanged! $\Delta \log y_t \neq \log \Delta y_t$
+
+- **net returns** are fractional changes in the level: 
+$$R_t := \frac{y_t - y_{t-1}}{y_{t-1}} = \frac{y_t}{y_{t-1}} - 1$$
+   - also called arithmetic returns
+   - note that $R_t \geqslant -1$
+
+---
+
+- **gross returns**: 
+$$\mathcal R_t := 1 + R_t = \frac{y_t}{y_{t-1}}$$
+
+   - note that $r_t = \log(\mathcal R_t)$
+
+- returns can often be modeled by a stationary process (see illustration below)
+
+## Data transformations: Illustration
+
+download SMI data directly from the Web using `get.hist.quote()` from (old) package **tseries** and obtain returns:
+
+```{r smi-code}
+#| eval: false
+library("tseries")
+smi <- get.hist.quote(instrument = "^ssmi",
+  start = "2017-01-01", end = "2025-08-31",
+  quote = "Close", provider = "yahoo", compression = "d",
+  retclass = "zoo", quiet = TRUE, drop = FALSE)
+lsmi <- log(smi)
+dlsmi <- diff(lsmi)  # returns
+rsmi <- 100 * dlsmi  # percentage returns
+names(rsmi) <- "rsmi"
+plot(merge(smi, lsmi, rsmi), main = "",
+  xlab = "Time", ylab = c("prices", "log-prices", "returns"))
+```
+
+other packages: **quantmod**, **Quandl**, **FredR**, **yfR**, ...
+
+## Data transformations: Illustration
+
+:::: {.columns}
+
+::: {.column width="32%"}
+**SMI, daily closing values**
+
+**y axes:**
+
+- prices: $y_t$
+- log-prices: $\log y_t$
+- returns: $100 \cdot \Delta \log y_t$ $= 100 (\log y_t - \log y_{t-1})$, daily percentage log return
+:::
+
+::: {.column width="68%"}
+```{r smi}
+#| echo: false
+#| ref.label: smi-code
+#| fig-width: 6.5
+#| fig-height: 5
+#| out-width: "100%"
+```
+
+<!-- figure: three stacked zoo panels sharing the x axis Time, 2017 to Aug 2025. Top 'prices': SMI closing level, about 8,000 to 12,500: rise in 2017, dip in 2018, rise to early 2020, sharp Covid crash in March 2020, recovery to record highs above 12,000 in 2021, decline in 2022, sideways then rising to new highs in 2025. Middle 'log-prices': same shape on the log scale, about 9.0 to 9.4. Bottom 'returns': daily percentage log returns, about -10 to +7, fluctuating around zero with volatility clusters, the largest spike (about -10) in March 2020. -->
+:::
+
+::::
+
+## Data transformations
+
+**advantages of operator notation?** Sometimes this abstraction simplifies notation or computation. 
+
+**example:** (multiple backshifts)
+$$B^2 y_t = B(B y_t) = B y_{t-1} = y_{t-2}$$
+analogously, $B^k, B^{-k}, B^0, \dots$
+
+**example:** (second differences)
+$$\Delta^2 y_t = \Delta(\Delta y_t) = \Delta(y_t - y_{t-1}) = \Delta y_t - \Delta y_{t-1} = y_t - 2 y_{t-1} + y_{t-2}$$
+or simply
+$$\Delta^2 y_t = (1 - B)^2 y_t = (1 - 2B + B^2) y_t = y_t - 2 y_{t-1} + y_{t-2}$$
+
+**later:** models are written with polynomials in the lag operator, e.g. AR(1): $\quad (1 - \phi B)\, y_t = e_t$
+
+
+
+# Time series modeling
+
+## Time series modeling: Sampling of time series observations
+
+::: {style="font-size: 1.25em; margin-bottom: 1em;"}
+
+| | cross-section | time series |
+|:------|:------------------|:------------------|
+| **sample space** | $\mathbb{R}^n$, one value per unit | $\mathbb{R}^T$, one value per date: a [path]{.alert} |
+| **sample** | $y_1, \dots, y_n$, [independent]{.alert} draws, exchangeable | $y_1, \dots, y_T$: [one draw]{.alert} of one path, [dependent]{.alert}, not exchangeable |
+| **example** | income of 5,000 households in 2025 | Swiss GDP over 25 years |
+| **repeatable?** | yes, draw another household | no, history happens once |
+
+:::
+
+Notes:
+
+- time series samples are not exchangeable: observed time series (0,1,2) is different from (0,2,1)
+- statistical inference from one path needs additional structure
+  - stability over time: properties we want to estimate need to be stable
+  - dependence limited: larger samples (longer paths) provide additional information
+
+## Example: Estimate a mean
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**cross-section**
+
+- $y_i \sim N(\mu, 1)$ i.i.d., $i = 1, \dots, n$
+- sample mean $\bar y = \frac{1}{n} \sum_{i=1}^n y_i$
+- $\bar y \sim N(\mu, 1/n)$, hence $\bar y \to \mu$ as $n \to \infty$
+- every new household adds information
+:::
+
+::: {.column width="50%"}
+**time series**
+
+- $y_t \sim N(\mu_t, 1)$, $t = 1, \dots, T$
+- sample mean $\bar y = \frac{1}{T} \sum_{t=1}^T y_t$
+- target? $\quad \bar y \to \frac{1}{T} \sum_{t=1}^T \mu_t$?
+- does the limit [exist]{.alert}? does $\bar y$ [converge]{.alert} to it?
+  - needs stability
+:::
+
+::::
+
+**counterexample: dependence unlimited.** $y_1 \sim N(\mu, 1)$, $\quad y_t = y_{t-1}$ for $t = 2, \dots, T$
+
+- every $y_t \sim N(\mu, 1)$: mean, variance stable over time
+- but $\bar y = y_1$ for every $T$: no convergence, a longer path adds [no]{.alert} information
+- reason: perfect dependence
+
+**needed:** stability *and* limited dependence (later: stationarity, ergodicity)
+
+## Time series modeling: Outline
+
+- in introductory econometrics: data were assumed to be [independent]{.alert} (or at least [uncorrelated]{.alert})
+
+- in time series analysis: goal is to model [dependence]{.alert}
+
+**outline of time series modeling:**
+
+- consider observed time series as realizations of random variables.
+
+    - we observe a sequence of observations, hence a model must involve a sequence of random variables. 
+    - such models are called [stochastic processes (SPs)]{.alert}
+    
+- need to impose some structure on SP. 
+    - e.g. a [stationary stochastic process]{.alert} (constant mean, variance, and other moments)
+    - later: extensions, mainly trend-stationary and difference-stationary processes
+
+- for estimation and forecasting: need specific models of stationary stochastic processes.
+    - simplest model with dependence: the [**autoregressive process of order 1, AR(1)**]{.alert}
+    - later: richer model classes, models for trends, seasonality, and volatility
+
+## Time series modeling: AR(1) process
+
+**AR(1) process:** today's value is a fraction of yesterday's value plus a random shock
+$$y_t = \phi \, y_{t-1} + e_t, \qquad \{e_t\} \sim WN(0, \sigma^2)$$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+:::{.clean-box}
+**white noise:** $\{e_t\} \sim WN(0, \sigma^2)$ if for all $t$ and all $s \neq t$
+
+- $E[e_t] = 0$ (constant mean)
+- $\mathrm{Var}(e_t) = \sigma^2$ (constant variance)
+- $\mathrm{Cov}(e_t, e_s) = 0$ (uncorrelated)
+:::
+
+- no distributional assumption, no independence (only uncorrelated)
+- stronger: Gaussian white noise $e_t \sim_{iid} \mathcal N(0, \sigma^2)$; for Gaussian $e_t$, uncorrelated and independent coincide
+:::
+
+::: {.column width="50%"}
+**questions:**
+
+- when is this process 'stable'?
+- how to extract properties (e.g., dependence structure) from the defining equation?
+- how to estimate $\phi$?
+- how to forecast $y_{t+\ell}$, given present and past $y_t, y_{t-1}, \dots$?
+- for which types of data is it suitable?
+
+:::
+
+::::
+
+## Time series modeling: Model selection
+
+
+**steps:** search for model through iteration of
+
+1. **model specification**: select classes of potentially appropriate models
+
+    - employ visualizations, summary statistics, and subject-matter knowledge
+    - principle of parsimony ("Everything should be made as simple as possible but not simpler")
+
+2. **model fitting**: estimate the parameters of the model from the observed series
+
+    - e.g., via least squares (LS) or maximum likelihood (ML)
+
+3. **model diagnostics**: does the model fit the data reasonably well?
+
+    - if not, go back to (1)
+
+## Course roadmap
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Ch. 2 – Fundamentals**
+
+- [stochastic process]{.alert}, mean and autocovariance
+- [autocorrelation function (ACF)]{.alert}
+- [stationarity]{.alert} (weak and strict), random walk
+
+**Ch. 3 – ARMA models**
+
+- MA($q$), AR($p$), [ARMA($p,q$)]{.alert} processes, lag polynomials
+- [stationarity and causality]{.alert}, [invertibility]{.alert}
+- MA($\infty$) representation, Yule-Walker equations
+:::
+
+::: {.column width="50%"}
+**Ch. 4 – ARMA modelling**
+
+- [estimation]{.alert}: method of moments, least squares, maximum likelihood
+- model diagnostics: residual checks
+
+**Ch. 5 – Forecasting**
+
+- [minimum MSE forecast]{.alert}
+- forecast error variance, [interval forecasts]{.alert}
+
+**Ch. 6 – Extending ARMA models**
+
+- [ARIMA]{.alert} models
+:::
+
+::::
+
+# How to study effectively?
+
+## How to study effectively?
+
+comes last, because it is the most important point today
+
+**time series analysis is relatively abstract**
+
+- do not binge, study regularly
+- reiterate. rest and sleep in between. it gets easier each time
+- your mind is not a computer: reiterate in different forms
+- if you are stuck, change perspective and find the simplest thing you can understand. ask. sometimes just formulating the question helps
+- do not just sit there and read or watch: summarize slides, try the exercises without looking at the solutions, ...
+
+## If you go on a journey, take someone with you
+
+**form study groups (2–5 persons)**
+
+- easier to get started and more fun
+- meet and discuss the lecture or try the exercises together
+- ask on the course forum for others that are interested
+- study groups also make sense if experience differs: explaining and asking are both very effective
+
+## Lectos: AI tutor for this course
+
+:::: {.columns}
+
+::: {.column width="60%"}
+**a forum for questions on the lecture**
+
+- log in with your uni mail (`@stud.unibas.ch`)
+- ask questions on the lecture content: short questions, short answers
+- an AI answers, based only on the slides and the script
+- flag mistakes or unhelpful answers (🚩 button)
+- I read the flagged chats and fix the material if something is wrong
+- free
+:::
+
+::: {.column width="40%"}
+![](images/lectos_qr.png){fig-align="center" height="420"}
+
+<!-- figure: black-and-white QR code linking to https://teachbot-timeseries-production.up.railway.app, the Lectos AI tutor for this course. -->
+
+::: {style="text-align: center; font-size: 0.6em;"}
+[teachbot-timeseries-production.up.railway.app](https://teachbot-timeseries-production.up.railway.app)
+:::
+:::
+
+::::
+
+# Software
+
+## Software
+
+**general remarks:** 
+
+- there are many different statistics/econometrics software packages with time series functionality. 
+
+- the base R system ships with many classical time series methods (estimation and simulation of ARIMA models, computation of autocorrelations, ...)
+
+- I will show the code of my plots (but you do not need to learn this part)
+
+    - for programming: focus on the exercises
+    
+## AI support
+
+- current AI models are extremely helpful for coding
+
+**helpful things:**
+
+- give appropriate context (e.g., student of economics, using R, prefer base R over tidy code, etc.)
+- ask it to explain code (probably a good idea to share the respective slides)
+
+## Software: R packages
+
+some CRAN packages for time series analysis:
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- **forecast**: methods for (automatic) forecasting
+- **tseries**: time series and financial econometrics
+- **tsbox**: class-agnostic time series. for conversion of ts classes
+- **urca**: unit roots and cointegration analysis
+- **strucchange**: testing, monitoring, and dating structural changes
+- **Rmetrics**: collection of packages for financial econometrics (e.g., **fGarch**)
+:::
+
+::: {.column width="50%"}
+- **rugarch**: univariate GARCH models
+- **AER**: data accompanying Kleiber & Zeileis (2008)
+- **astsa**: data and functions for Shumway & Stoffer (2017, 2019)
+- **TSA**: data and functions for Cryer & Chan (2008). *warning:* **TSA** redefines several base R functions!
+:::
+
+::::
+
+**more:** CRAN task view on time series <https://CRAN.R-project.org/view=TimeSeries>
+
+## Software: Time series classes
+
+**data classes:** standard time series class in R is `"ts"`
+
+- aimed at regular series (annual, quarterly, monthly)
+- a `"ts"` object is either a numeric vector (univariate series) or a numeric matrix (multivariate series)
+- `"tsp"` attribute reflects **t**ime **s**eries **p**roperties: a vector of length 3 with `start`, `end`, and `frequency`. can be queried via `tsp()`
+
+
+```{r tsp}
+#| eval: false
+tsp(AirPassengers)
+start(AirPassengers)
+end(AirPassengers)
+```
+- create via `ts()`: supply data (numeric vector or matrix) plus arguments `start`, `end`, and `frequency`
+- methods for standard generic functions: `plot()`, `lines()`, `str()`, `summary()`, ...
+- additional time-series-specific methods: `lag()`, `diff()`, ...
+
+## Example: ts in R
+
+create a quarterly series from five numbers, starting in the second quarter of 2021:
+
+```{r ts-example}
+values <- c(1, 3, 4, 7, 17) # create example values
+y <- ts(values, start = c(2021, 2), frequency = 4) # create ts object
+y
+tsp(y)
+```
+
+then plot
+
+```{r ts-plot-code}
+#| eval: false
+y <- ts(c(1, 3, 4, 7, 17), start = c(2021, 2), frequency = 4)
+par(mfrow = c(1, 2))  # two panels side by side
+plot(y, type = "o", main = "level")
+plot(log(y), type = "o", main = "log")
+```
+
+## Example: ts in R
+
+```{r ts-plot}
+#| echo: false
+#| ref.label: ts-plot-code
+```
+
+<!-- figure: two panels side by side, points connected by lines. Left panel 'level': y = 1, 3, 4, 7, 17 at times 2021.25, 2021.5, 2021.75, 2022.0, 2022.25 (quarters), increasing and convex. Right panel 'log': log(y) from 0 to about 2.8, increasing and roughly linear to concave. x axis in both: Time in decimal years. -->
+
+## Software: Time series classes
+
+**drawbacks:**
+
+- only numeric time stamps (i.e., not date/time objects)
+- missing values cannot be omitted (start/end/frequency no longer sufficient for reconstructing all time stamps!) – a problem with irregular series, e.g., with many financial time series
+
+**R packages for irregular series:** several, we sometimes use **zoo**
+
+# Further reading
+
+## Further reading
+
+try (some of)
+
+- Cryer and Chan (2008), Ch. 1
+- Franses, van Dijk, Opschoor (2014), Ch. 1 and 2
+- Granger CWJ (2004). Time series analysis, cointegration, and applications. *American Economic Review*, 94, 421–425. [Nobel lecture]
+- Shumway and Stoffer (2017), Ch. 1
+- Tsay (2010), Ch. 1
+

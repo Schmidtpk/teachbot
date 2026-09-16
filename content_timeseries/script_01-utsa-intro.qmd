@@ -1,0 +1,214 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Script, Ch. 1 – Introduction. HS 2026, University of Basel, based on material by Christian Kleiber"
+author: "Patrick Schmidt (University of Heidelberg)"
+date: today
+format:
+  pdf:
+    documentclass: article
+    papersize: a4
+    fontsize: 11pt
+    number-sections: true
+    number-depth: 1
+    geometry:
+      - top=2.5cm
+      - bottom=2.5cm
+      - left=3cm
+      - right=3cm
+    include-in-header:
+      text: |
+        \usepackage{amsmath,amssymb,amsthm}
+        \theoremstyle{definition}
+        \newtheorem{definition}{Definition}[section]
+        \theoremstyle{plain}
+        \newtheorem{proposition}[definition]{Proposition}
+        \newtheorem{lemma}[definition]{Lemma}
+        \newtheorem{theorem}[definition]{Theorem}
+        \newtheorem{corollary}[definition]{Corollary}
+        \setcounter{section}{0}
+---
+
+# Introduction
+
+## Time series
+
+\begin{definition}[Time series]\label{def:ts}
+A \emph{time series} is a finite sequence of observations
+$$
+y_1, y_2, \dots, y_T ,
+$$
+indexed by time $t = 1, \dots, T$. The series is \emph{univariate} if $y_t \in \mathbb{R}$ and \emph{multivariate} if $y_t \in \mathbb{R}^k$ with $k > 1$. It is \emph{regular} (equidistant) if consecutive observation times are equally spaced, and \emph{irregular} otherwise.
+\end{definition}
+
+## Operators
+
+\begin{definition}[Backshift operator]\label{def:B}
+The \emph{backshift operator} (lag operator) $B$ acts on a time series by
+$$
+B y_t = y_{t-1} .
+$$
+Its powers are defined for $k \in \mathbb{Z}$ by
+$$
+B^k y_t = y_{t-k}, \qquad B^0 y_t = y_t .
+$$
+\end{definition}
+
+\begin{definition}[Differencing operators]\label{def:diff}
+The \emph{differencing operator} is
+$$
+\Delta := 1 - B, \qquad \Delta y_t = y_t - y_{t-1} .
+$$
+For $S \in \mathbb{N}$ the \emph{seasonal differencing operator} is
+$$
+\Delta_S := 1 - B^S, \qquad \Delta_S y_t = y_t - y_{t-S} .
+$$
+Higher-order differences are defined by iteration, $\Delta^d := \Delta \Delta^{d-1}$ for $d \geq 2$.
+\end{definition}
+
+\begin{proposition}[Operator algebra]\label{prp:algebra}
+For time series $x_t, y_t$, constants $a, b \in \mathbb{R}$ and $j, k \in \mathbb{Z}$:
+\begin{enumerate}
+\item[(i)] $B$ is linear: $B(a x_t + b y_t) = a x_{t-1} + b y_{t-1}$.
+\item[(ii)] $B^j B^k = B^{j+k}$.
+\end{enumerate}
+Consequently, polynomials in $B$ are added and multiplied like ordinary polynomials.
+\end{proposition}
+
+\begin{proof}
+(i) $B(a x_t + b y_t)$ is the value of the series $a x_t + b y_t$ at time $t-1$, i.e.\ $a x_{t-1} + b y_{t-1}$.
+(ii) $B^j B^k y_t = B^j y_{t-k} = y_{t-k-j} = B^{j+k} y_t$.
+The last statement follows since, by (i) and (ii), $\big(\sum_j a_j B^j\big)\big(\sum_k b_k B^k\big) y_t = \sum_{j,k} a_j b_k \, y_{t-j-k}$, which is the action of the product polynomial.
+\end{proof}
+
+\begin{proposition}[Second differences]\label{prp:d2}
+$$
+\Delta^2 y_t = y_t - 2 y_{t-1} + y_{t-2} .
+$$
+\end{proposition}
+
+\begin{proof}
+By iteration, $\Delta^2 y_t = \Delta(\Delta y_t) = \Delta(y_t - y_{t-1}) = (y_t - y_{t-1}) - (y_{t-1} - y_{t-2}) = y_t - 2y_{t-1} + y_{t-2}$.
+Equivalently, by Proposition~\ref{prp:algebra}, $\Delta^2 = (1-B)^2 = 1 - 2B + B^2$, and $(1 - 2B + B^2) y_t = y_t - 2 y_{t-1} + y_{t-2}$.
+\end{proof}
+
+\begin{definition}[Lag polynomial]\label{def:lagpoly}
+For $\phi_1, \dots, \phi_p \in \mathbb{R}$ the \emph{lag polynomial} of order $p$ is
+$$
+\phi(B) := 1 - \phi_1 B - \phi_2 B^2 - \dots - \phi_p B^p ,
+$$
+acting as
+$$
+\phi(B) y_t = y_t - \phi_1 y_{t-1} - \dots - \phi_p y_{t-p} .
+$$
+\end{definition}
+
+## Returns
+
+\begin{definition}[Returns]\label{def:returns}
+Let $y_t > 0$ for all $t$.
+\begin{enumerate}
+\item[(i)] The \emph{(simple) net return} is
+$$
+R_t := \frac{y_t - y_{t-1}}{y_{t-1}} = \frac{y_t}{y_{t-1}} - 1 .
+$$
+\item[(ii)] The \emph{(simple) gross return} is
+$$
+1 + R_t = \frac{y_t}{y_{t-1}} .
+$$
+\item[(iii)] The \emph{log return} (continuously compounded return) is
+$$
+r_t := \Delta \log y_t = \log y_t - \log y_{t-1} .
+$$
+\end{enumerate}
+The \emph{percentage} versions are $100 R_t$ and $100 r_t$.
+\end{definition}
+
+\begin{proposition}[Properties of returns]\label{prp:returns}
+Let $y_{t-1} > 0$.
+\begin{enumerate}
+\item[(i)] If $y_t \geq 0$, then $R_t \geq -1$, with equality if and only if $y_t = 0$.
+\item[(ii)] If $y_t > 0$, then $r_t = \log(1 + R_t)$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) $R_t + 1 = y_t / y_{t-1} \geq 0$ since $y_t \geq 0$ and $y_{t-1} > 0$, with equality if and only if $y_t = 0$.
+(ii) $\log(1 + R_t) = \log(y_t / y_{t-1}) = \log y_t - \log y_{t-1} = r_t$.
+\end{proof}
+
+\begin{proposition}[Differencing and logarithm do not commute]\label{prp:nocommute}
+In general $\Delta \log y_t \neq \log \Delta y_t$. The right-hand side is defined only if $\Delta y_t > 0$, and even then the two expressions differ in general.
+\end{proposition}
+
+\begin{proof}
+Take $y_{t-1} = 1$ and $y_t = 2$. Then $\Delta \log y_t = \log 2 - \log 1 = \log 2$, whereas $\log \Delta y_t = \log(2 - 1) = 0$.
+\end{proof}
+
+## Stochastic processes and the AR(1) model
+
+\begin{definition}[Stochastic process]\label{def:sp}
+A \emph{stochastic process} is a sequence $\{y_t\}_{t \in \mathbb{Z}}$ of random variables defined on a common probability space. An observed time series $y_1, \dots, y_T$ is a realization (\emph{path}) of $y_1, \dots, y_T$.
+\end{definition}
+
+\begin{definition}[White noise]\label{def:wn}
+A stochastic process $\{e_t\}$ is a \emph{white noise process} with variance $\sigma^2 > 0$, written $\{e_t\} \sim WN(0, \sigma^2)$, if for all $t$ and all $s \neq t$
+\begin{enumerate}
+\item[(i)] $E[e_t] = 0$,
+\item[(ii)] $\operatorname{Var}(e_t) = \sigma^2$,
+\item[(iii)] $\operatorname{Cov}(e_t, e_s) = 0$.
+\end{enumerate}
+\end{definition}
+
+\begin{proposition}[White noise and independence]\label{prp:wnindep}
+Let $\{e_t\}$ be a stochastic process with $E[e_t] = 0$ and $\operatorname{Var}(e_t) = \sigma^2 > 0$ for all $t$.
+\begin{enumerate}
+\item[(i)] If $e_t$ and $e_s$ are independent for all $s \neq t$, then $\{e_t\} \sim WN(0, \sigma^2)$.
+\item[(ii)] The converse does not hold: there exist white noise processes whose elements are not independent.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) Independence of $e_t$ and $e_s$ implies $E[e_t e_s] = E[e_t] E[e_s] = 0$, hence $\operatorname{Cov}(e_t, e_s) = E[e_t e_s] - E[e_t]E[e_s] = 0$, which is (iii) of Definition~\ref{def:wn}; (i) and (ii) hold by assumption.
+
+(ii) Let $z_t \stackrel{iid}{\sim} \mathcal{N}(0, 1)$ and set $e_t := z_t z_{t-1}$. Then $E[e_t] = E[z_t] E[z_{t-1}] = 0$ and $\operatorname{Var}(e_t) = E[z_t^2] E[z_{t-1}^2] = 1$. For $s = t-1$, $\operatorname{Cov}(e_t, e_{t-1}) = E[z_t z_{t-1}^2 z_{t-2}] = E[z_t] E[z_{t-1}^2] E[z_{t-2}] = 0$, and for $|t - s| \geq 2$ the factors of $e_t$ and $e_s$ are disjoint, so $\operatorname{Cov}(e_t, e_s) = 0$ by independence. Thus $\{e_t\} \sim WN(0, 1)$. However, $E[e_t^2 e_{t-1}^2] = E[z_t^2] E[z_{t-1}^4] E[z_{t-2}^2] = 1 \cdot 3 \cdot 1 = 3 \neq 1 = E[e_t^2] E[e_{t-1}^2]$, so $e_t$ and $e_{t-1}$ are not independent.
+\end{proof}
+
+\begin{definition}[Gaussian process]\label{def:gauss}
+A stochastic process $\{y_t\}$ is a \emph{Gaussian process} if for every $k \in \mathbb{N}$ and all $t_1 < \dots < t_k$ the vector $(y_{t_1}, \dots, y_{t_k})'$ is multivariate normal. A white noise process that is a Gaussian process is called \emph{Gaussian white noise}.
+\end{definition}
+
+\begin{proposition}[Uncorrelated and independent coincide for Gaussian processes]\label{prp:gaussindep}
+Let $\{y_t\}$ be a Gaussian process and $t_1 < \dots < t_k$. Then $y_{t_1}, \dots, y_{t_k}$ are independent if and only if $\operatorname{Cov}(y_{t_i}, y_{t_j}) = 0$ for all $i \neq j$.
+\end{proposition}
+
+\begin{proof}
+($\Rightarrow$) Independence implies zero covariance, as in the proof of Proposition~\ref{prp:wnindep}(i).
+
+($\Leftarrow$) By Definition~\ref{def:gauss}, $y := (y_{t_1}, \dots, y_{t_k})'$ is multivariate normal with some mean vector $\mu$ and covariance matrix $\Sigma$. Pairwise zero covariances mean that $\Sigma = \operatorname{diag}(\sigma_1^2, \dots, \sigma_k^2)$. If all $\sigma_i^2 > 0$, the density of $y$ is
+$$
+f(y) = \prod_{i=1}^k (2\pi \sigma_i^2)^{-1/2} \exp\!\Big(-\frac{(y_i - \mu_i)^2}{2\sigma_i^2}\Big),
+$$
+the product of the marginal $\mathcal{N}(\mu_i, \sigma_i^2)$ densities, hence the components are independent. If some $\sigma_i^2 = 0$, then $y_{t_i} = \mu_i$ almost surely, a constant is independent of every random variable, and the argument applies to the remaining components.
+\end{proof}
+
+\begin{corollary}[Gaussian white noise]\label{cor:gwn}
+$\{e_t\}$ is Gaussian white noise with variance $\sigma^2$ if and only if $e_t \stackrel{iid}{\sim} \mathcal{N}(0, \sigma^2)$.
+\end{corollary}
+
+\begin{proof}
+($\Rightarrow$) Fix $t_1 < \dots < t_k$. By Definition~\ref{def:wn} the covariances of $e_{t_1}, \dots, e_{t_k}$ vanish, so by Proposition~\ref{prp:gaussindep} they are independent, each with $e_{t_j} \sim \mathcal{N}(0, \sigma^2)$ as a marginal of a multivariate normal vector with mean $0$ and variance $\sigma^2$. As $k$ and $t_1, \dots, t_k$ were arbitrary, $\{e_t\}$ is iid $\mathcal{N}(0, \sigma^2)$.
+
+($\Leftarrow$) If $e_t \stackrel{iid}{\sim} \mathcal{N}(0, \sigma^2)$, then $\{e_t\} \sim WN(0, \sigma^2)$ by Proposition~\ref{prp:wnindep}(i), and every finite subvector is multivariate normal as a vector of independent normals, so $\{e_t\}$ is a Gaussian process.
+\end{proof}
+
+\begin{definition}[AR(1) process]\label{def:ar1}
+Let $\phi \in \mathbb{R}$ and $\{e_t\} \sim WN(0, \sigma^2)$. A stochastic process $\{y_t\}$ is an \emph{autoregressive process of order 1}, AR(1), with parameter $\phi$ and innovations $\{e_t\}$ if for all $t$
+$$
+y_t = \phi \, y_{t-1} + e_t .
+$$
+Only the white noise properties of Definition~\ref{def:wn} are required of $\{e_t\}$; the AR(1) process is \emph{Gaussian} if $\{e_t\}$ is Gaussian white noise.
+In lag-operator notation (Definition~\ref{def:lagpoly} with $p = 1$),
+$$
+(1 - \phi B) \, y_t = e_t .
+$$
+\end{definition}
