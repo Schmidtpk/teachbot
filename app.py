@@ -52,6 +52,26 @@ COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
 
 _AUTH_CFG = CFG.get("auth", {})
 
+
+# IID-EDUCATOR-CONFIG, IID-MULTI-DEPLOY: Chainlit serves the sidebar/welcome panel from the
+# fixed path chainlit.md at the project root — there is no per-deploy option. So chainlit.md is
+# GENERATED at startup (gitignored) from <content_dir>/_readme.md, falling back to
+# content/_readme.md, with {{course_name}} substituted — every deploy then shows its own course.
+# The HTML <meta description> (Chainlit's [UI] description) is set from the same name.
+def _write_sidebar_readme() -> None:
+    course_name = CFG.get("course_name", "this course")
+    template = _ROOT_CONTENT / "_readme.md"
+    if not template.is_file():
+        template = Path("content") / "_readme.md"
+    if not template.is_file():
+        sys.exit(f"[Lectos] ERROR: no _readme.md found in '{_ROOT_CONTENT}' or 'content/'.")
+    text = load_course_text(template, course_name)
+    (Path(__file__).parent / "chainlit.md").write_text(text, encoding="utf-8")
+    cl.config.config.ui.description = f"Your AI study companion for {course_name}"
+
+
+_write_sidebar_readme()
+
 # IID-PUBLIC-RATELIMIT: optional per-session caps, set only in no-login deploy configs
 # (e.g. config_public.yaml). Best-effort cost damping, not security — a page reload
 # starts a fresh session and resets the counter.

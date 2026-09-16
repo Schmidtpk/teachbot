@@ -141,7 +141,7 @@ chainlit create-secret
 | `content/_system_prompt.md` | LLM behaviour instructions (role, rules, tone). `{{course_name}}` is substituted per session. |
 | `content/_welcome.md` | First chat message shown to students. `{{course_name}}` is substituted. |
 | `content/_diagnose_prompt.md` | Learn mode only: diagnostic instructions (structured-JSON output). |
-| `chainlit.md` | Sidebar/welcome panel text (Chainlit root). |
+| `content/_readme.md` | Sidebar/welcome panel text. `{{course_name}}` is substituted. Written to `chainlit.md` at startup (generated file, do not edit). Other deploys override it with `<content_dir>/_readme.md`. |
 
 Course subfolders can have their own `_system_prompt.md`, `_welcome.md`, and `_diagnose_prompt.md`; missing files fall back to the root `content/` versions.
 

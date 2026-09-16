@@ -1,6 +1,6 @@
 # Welcome to TeachBot
 
-Your AI study companion for **Predictions: Economics, Empirics and Evaluations**.
+Your AI study companion for **{{course_name}}**.
 
 ## What you can do
 

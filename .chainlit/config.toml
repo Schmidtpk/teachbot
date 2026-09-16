@@ -57,7 +57,8 @@ edit_message = true
 name = "TeachBot"
 
 # Description of the assistant. This is used for HTML tags.
-description = "Your AI study companion for Predictions: Economics, Empirics and Evaluations"
+# IID-EDUCATOR-CONFIG: overridden at startup by app.py from the deploy's course_name
+description = "Your AI study companion"
 
 # Large size content are by default collapsed for a cleaner ui
 default_collapse_content = true

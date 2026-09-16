@@ -22,8 +22,10 @@ venv/
 dist/
 build/
 
-# Chainlit (track config.toml and welcome screen, ignore generated translations)
+# Chainlit (track config.toml, ignore generated translations)
 .chainlit/translations/
+# IID-EDUCATOR-CONFIG, IID-MULTI-DEPLOY: sidebar panel generated at startup from <content_dir>/_readme.md
+chainlit.md
 
 # Virtual environment
 .venv/

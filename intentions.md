@@ -320,7 +320,7 @@ and benefits automatically).
     - folder for student feedback
     - `content/_system_prompt.md`: editable LLM behaviour instructions (role, rules, tone)
     - `content/_welcome.md`: editable first chat message shown to students
-    - `chainlit.md`: editable sidebar/welcome panel description (Chainlit root, not in content/)
+    - `content/_readme.md`: editable sidebar/welcome panel description with `{{course_name}}`; app.py writes it to `chainlit.md` at startup (Chainlit only reads that root path; the file is generated and gitignored). Per-deploy override `<content_dir>/_readme.md` (IID-MULTI-DEPLOY)
     - convention: `_`-prefixed files in `content/` are app-config, excluded from lecture content injection
     - multi-course: each non-`_` subfolder of `content/` is a course; `_meta.yaml` configures name, description, and optional LLM overrides (see IID-MULTI-COURSE)
 **Inputs:** Config UI or config file.
@@ -430,7 +430,7 @@ re-copying (see CLAUDE.md) and re-rendering the HTML site.
 **Success criteria:**
 - The default deploy behaves identically with the env var unset.
 - Each service's secrets (OpenRouter key) are Railway variables on that service only.
-**Key files:** `app.py` (config selection), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`, `config_timeseries.yaml`, `content_timeseries/`
+**Key files:** `app.py` (config selection, sidebar readme generation), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`, `config_timeseries.yaml`, `content_timeseries/`, `content*/_readme.md`
 **No-Goals:** Per-course auth inside one instance (Chainlit auth is app-global), shared user
 registry across deploys, a deploy-management UI.
 

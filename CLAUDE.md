@@ -256,7 +256,7 @@ the turn. Both calls use the course model.
 | `.env.example` | SID-API-CONFIG | Template for .env |
 | `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
-| `chainlit.md` | IID-EDUCATOR-CONFIG | Editable sidebar/welcome panel (Chainlit requires it at project root) |
+| `content/_readme.md` | IID-EDUCATOR-CONFIG, IID-MULTI-DEPLOY | Editable sidebar/welcome panel template; `{{course_name}}` substituted. Per-deploy override: `<content_dir>/_readme.md`. Written to `chainlit.md` (generated, gitignored) at startup because Chainlit only reads that fixed root path |
 | `src/course_loader.py` | IID-MULTI-COURSE, IID-COURSE-ACCESS, IID-LEARN-GOALS | Discovers course subfolders, loads `_meta.yaml` (incl. `mode`, `access` + `_learning_goals.yaml`), merges LLM config, resolves fallback paths for system prompt and welcome text |
 | `src/goals.py` | IID-LEARN-GOALS | Samples one uncompleted learning goal; builds the per-goal system prompt (only one goal in context) |
 | `src/tutor_loop.py` | IID-LEARN-DIAGNOSE | Two-step turn: structured `diagnose_answer` (ranks misconceptions, picks top-1 + tactic) + `build_act_instruction` seeding the streamed reply |
