@@ -17,7 +17,9 @@ REPO_DIR = SCRIPT_DIR.parent
 EXPORTS_DIR = REPO_DIR / "exports"
 OUT_FILE = EXPORTS_DIR / "chats.html"
 
-KNOWN_ROLES = {"user", "assistant", "feedback", "system"}
+# IID-STREAM-RESILIENCE, IID-LEARN-DIAGNOSE: every role the app can write — used to
+# sniff which column layout an old CSV backup uses, so all of them must be listed.
+KNOWN_ROLES = {"user", "assistant", "feedback", "system", "diagnosis", "error"}
 KNOWN_MODES = {"Q&A", "Learn", "Eval"}
 
 
@@ -176,6 +178,11 @@ HTML_TEMPLATE = """\
   }}
   #sidebar h1 {{ font-size: 13px; font-weight: 600; padding: 14px 16px;
                  background: #161b27; letter-spacing: .05em; color: #8ab4f8; }}
+  #filter-bar {{ padding: 8px 16px; background: #161b27; border-bottom: 1px solid #2a3145;
+                 font-size: 12px; color: #d0d6e2; display: flex; align-items: center; gap: 6px;
+                 cursor: pointer; user-select: none; }}
+  #filter-bar input {{ accent-color: #e53935; cursor: pointer; }}
+  #filter-count {{ margin-left: auto; font-size: 11px; color: #6a7a95; }}
   #session-list {{ overflow-y: auto; flex: 1; }}
   .session-item {{
     padding: 10px 16px; cursor: pointer; border-bottom: 1px solid #2a3145;
@@ -227,6 +234,12 @@ HTML_TEMPLATE = """\
   }}
   .msg.assistant .bubble {{
     background: #fff; border: 1px solid #dde;
+    border-radius: 12px 12px 12px 2px;
+  }}
+  /* IID-STREAM-RESILIENCE: a stalled turn — the bot never answered */
+  .msg.error {{ align-items: flex-start; }}
+  .msg.error .bubble {{
+    background: #fff4f4; border: 1px solid #f0c0c0; color: #8a2a2a;
     border-radius: 12px 12px 12px 2px;
   }}
 
@@ -283,6 +296,10 @@ HTML_TEMPLATE = """\
 
 <div id="sidebar">
   <h1>Lectos · Chats</h1>
+  <label id="filter-bar">
+    <input type="checkbox" id="flag-only"> &#9873; Flagged only
+    <span id="filter-count"></span>
+  </label>
   <div id="session-list"></div>
 </div>
 
@@ -373,8 +390,19 @@ function buildSessionList() {{
       <div class="s-date">${{fmtDate(sess.timestamp)}}</div>
       <div class="s-meta">${{badge}}${{courseChip}}<span class="turns-count">${{turns}} turns</span></div>
       ${{modelLabel ? `<div style="margin-top:3px">${{modelLabel}}</div>` : ""}}`;
+    el.dataset.flagged = sess.feedback_count > 0 ? "1" : "0";
     el.addEventListener("click", () => loadSession(idx, el));
     list.appendChild(el);
+  }});
+
+  const flaggedTotal = SESSIONS.filter(s => s.feedback_count > 0).length;
+  const checkbox = document.getElementById("flag-only");
+  const count = document.getElementById("filter-count");
+  count.textContent = `${{flaggedTotal}} / ${{SESSIONS.length}}`;
+  checkbox.addEventListener("change", () => {{
+    document.querySelectorAll(".session-item").forEach(e => {{
+      e.style.display = (checkbox.checked && e.dataset.flagged === "0") ? "none" : "";
+    }});
   }});
 }}
 

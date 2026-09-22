@@ -27,7 +27,7 @@ class ChatLogger:
         self._course_name = course_name  # IID-MULTI-COURSE: chat experience/profile name
 
     def log(self, role: str, content: str, model: str | None = None) -> None:
-        """Append one turn. role is 'user' or 'assistant'."""
+        """Append one turn. role is 'user', 'assistant', 'diagnosis' or 'error'."""
         entry = {
             "ts": datetime.now(timezone.utc).isoformat(),
             "role": role,
@@ -37,7 +37,9 @@ class ChatLogger:
             entry["user_email"] = self._user_email
         if self._course_name:  # IID-MULTI-COURSE: include chat experience
             entry["course"] = self._course_name
-        if model and role == "assistant":  # IID-STUDENT-MODEL-CHOICE: active model
+        # IID-STUDENT-MODEL-CHOICE: active model. Also recorded on `error` rows
+        # (IID-STREAM-RESILIENCE) — knowing *which* model stalled is the whole point.
+        if model and role in ("assistant", "error"):
             entry["model"] = model
         with self._file.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")

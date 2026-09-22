@@ -111,6 +111,23 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 - No login required; app is stateless per session from the student's perspective.
 **No-Goals:** Personalized recommendations, enrollment actions, external data sources.
 
+### IID-STREAM-RESILIENCE
+**Lifecycle:** DONE
+**Description:** A slow or badly-routed LLM call must never cost the student their turn. Every streamed assistant turn (`_stream_assistant`, used by plain Q&A, the learning-goals opening question, and the diagnose→act reply) is watched by a first-token deadline (`FIRST_TOKEN_TIMEOUT_S`, 15s). A stall is **retried automatically** (`STREAM_RETRIES`, 1) before the student is told anything — OpenRouter spreads one model across many providers of very different speed (29 endpoints for `deepseek-v4-flash` as of 2026-09), so a stall is usually routing luck, not a broken model.
+**Motivation (measured 2026-09-22, `teachbot-timeseries`):** 7 of 51 assistant turns (13.7%) on the first real class day were the timeout apology; 4 of 15 sessions hit it. One student asked the same question three times, got the apology three times, and left. Probing the deployed model against the real 10k-token system prompt showed why: `deepseek/deepseek-v4-flash-0731` is a **reasoning** model emitting 80-480 `reasoning` deltas (first at ~3s) before its first `content` delta (3-10s, long tail past 70s), while `stream_response` yields only `delta.content` — so the watchdog could not tell "thinking hard" from "hung" and killed healthy requests. See IID-LLM-THINKING for the reasoning-visibility half of the fix.
+**Behaviour on total failure:**
+- `history` is **rewound** to its pre-call state: the unanswered prompt (student question, goal kickoff, or act instruction) is dropped, so a manual retry sends one clean turn rather than a transcript in which the tutor repeatedly apologises to itself.
+- The stalled stream is explicitly closed (`_aclose`) so its HTTP connection is not leaked until GC.
+- The turn is logged with role **`error`**, never `assistant` — educator logs must not imply the bot said something useful, and a distinct role keeps the stall rate countable in the Sheet. The active model is recorded on `error` rows too.
+- In learning-goals mode a stalled opening question clears `current_big_question`; the next student message re-poses the question instead of diagnosing an answer to a question never shown.
+- The message shown deliberately does **not** say "send it again" — the measured failures were largely deterministic per question.
+**Success criteria:**
+- A stall that recovers on retry is invisible to the student (no error text, no residue in the bubble).
+- Failure text never enters the LLM history.
+- An empty completion counts as a successful empty answer, not a stall.
+**Key files:** `app.py` (`_stream_once`, `_stream_assistant`, `_aclose`, `_log_stream_failure`, all three call sites), `src/chat_logger.py` (`model` on `error` rows), `scripts/render_chats.py` (`KNOWN_ROLES` + `.msg.error` styling), `tests/stream_resilience.py`
+**No-Goals:** Retrying on a *different* model, unbounded retries, resuming a partially-streamed answer.
+
 ### IID-PRECOURSE-QA
 **Lifecycle:** DEPRECATED
 **Description:** Merged into IID-QNA-CORE for v1 (single mode, no auth distinction).

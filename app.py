@@ -84,6 +84,22 @@ _LIMITS = CFG.get("limits") or {}
 # student gets a clear retry prompt instead of a silent session restart.
 FIRST_TOKEN_TIMEOUT_S = 15
 
+# IID-STREAM-RESILIENCE: extra attempts after a stalled one, before the student sees an
+# error. OpenRouter serves a model from many providers of very different speed (29 for
+# deepseek-v4-flash as of 2026-09), so a stall is usually bad routing luck rather than a
+# broken model — a second request often lands on a fast provider. Kept at 1: each retry
+# costs another FIRST_TOKEN_TIMEOUT_S of silence for the student.
+STREAM_RETRIES = 1
+
+# IID-STREAM-RESILIENCE: shown only when every attempt stalled. Deliberately does not say
+# "send it again" — the failures measured on teachbot-timeseries were largely deterministic
+# per question (a student sent the same question 3x and got this 3x), so re-sending
+# unchanged is the one thing least likely to help.
+STREAM_FAILED_MESSAGE = (
+    "⚠️ The model is not responding right now — I tried twice. "
+    "Please wait a moment and rephrase your question, or ask something else."
+)
+
 
 @cl.set_chat_profiles
 async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None:
@@ -145,48 +161,115 @@ if auth_enabled(_AUTH_CFG):
         return None  # wrong password
 
 
-async def _stream_assistant(history: list[dict], course_llm: dict) -> tuple[cl.Message, str, str]:
-    """IID-QNA-CORE, IID-UI-RENDER: Stream one assistant turn, append it to history.
+async def _aclose(token_stream) -> None:
+    """IID-STREAM-RESILIENCE: release a stalled stream's underlying HTTP connection.
 
-    Returns (message, full_response, active_model). Caller is responsible for logging.
-    If no token arrives within FIRST_TOKEN_TIMEOUT_S, aborts with a short apology
-    instead of leaving the session hanging (see module-level comment on that constant).
+    After `asyncio.wait_for` cancels `__anext__`, the generator is left suspended; without
+    an explicit close its connection is only reclaimed whenever the GC gets to it. Closing
+    can itself raise (the generator may be in a cancelled/running state), which must never
+    take down the turn — hence the broad catch.
+    """
+    try:
+        await token_stream.aclose()
+    except Exception as exc:  # noqa: BLE001 — best-effort cleanup, never fatal
+        print(f"[_aclose] {type(exc).__name__}: {exc}", file=sys.stderr)
+
+
+async def _stream_once(
+    history: list[dict], course_llm: dict, response_msg: cl.Message
+) -> tuple[bool, str]:
+    """IID-STREAM-RESILIENCE: one streaming attempt into `response_msg`.
+
+    Returns (ok, text). `ok=False` means no token arrived within FIRST_TOKEN_TIMEOUT_S —
+    the stalled stream is closed and nothing has been written to the message yet, so the
+    caller is free to retry on a clean slate. An empty completion (`StopAsyncIteration`
+    before the first token) is a *successful* empty answer, not a stall.
+    """
+    token_stream = stream_response(LLM_CLIENT, {"llm": course_llm}, history).__aiter__()
+    try:
+        first_token = await asyncio.wait_for(
+            token_stream.__anext__(), timeout=FIRST_TOKEN_TIMEOUT_S
+        )
+    except StopAsyncIteration:
+        return True, ""
+    except asyncio.TimeoutError:
+        await _aclose(token_stream)
+        return False, ""
+
+    text = first_token or ""
+    if first_token:
+        await response_msg.stream_token(first_token)
+    async for token in token_stream:
+        text += token
+        await response_msg.stream_token(token)
+    return True, text
+
+
+async def _stream_assistant(
+    history: list[dict], course_llm: dict
+) -> tuple[cl.Message, str, str, bool]:
+    """IID-QNA-CORE, IID-UI-RENDER, IID-STREAM-RESILIENCE: stream one assistant turn.
+
+    Returns (message, text, active_model, ok). Caller is responsible for logging.
+
+    A stalled attempt (no first token within FIRST_TOKEN_TIMEOUT_S) is retried
+    automatically — OpenRouter spreads a model across many providers of very different
+    speed, so a fresh request usually lands somewhere faster. Only when every attempt
+    stalls does the student see an error, and in that case `history` is rewound to its
+    pre-call state: the unanswered prompt is dropped so a manual retry sends one clean
+    turn instead of a transcript in which the tutor repeatedly apologises to itself.
     """
     active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
     response_msg = cl.Message(content="")
     await response_msg.send()
 
     start = time.monotonic()
-    token_stream = stream_response(LLM_CLIENT, {"llm": course_llm}, history).__aiter__()
-    try:
-        first_token = await asyncio.wait_for(token_stream.__anext__(), timeout=FIRST_TOKEN_TIMEOUT_S)
-    except StopAsyncIteration:
-        first_token = None
-    except asyncio.TimeoutError:
-        elapsed = time.monotonic() - start
+    for attempt in range(1 + STREAM_RETRIES):
+        ok, text = await _stream_once(history, course_llm, response_msg)
+        if ok:
+            await response_msg.update()
+            print(
+                f"[timing] _stream_assistant model={active_model} "
+                f"took {time.monotonic() - start:.1f}s (attempt {attempt + 1})",
+                file=sys.stderr,
+            )
+            history.append({"role": "assistant", "content": text})
+            return response_msg, text, active_model, True
         print(
-            f"[_stream_assistant] model={active_model} no token after {elapsed:.1f}s — aborting",
+            f"[_stream_assistant] model={active_model} no token after "
+            f"{FIRST_TOKEN_TIMEOUT_S}s (attempt {attempt + 1}/{1 + STREAM_RETRIES})",
             file=sys.stderr,
         )
-        full_response = "Sorry, that's taking too long to respond — please try sending your message again."
-        response_msg.content = full_response
-        await response_msg.update()
-        history.append({"role": "assistant", "content": full_response})
-        return response_msg, full_response, active_model
 
-    full_response = first_token or ""
-    if first_token:
-        await response_msg.stream_token(first_token)
-    async for token in token_stream:
-        full_response += token
-        await response_msg.stream_token(token)
+    # IID-STREAM-RESILIENCE: every attempt stalled. Drop the prompt that went unanswered
+    # (student question, goal kickoff, or act instruction — always the trailing user entry)
+    # so the next turn starts from exactly the history we had before this call.
+    if history and history[-1].get("role") == "user":
+        history.pop()
+
+    print(
+        f"[_stream_assistant] model={active_model} gave up after "
+        f"{time.monotonic() - start:.1f}s",
+        file=sys.stderr,
+    )
+    text = STREAM_FAILED_MESSAGE
+    response_msg.content = text
     await response_msg.update()
+    return response_msg, text, active_model, False
 
-    elapsed = time.monotonic() - start
-    print(f"[timing] _stream_assistant model={active_model} took {elapsed:.1f}s", file=sys.stderr)
 
-    history.append({"role": "assistant", "content": full_response})
-    return response_msg, full_response, active_model
+def _log_stream_failure(
+    logger: ChatLogger, sheets_logger: "SheetsLogger | None", text: str, model: str,
+) -> None:
+    """IID-STREAM-RESILIENCE, IID-CHAT-LOG, IID-SHEETS-LOG: record a stall as its own role.
+
+    Logged as `error`, never `assistant` — the educator's logs must not imply the bot said
+    something useful, and a distinct role makes the stall rate directly countable in the
+    Sheet (which is how the teachbot-timeseries 13.7% figure was measured in the first place).
+    """
+    logger.log("error", text, model=model)
+    if sheets_logger:
+        sheets_logger.log("error", text, model=model)
 
 
 async def _send_actions(message_id: str, full_response: str, mode: str) -> None:
@@ -213,7 +296,16 @@ async def _pose_goal_question(
 ) -> None:
     """IID-LEARN-GOALS: append the internal kickoff turn, stream + log the bot's question."""
     history.append({"role": "user", "content": GOAL_KICKOFF})  # internal, not logged
-    response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
+    response_msg, full_response, active_model, ok = await _stream_assistant(history, course_llm)
+    if not ok:
+        # IID-STREAM-RESILIENCE: no question was posed, so there is no "big question" to
+        # diagnose against — recording a stall as the goal's question would poison the
+        # whole goal. Clearing it makes the next student message re-pose the question
+        # (see the learning-goals branch of `on_message`) instead of diagnosing an answer
+        # to a question that was never asked.
+        cl.user_session.set("current_big_question", "")
+        _log_stream_failure(logger, sheets_logger, full_response, active_model)
+        return
     # IID-LEARN-GOALS: goal material (pseudocode/formulas the student must see) is appended
     # verbatim by the app itself — display never depends on the LLM copying it from the goal.
     material = goal_material(cl.user_session.get("current_goal") or {})
@@ -271,7 +363,13 @@ async def _diagnostic_turn(
     # Step 2 — act: seed the streamed reply with the chosen misconception + tactic
     act_instruction = build_act_instruction(diagnosis, big_question)
     history.append({"role": "user", "content": act_instruction})  # internal, not logged
-    response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
+    response_msg, full_response, active_model, ok = await _stream_assistant(history, course_llm)
+    if not ok:
+        # IID-STREAM-RESILIENCE: the student's answer never got feedback. Don't record the
+        # stall in `goal_dialogue` — the next diagnose call must see the real exchange only,
+        # and the student keeps their mastery credit for what they already said.
+        _log_stream_failure(logger, sheets_logger, full_response, active_model)
+        return
     logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG
     if sheets_logger:
         sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG
@@ -457,11 +555,21 @@ async def on_message(message: cl.Message) -> None:
     # IID-LEARN-DIAGNOSE: in learning-goals mode, each answer is a two-step diagnose→act turn.
     # Guarded by an active goal (None ⇒ all goals done, fall through to a plain reply).
     if mode == "learning_goals" and cl.user_session.get("current_goal") is not None:
+        # IID-STREAM-RESILIENCE: an empty big question means the opening question itself
+        # stalled (see `_pose_goal_question`). Re-pose it instead of diagnosing an answer
+        # to a question the student was never shown.
+        if not cl.user_session.get("current_big_question"):
+            history.pop()  # the student's message is a retry trigger, not an answer
+            await _pose_goal_question(history, course_llm, logger, sheets_logger, mode)
+            return
         await _diagnostic_turn(history, user_text, course_llm, logger, sheets_logger)
         return
 
     # Stream response — IID-UI-RENDER (Chainlit renders MD + LaTeX natively)
-    response_msg, full_response, active_model = await _stream_assistant(history, course_llm)
+    response_msg, full_response, active_model, ok = await _stream_assistant(history, course_llm)
+    if not ok:  # IID-STREAM-RESILIENCE: every attempt stalled — history already rewound
+        _log_stream_failure(logger, sheets_logger, full_response, active_model)
+        return
     logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG, IID-STUDENT-MODEL-CHOICE
     if sheets_logger:
         sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG, IID-STUDENT-MODEL-CHOICE
