@@ -25,3 +25,23 @@ llm:
   model: deepseek/deepseek-v4-flash-0731   # SID-LLM-PROVIDER
   temperature: 0.3
   max_tokens: 4096
+  # IID-LLM-THINKING: this model is a *reasoning* model — left to its default it emits
+  # 80-480 chain-of-thought deltas before its first content token, which is what produced a
+  # 13.7% "taking too long" rate on 2026-09-18 (see IID-STREAM-RESILIENCE). For grounded Q&A
+  # over supplied lecture notes the chain-of-thought buys little, so it is off by default.
+  # Measured 2026-09-22 on this exact prompt: time-to-first-content 11.3s -> 1.2s,
+  # 26.1s -> 3.3s, 13.4s -> 3.0s, with answer lengths comparable.
+  reasoning: false
+
+# IID-STUDENT-MODEL-CHOICE, IID-LLM-THINKING: students can switch in the ⚙ Chat Settings
+# menu; the change applies from their next message. Same model twice, differing only in
+# whether it thinks first — so labels (not ids) are what distinguishes them.
+# Before adding a model here, confirm it honours the parameter:
+#   python scripts/check_reasoning_support.py <model-id>
+student_model_choices:
+  - id: deepseek/deepseek-v4-flash-0731
+    label: "Fast (no thinking)"
+    reasoning: false
+  - id: deepseek/deepseek-v4-flash-0731
+    label: "Thorough (thinks first, slower)"
+    reasoning: true

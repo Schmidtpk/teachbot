@@ -215,6 +215,47 @@ def _load_learning_goals(folder: Path, mode: str) -> list[dict]:
     return goals
 
 
+def parse_model_choices(raw: object, where: str) -> list[dict]:
+    """IID-STUDENT-MODEL-CHOICE, IID-LLM-THINKING: validate a `student_model_choices` list.
+
+    Each entry is `{id, label?, reasoning?}`. `reasoning` (IID-LLM-THINKING) lets one model
+    appear twice under different labels — e.g. the same model with and without
+    chain-of-thought — so it is part of the choice, not just the model id.
+
+    Invalid input fails loudly at startup naming `where`: a silently-dropped choice would
+    show students a chooser quietly missing an option, which is worse than not booting.
+    """
+    if not raw:
+        return []
+    if not isinstance(raw, list):
+        sys.exit(f"[Lectos] ERROR: student_model_choices in {where} must be a list.")
+    choices: list[dict] = []
+    for entry in raw:
+        if not isinstance(entry, dict) or "id" not in entry:
+            sys.exit(
+                f"[Lectos] ERROR: every student_model_choices entry in {where} needs an "
+                f"'id' — got {entry!r}."
+            )
+        choice = {"id": str(entry["id"]), "label": str(entry.get("label", entry["id"]))}
+        if "reasoning" in entry:  # IID-LLM-THINKING
+            reasoning = entry["reasoning"]
+            if not isinstance(reasoning, (bool, dict)):
+                sys.exit(
+                    f"[Lectos] ERROR: 'reasoning' for model choice "
+                    f"'{choice['label']}' in {where} must be true, false, or a mapping "
+                    f"— got {reasoning!r}."
+                )
+            choice["reasoning"] = reasoning
+        choices.append(choice)
+    labels = [c["label"] for c in choices]
+    if len(set(labels)) != len(labels):
+        sys.exit(
+            f"[Lectos] ERROR: duplicate model-choice labels in {where}: {labels}. "
+            f"Labels are the chooser keys, so they must be unique."
+        )
+    return choices
+
+
 def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]:
     """IID-MULTI-COURSE: Scan root for course subfolders; return sorted list of CourseConfig.
 
@@ -242,13 +283,18 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         try:
             with root_meta_path.open(encoding="utf-8") as fh:
                 root_meta: dict = yaml.safe_load(fh) or {}
-            global_model_choices = [
-                {"id": m["id"], "label": m.get("label", m["id"])}
-                for m in root_meta.get("student_model_choices", [])
-                if isinstance(m, dict) and "id" in m
-            ]
+            global_model_choices = parse_model_choices(
+                root_meta.get("student_model_choices"), f"{root_meta_path}"
+            )
         except yaml.YAMLError:
             pass  # optional file — malformed YAML silently produces no global choices
+    if not global_model_choices:
+        # IID-STUDENT-MODEL-CHOICE: last fallback is the deploy config, so a whole
+        # instance can offer one list without a content/_meta.yaml (mirrors the
+        # single-course path in app.py).
+        global_model_choices = parse_model_choices(
+            base_cfg.get("student_model_choices"), "the deploy config"
+        )
     courses: list[CourseConfig] = []
 
     for folder in subfolders:
@@ -301,15 +347,9 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
         access = _parse_access(meta.get("access"), folder.name, auth_on)
 
         # IID-STUDENT-MODEL-CHOICE: per-course list; falls back to root content/_meta.yaml
-        raw_choices = meta.get("student_model_choices", [])
-        if raw_choices:
-            student_model_choices = [
-                {"id": m["id"], "label": m.get("label", m["id"])}
-                for m in raw_choices
-                if isinstance(m, dict) and "id" in m
-            ]
-        else:
-            student_model_choices = global_model_choices
+        student_model_choices = parse_model_choices(
+            meta.get("student_model_choices"), f"course '{folder.name}'"
+        ) or global_model_choices
 
         # IID-LEARN-GOALS: behavioral mode + learning goals
         mode = str(meta.get("mode", "qa"))

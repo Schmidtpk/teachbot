@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
-from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text
+from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, parse_model_choices
 from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
 from src.llm_client import CONTENT, REASONING, build_client, stream_events
 from src.progress_store import ProgressStore
@@ -77,6 +77,12 @@ _write_sidebar_readme()
 # (e.g. config_public.yaml). Best-effort cost damping, not security — a page reload
 # starts a fresh session and resets the counter.
 _LIMITS = CFG.get("limits") or {}
+
+# IID-STUDENT-MODEL-CHOICE: validated at import so a malformed list stops the deploy
+# rather than silently showing students a chooser with an option missing.
+_SINGLE_COURSE_MODEL_CHOICES = parse_model_choices(
+    CFG.get("student_model_choices"), f"the deploy config ({_cfg_path.name})"
+)
 
 # IID-LEARN-GOALS, IID-LEARN-DIAGNOSE: Chainlit's Socket.IO layer uses engine.io's
 # default ping_timeout (20s); a stalled LLM call with no visible activity risks the
@@ -506,7 +512,10 @@ async def on_chat_start() -> None:
             f"--- LECTURE CONTENT START ---\n{content}\n--- LECTURE CONTENT END ---\n"
         )
         course_llm = CFG.get("llm", {})
-        model_choices = []  # IID-STUDENT-MODEL-CHOICE: not supported in single-course fallback
+        # IID-STUDENT-MODEL-CHOICE: single-course deploys (content dir with no subfolders,
+        # e.g. teachbot-timeseries) read the list straight from the deploy config, since
+        # there is no course _meta.yaml to carry it.
+        model_choices = _SINGLE_COURSE_MODEL_CHOICES
 
     course_name = course.lecture_name if COURSES else CFG.get("course_name", "")
     logger = ChatLogger(CFG.get("logs_dir", "logs"), session_id, user_email=user_email, course_name=course_name)
@@ -515,8 +524,10 @@ async def on_chat_start() -> None:
     sheets_id = CFG.get("sheets_log_id", "")
     sheets_logger = SheetsLogger(sheets_id, session_id, user_email=user_email, course_name=course_name) if sheets_id else None
 
-    # IID-STUDENT-MODEL-CHOICE: build label→id map; empty when feature is off for this course
-    model_choice_map: dict[str, str] = {m["label"]: m["id"] for m in model_choices}
+    # IID-STUDENT-MODEL-CHOICE, IID-LLM-THINKING: label → the whole choice, not just the id.
+    # A choice carries its own `reasoning` setting, so the same model can appear twice under
+    # different labels (with and without chain-of-thought). Empty ⇒ feature off here.
+    model_choice_map: dict[str, dict] = {m["label"]: m for m in model_choices}
 
     # IID-LEARN-GOALS: learning-goals practice mode — load progress, sample one goal,
     # inject ONLY that goal into the system prompt. `current_goal is None` ⇒ all goals done.
@@ -552,14 +563,20 @@ async def on_chat_start() -> None:
         cl.user_session.set("course", course)  # IID-LEARN-GOALS: needed to sample the next goal
     cl.user_session.set("logger", logger)
     cl.user_session.set("sheets_logger", sheets_logger)
-    cl.user_session.set("course_llm", course_llm)  # IID-MULTI-COURSE: per-session LLM config
+    # IID-MULTI-COURSE, IID-STUDENT-MODEL-CHOICE: per-session LLM config — a *copy*, because
+    # `course.llm` / `CFG["llm"]` are shared across every session in the process. Without the
+    # copy, one student picking a model (or a reasoning setting) would change it for everyone.
+    cl.user_session.set("course_llm", dict(course_llm))
     cl.user_session.set("model_choice_map", model_choice_map)  # IID-STUDENT-MODEL-CHOICE
 
     # IID-STUDENT-MODEL-CHOICE: show model selector when the course defines choices
     if model_choice_map:
-        current_model = course_llm.get("model", "")
+        # IID-LLM-THINKING: match on model *and* reasoning — with two choices sharing one
+        # model id, matching on the id alone would preselect the wrong label.
+        current = (course_llm.get("model", ""), _reasoning_of(course_llm))
         current_label = next(
-            (lbl for lbl, mid in model_choice_map.items() if mid == current_model),
+            (lbl for lbl, c in model_choice_map.items()
+             if (c["id"], _reasoning_of(c)) == current),
             next(iter(model_choice_map)),
         )
         await cl.ChatSettings([
@@ -582,15 +599,31 @@ async def on_chat_start() -> None:
         await _pose_goal_question(history, course_llm, logger, sheets_logger, mode)
 
 
+def _reasoning_of(d: dict) -> object:
+    """IID-LLM-THINKING: a config's reasoning setting, or None when it leaves it to the
+    provider. Used to compare a live LLM config against a model choice."""
+    return d.get("reasoning")
+
+
 @cl.on_settings_update
 async def on_settings_update(settings: dict) -> None:
-    """IID-STUDENT-MODEL-CHOICE: Apply student-selected model to session LLM config."""
+    """IID-STUDENT-MODEL-CHOICE, IID-LLM-THINKING: apply the student's choice to the session.
+
+    A choice fully defines model *and* reasoning: picking one that omits `reasoning` clears
+    any previously-applied setting, so switching "no thinking" → "with thinking" and back
+    lands on the intended state both ways instead of latching the first one chosen.
+    """
     model_choice_map: dict = cl.user_session.get("model_choice_map", {})
-    model_id = model_choice_map.get(settings.get("model"))
-    if model_id:
-        course_llm: dict = cl.user_session.get("course_llm")
-        course_llm["model"] = model_id
-        cl.user_session.set("course_llm", course_llm)
+    choice = model_choice_map.get(settings.get("model"))
+    if not choice:
+        return
+    course_llm: dict = cl.user_session.get("course_llm")
+    course_llm["model"] = choice["id"]
+    if "reasoning" in choice:
+        course_llm["reasoning"] = choice["reasoning"]
+    else:
+        course_llm.pop("reasoning", None)
+    cl.user_session.set("course_llm", course_llm)
 
 
 @cl.on_message

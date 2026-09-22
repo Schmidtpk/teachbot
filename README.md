@@ -74,7 +74,35 @@ access:                                    # optional; only these logged-in user
 
 To share one file across several courses (e.g. an intro/syllabus), put it in `content/_shared/` and list it under `extra_content` in each course's `_meta.yaml`.
 
-A `_meta.yaml` at the `content/` root can define a global `student_model_choices` list; courses without their own list fall back to it.
+A `_meta.yaml` at the `content/` root can define a global `student_model_choices` list; courses without their own list fall back to it, and failing that the deploy config's list is used. **Single-course deploys** (a content folder with no subfolders) take the list straight from the deploy config.
+
+**Thinking / reasoning (`reasoning`):** a model entry — and the `llm:` block itself — accepts an optional `reasoning` setting: `false` to switch chain-of-thought off, `true` to force it on, or a mapping such as `{effort: low}`. Omit it to leave the provider's default alone. Because the setting belongs to the *choice*, the same model can be offered twice under different labels:
+
+```yaml
+llm:
+  model: deepseek/deepseek-v4-flash-0731
+  reasoning: false                         # default for this deploy: fast
+student_model_choices:
+  - id: deepseek/deepseek-v4-flash-0731
+    label: "Fast (no thinking)"
+    reasoning: false
+  - id: deepseek/deepseek-v4-flash-0731
+    label: "Thorough (thinks first, slower)"
+    reasoning: true
+```
+
+Labels must be unique — they are what the chooser is keyed on.
+
+> **Check before you configure it.** Whether a model honours `reasoning` depends on the model *and* the provider OpenRouter happens to route you to. Run this first:
+>
+> ```bash
+> python scripts/check_reasoning_support.py <model-id> --live
+> python scripts/check_reasoning_support.py --config config_timeseries.yaml --live
+> ```
+>
+> It reports how many of the model's providers declare the parameter (anything below all of them makes it unreliable) and whether a live request actually stops reasoning.
+
+Why you might want it off: a reasoning model can spend 10-25 seconds thinking before its first visible word. For Q&A grounded in supplied lecture notes that buys little, and students experience it as the app hanging.
 
 **Availability window:** `first_date` / `last_date` are both optional and inclusive (server local date). A course outside its window is hidden from the profile chooser; when at least one bound is set, an "Available …" line is shown in the chooser.
 

@@ -66,7 +66,10 @@ Plan/documentation should be intention-first:
 - `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
   Analysis" (domain `stud.unibas.ch`, model `deepseek/deepseek-v4-flash-0731`, own OpenRouter key,
   own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` holds a placeholder until the
-  lecture slides (`.qmd`) are added — delete `placeholder_intro.md` then. Manual deploys like the
+  lecture slides (`.qmd`) are added — delete `placeholder_intro.md` then.
+  **Thinking is off by default here** (`llm.reasoning: false`, IID-LLM-THINKING) because this
+  model reasons for 10-25s before its first visible token; students can switch to
+  "Thorough (thinks first, slower)" in the ⚙ Chat Settings menu. Manual deploys like the
   public instances (`--service teachbot-timeseries`). Log Sheet: "Lectos Timeseries logs".
   The weekly archive script only covers the main Sheet.
 - **QR codes** for handing out links: `python scripts/make_qr.py` (needs `pip install "qrcode[pil]"`)
@@ -137,6 +140,35 @@ railway redeploy --yes --service teachbot
 - LLM via OpenRouter, model `google/gemini-3-flash-preview` (SID-LLM-PROVIDER)
 - Config in `config.yaml` + `.env` for secrets (SID-API-CONFIG)
 - Run: `.venv\Scripts\python -m chainlit run app.py`
+
+### Choosing a model and its thinking option (IID-LLM-THINKING)
+
+**Whenever you first consider a model together with a thinking/reasoning option — adding it
+to `llm:` or to `student_model_choices` — check that the thinking parameter is actually
+accepted for that model before configuring it. Never assume it is.**
+
+```bash
+python scripts/check_reasoning_support.py <model-id> --live
+python scripts/check_reasoning_support.py --config config_timeseries.yaml --live
+```
+
+It reports two different things, both of which matter:
+
+1. **How many of the model's OpenRouter providers declare `reasoning`.** OpenRouter picks a
+   provider per request, so anything short of *all* of them makes the setting a lottery
+   rather than a guarantee.
+2. **Whether a live request with `reasoning=false` actually stops the chain-of-thought.**
+   Declared support does not imply the model obeys.
+
+Only wire the option into a config once both come back clean. Record the numbers in the
+config comment, as `config_timeseries.yaml` does — the next person should not have to re-run
+it to know why the value is what it is.
+
+Why this matters: whether a model reasons dominates its time-to-first-token, and that is what
+the student experiences as the app hanging. A reasoning model buys little for grounded Q&A
+over supplied lecture notes and cost `teachbot-timeseries` a 13.7% failure rate
+(IID-STREAM-RESILIENCE). Verified 2026-09-22 for `deepseek/deepseek-v4-flash-0731`: 29/29
+providers, honoured, first-content 11.3s -> 1.2s with reasoning off.
 
 ## Multi-course mode (IID-MULTI-COURSE)
 
@@ -249,7 +281,7 @@ the turn. Both calls use the course model.
 
 | File | IID/SID | Description |
 |------|---------|-------------|
-| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC, IID-MULTI-COURSE | Chainlit entry point |
+| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC, IID-MULTI-COURSE, IID-STREAM-RESILIENCE | Chainlit entry point. `_stream_assistant` retries a stalled turn, rewinds history on total failure, and shows a "Thinking…" step while a reasoning model works |
 | `config.yaml` | IID-EDUCATOR-CONFIG, SID-API-CONFIG | Course + LLM config |
 | `requirements.txt` | SID-STACK | Pinned dependencies |
 | `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
@@ -263,7 +295,8 @@ the turn. Both calls use the course model.
 | `content/_diagnose_prompt.md` | IID-LEARN-DIAGNOSE | Editable diagnostic instructions (JSON output); default fallback for goals courses that omit their own copy |
 | `src/progress_store.py` | IID-LEARN-GOALS | Per-student record of completed goals — Google Sheet `progress` tab (durable) or `progress/<email>.json` fallback |
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
-| `src/llm_client.py` | SID-LLM-PROVIDER | OpenRouter async streaming client |
+| `src/llm_client.py` | SID-LLM-PROVIDER, IID-STREAM-RESILIENCE, IID-LLM-THINKING | OpenRouter async client. `stream_events` yields `(reasoning\|content, text)`; `stream_response` is its content-only view. `_reasoning_kwargs` turns `llm.reasoning` into OpenRouter's `extra_body` |
+| `scripts/check_reasoning_support.py` | IID-LLM-THINKING | Checks whether a model's providers declare `reasoning` **and** whether a live request honours it. Run before configuring any model with a thinking option |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
 | `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
@@ -336,6 +369,8 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/compare.py` | IID-TEST-MODEL-COMPARE | Runs all cases × all variants, writes `reports/compare_*.md` |
 | `tests/learn_goals.py` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Multi-turn harness for learning-goals mode: judges the opening question + the tutor's feedback to simulated students |
 | `tests/cases/learn_part1_goals.yaml` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Goal cases for "Practice: Part I": per-goal `question_rubric` + student personas with `feedback_rubric` |
+| `tests/stream_resilience.py` | IID-STREAM-RESILIENCE | Offline: retry, history rewind, stream cleanup, reasoning-as-liveness, Thinking step |
+| `tests/model_choices.py` | IID-LLM-THINKING, IID-STUDENT-MODEL-CHOICE | Offline: `reasoning` translation, choice validation, chooser behaviour, all configs import |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
 | `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |
 | `tests/cases/behavior.yaml` | IID-TEST-LLM-EVAL | Behavior/hallucination guard test cases |

@@ -95,6 +95,35 @@ REASONING = "reasoning"
 CONTENT = "content"
 
 
+def _reasoning_kwargs(llm_cfg: dict[str, Any]) -> dict[str, Any]:
+    """IID-LLM-THINKING: translate the config's `reasoning` setting into OpenRouter's API.
+
+    `reasoning` is an OpenRouter extension, so it travels in `extra_body` rather than as a
+    typed parameter of the OpenAI SDK. Accepted values:
+
+        (absent)  → send nothing; the provider's own default applies (current behaviour)
+        false     → {"enabled": false}  — no chain-of-thought
+        true      → {"enabled": true}
+        mapping   → passed through verbatim, e.g. {effort: low} or {max_tokens: 512}
+
+    Whether a model honours this is model- *and provider-specific*: verify before relying on
+    it (`python scripts/check_reasoning_support.py <model>`). Verified 2026-09-22 for
+    `deepseek/deepseek-v4-flash-0731`: reasoning deltas 211→0 and time-to-first-content
+    11.3s→1.2s on the timeseries prompt.
+    """
+    reasoning = llm_cfg.get("reasoning")
+    if reasoning is None:
+        return {}
+    if isinstance(reasoning, bool):
+        return {"extra_body": {"reasoning": {"enabled": reasoning}}}
+    if isinstance(reasoning, dict):
+        return {"extra_body": {"reasoning": reasoning}}
+    raise TypeError(
+        f"[Lectos] llm.reasoning must be true, false, or a mapping — got "
+        f"{type(reasoning).__name__}: {reasoning!r}"
+    )
+
+
 async def stream_events(
     client: AsyncOpenAI,
     cfg: dict[str, Any],
@@ -121,6 +150,7 @@ async def stream_events(
         temperature=llm_cfg.get("temperature", 0.3),
         max_tokens=llm_cfg.get("max_tokens", 2048),
         stream=True,
+        **_reasoning_kwargs(llm_cfg),  # IID-LLM-THINKING
     )
     async for chunk in stream:
         # Usage-only / keepalive chunks carry no choices — indexing [0] would raise.
@@ -196,6 +226,7 @@ async def complete_json(
                 temperature=llm_cfg.get("temperature", 0.3),
                 max_tokens=llm_cfg.get("max_tokens", 2048),
                 response_format={"type": "json_object"},
+                **_reasoning_kwargs(llm_cfg),  # IID-LLM-THINKING
             ),
             timeout=DIAGNOSE_TIMEOUT_S,
         )
