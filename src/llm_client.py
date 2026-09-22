@@ -90,14 +90,29 @@ def _with_cache_control(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-async def stream_response(
+# IID-STREAM-RESILIENCE: the two kinds of delta `stream_events` yields.
+REASONING = "reasoning"
+CONTENT = "content"
+
+
+async def stream_events(
     client: AsyncOpenAI,
     cfg: dict[str, Any],
     messages: list[dict[str, str]],
-) -> AsyncIterator[str]:
+) -> AsyncIterator[tuple[str, str]]:
     """
-    SID-LLM-PROVIDER: Stream chat completion tokens from OpenRouter.
-    Yields text chunks as they arrive.
+    SID-LLM-PROVIDER, IID-STREAM-RESILIENCE: stream deltas from OpenRouter, tagged by kind.
+
+    Yields `(REASONING, text)` and `(CONTENT, text)` as they arrive. Reasoning models
+    (e.g. `deepseek/deepseek-v4-flash-0731`) emit hundreds of `reasoning` deltas before
+    their first `content` delta — measured 3-10s, with a tail past 70s, on the ~10k-token
+    timeseries prompt. Callers need to see those to tell "the model is thinking" from "the
+    model is hung"; dropping them silently is what made the 15s watchdog kill healthy
+    requests (see IID-STREAM-RESILIENCE).
+
+    OpenRouter exposes reasoning as a non-standard `reasoning` field on the delta, so it
+    arrives either as an attribute or in the pydantic model's extra fields depending on
+    provider — both are checked.
     """
     llm_cfg = cfg.get("llm", {})
     stream = await client.chat.completions.create(
@@ -108,9 +123,35 @@ async def stream_response(
         stream=True,
     )
     async for chunk in stream:
-        token = chunk.choices[0].delta.content or ""
-        if token:
-            yield token
+        # Usage-only / keepalive chunks carry no choices — indexing [0] would raise.
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta
+        if delta is None:
+            continue
+        reasoning = getattr(delta, "reasoning", None)
+        if not reasoning:
+            reasoning = (getattr(delta, "model_extra", None) or {}).get("reasoning")
+        if reasoning:
+            yield REASONING, reasoning
+        if delta.content:
+            yield CONTENT, delta.content
+
+
+async def stream_response(
+    client: AsyncOpenAI,
+    cfg: dict[str, Any],
+    messages: list[dict[str, str]],
+) -> AsyncIterator[str]:
+    """
+    SID-LLM-PROVIDER: Stream chat completion *content* tokens from OpenRouter.
+
+    Content-only view of `stream_events`, kept for callers that have no use for reasoning
+    deltas (`tests/runner.py`, `tests/learn_goals.py`).
+    """
+    async for kind, text in stream_events(client, cfg, messages):
+        if kind == CONTENT:
+            yield text
 
 
 def _salvage_json(text: str) -> Any:

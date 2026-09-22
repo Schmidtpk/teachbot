@@ -17,6 +17,7 @@ from typing import Optional
 
 import chainlit as cl
 from chainlit.input_widget import Select
+from chainlit.utils import utc_now  # IID-STREAM-RESILIENCE: Step start/end timestamps
 import yaml
 from dotenv import load_dotenv
 
@@ -25,7 +26,7 @@ from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text
 from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
-from src.llm_client import build_client, stream_response
+from src.llm_client import CONTENT, REASONING, build_client, stream_events
 from src.progress_store import ProgressStore
 from src.tutor_loop import build_act_instruction, diagnose_answer
 
@@ -82,7 +83,16 @@ _LIMITS = CFG.get("limits") or {}
 # session's transport being dropped and reconnected (see
 # agent/session_churn_fix_handoff.md). Bail out well before that window so the
 # student gets a clear retry prompt instead of a silent session restart.
+# IID-STREAM-RESILIENCE: this is the gap between deltas of *any* kind — a reasoning delta
+# counts as liveness, so it now means "the connection is dead", not "the model is slow".
 FIRST_TOKEN_TIMEOUT_S = 15
+
+# IID-STREAM-RESILIENCE: absolute ceiling from request start to the first *content* delta.
+# A reasoning model can stay silent far longer than FIRST_TOKEN_TIMEOUT_S while still
+# streaming reasoning; this bounds that patience. Measured on teachbot-timeseries: content
+# normally starts within 3-10s, with a long tail past 70s — 45s keeps the tail without
+# making a student stare at a spinner for over a minute.
+FIRST_CONTENT_TIMEOUT_S = 45
 
 # IID-STREAM-RESILIENCE: extra attempts after a stalled one, before the student sees an
 # error. OpenRouter serves a model from many providers of very different speed (29 for
@@ -176,37 +186,94 @@ async def _aclose(token_stream) -> None:
 
 
 async def _stream_once(
-    history: list[dict], course_llm: dict, response_msg: cl.Message
+    history: list[dict], course_llm: dict, response_msg: cl.Message,
+    show_reasoning: bool = True,
 ) -> tuple[bool, str]:
     """IID-STREAM-RESILIENCE: one streaming attempt into `response_msg`.
 
-    Returns (ok, text). `ok=False` means no token arrived within FIRST_TOKEN_TIMEOUT_S —
-    the stalled stream is closed and nothing has been written to the message yet, so the
-    caller is free to retry on a clean slate. An empty completion (`StopAsyncIteration`
-    before the first token) is a *successful* empty answer, not a stall.
-    """
-    token_stream = stream_response(LLM_CLIENT, {"llm": course_llm}, history).__aiter__()
-    try:
-        first_token = await asyncio.wait_for(
-            token_stream.__anext__(), timeout=FIRST_TOKEN_TIMEOUT_S
-        )
-    except StopAsyncIteration:
-        return True, ""
-    except asyncio.TimeoutError:
-        await _aclose(token_stream)
-        return False, ""
+    Returns (ok, text). `ok=False` means the attempt stalled; the stream is closed and
+    nothing has been written to the message, so the caller can retry on a clean slate.
+    An empty completion (the stream ends before any content) is a *successful* empty
+    answer, not a stall.
 
-    text = first_token or ""
-    if first_token:
-        await response_msg.stream_token(first_token)
-    async for token in token_stream:
-        text += token
-        await response_msg.stream_token(token)
+    Two deadlines, because a reasoning model is legitimately silent for a long time:
+      * FIRST_TOKEN_TIMEOUT_S — between deltas of *any* kind. Reasoning counts as
+        liveness, so "thinking hard" is no longer mistaken for "hung".
+      * FIRST_CONTENT_TIMEOUT_S — absolute ceiling from request start to the first
+        *content* delta, so an endlessly-ruminating model still gives up eventually.
+    Once content starts flowing the answer is visibly streaming and no deadline applies —
+    aborting there would throw away a half-written answer that the student can already read.
+
+    Reasoning deltas drive a "Thinking…" step. Their text is only shown when
+    `show_reasoning` is True: in learning-goals mode the chain-of-thought contains the
+    expected answer, so revealing it would hand the student exactly what the Socratic
+    dialogue is meant to draw out of them.
+    """
+    events = stream_events(LLM_CLIENT, {"llm": course_llm}, history).__aiter__()
+    start = time.monotonic()
+    thinking: cl.Step | None = None
+    text = ""
+
+    async def close_thinking(reasoned_for: float) -> None:
+        if thinking is None:
+            return
+        if not show_reasoning:
+            thinking.output = f"Thought for {reasoned_for:.0f}s."
+        thinking.end = utc_now()
+        await thinking.update()
+
+    while True:
+        if text:  # content is already streaming — let it finish unpoliced
+            try:
+                kind, chunk = await events.__anext__()
+            except StopAsyncIteration:
+                break
+        else:
+            remaining = FIRST_CONTENT_TIMEOUT_S - (time.monotonic() - start)
+            if remaining <= 0:
+                print(
+                    f"[_stream_once] no content after {FIRST_CONTENT_TIMEOUT_S}s "
+                    f"of reasoning — giving up on this attempt",
+                    file=sys.stderr,
+                )
+                await close_thinking(time.monotonic() - start)
+                await _aclose(events)
+                return False, ""
+            try:
+                kind, chunk = await asyncio.wait_for(
+                    events.__anext__(), timeout=min(FIRST_TOKEN_TIMEOUT_S, remaining)
+                )
+            except StopAsyncIteration:
+                break
+            except asyncio.TimeoutError:
+                await close_thinking(time.monotonic() - start)
+                await _aclose(events)
+                return False, ""
+
+        if kind == REASONING:
+            if thinking is None:
+                # Managed by hand rather than `async with`, because the step has to open on
+                # the first reasoning delta and close on the first content delta — mid-loop.
+                # `start`/`end` are what Chainlit's own __aenter__/__aexit__ set, and give
+                # the step its duration display.
+                thinking = cl.Step(name="Thinking…", type="tool")
+                thinking.start = utc_now()
+                await thinking.send()
+            if show_reasoning:
+                await thinking.stream_token(chunk)
+        else:
+            if thinking is not None and not text:
+                await close_thinking(time.monotonic() - start)
+            text += chunk
+            await response_msg.stream_token(chunk)
+
+    if thinking is not None and not text:  # reasoned, then returned nothing
+        await close_thinking(time.monotonic() - start)
     return True, text
 
 
 async def _stream_assistant(
-    history: list[dict], course_llm: dict
+    history: list[dict], course_llm: dict, show_reasoning: bool = True
 ) -> tuple[cl.Message, str, str, bool]:
     """IID-QNA-CORE, IID-UI-RENDER, IID-STREAM-RESILIENCE: stream one assistant turn.
 
@@ -218,6 +285,10 @@ async def _stream_assistant(
     stalls does the student see an error, and in that case `history` is rewound to its
     pre-call state: the unanswered prompt is dropped so a manual retry sends one clean
     turn instead of a transcript in which the tutor repeatedly apologises to itself.
+
+    `show_reasoning=False` keeps a reasoning model's chain-of-thought hidden behind a
+    neutral "Thinking…" step — required in learning-goals mode, where it would spoil the
+    answer the Socratic dialogue is supposed to elicit.
     """
     active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
     response_msg = cl.Message(content="")
@@ -225,7 +296,7 @@ async def _stream_assistant(
 
     start = time.monotonic()
     for attempt in range(1 + STREAM_RETRIES):
-        ok, text = await _stream_once(history, course_llm, response_msg)
+        ok, text = await _stream_once(history, course_llm, response_msg, show_reasoning)
         if ok:
             await response_msg.update()
             print(
@@ -296,7 +367,9 @@ async def _pose_goal_question(
 ) -> None:
     """IID-LEARN-GOALS: append the internal kickoff turn, stream + log the bot's question."""
     history.append({"role": "user", "content": GOAL_KICKOFF})  # internal, not logged
-    response_msg, full_response, active_model, ok = await _stream_assistant(history, course_llm)
+    # IID-LEARN-GOALS: hide reasoning — it would reveal the answer to the question being posed
+    response_msg, full_response, active_model, ok = await _stream_assistant(
+        history, course_llm, show_reasoning=False)
     if not ok:
         # IID-STREAM-RESILIENCE: no question was posed, so there is no "big question" to
         # diagnose against — recording a stall as the goal's question would poison the
@@ -363,7 +436,9 @@ async def _diagnostic_turn(
     # Step 2 — act: seed the streamed reply with the chosen misconception + tactic
     act_instruction = build_act_instruction(diagnosis, big_question)
     history.append({"role": "user", "content": act_instruction})  # internal, not logged
-    response_msg, full_response, active_model, ok = await _stream_assistant(history, course_llm)
+    # IID-LEARN-GOALS: hide reasoning — it spells out the mastery verdict and the answer
+    response_msg, full_response, active_model, ok = await _stream_assistant(
+        history, course_llm, show_reasoning=False)
     if not ok:
         # IID-STREAM-RESILIENCE: the student's answer never got feedback. Don't record the
         # stall in `goal_dialogue` — the next diagnose call must see the real exchange only,
