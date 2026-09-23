@@ -1,0 +1,444 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Script, Ch. 2 – Fundamental Concepts. HS 2026, University of Basel, based on material by Christian Kleiber"
+author: "Patrick Schmidt (University of Heidelberg)"
+date: today
+format:
+  pdf:
+    documentclass: article
+    papersize: a4
+    fontsize: 11pt
+    number-sections: true
+    number-depth: 1
+    geometry:
+      - top=2.5cm
+      - bottom=2.5cm
+      - left=3cm
+      - right=3cm
+    include-in-header:
+      text: |
+        \usepackage{amsmath,amssymb,amsthm}
+        \theoremstyle{definition}
+        \newtheorem{definition}{Definition}[section]
+        \theoremstyle{plain}
+        \newtheorem{proposition}[definition]{Proposition}
+        \newtheorem{lemma}[definition]{Lemma}
+        \newtheorem{theorem}[definition]{Theorem}
+        \newtheorem{corollary}[definition]{Corollary}
+        \setcounter{section}{1}
+---
+
+# Fundamental Concepts
+
+## Stochastic processes
+
+\begin{definition}[Stochastic process]\label{def:sp2}
+A \emph{stochastic process} is a family $\{y_t\}_{t \in \mathcal{T}}$ of random variables defined on a common probability space, indexed by a set $\mathcal{T}$ interpreted as time. The process is in \emph{discrete time} if $\mathcal{T} = \mathbb{N}$ or $\mathcal{T} = \mathbb{Z}$, and in \emph{continuous time} if $\mathcal{T} = [0,\infty)$ or $\mathcal{T} = \mathbb{R}$. An observed time series $y_1, \dots, y_T$ is a \emph{realization} of $y_1, \dots, y_T$.
+\end{definition}
+
+Throughout this chapter $\{y_t\}$ is a discrete-time stochastic process with $E[y_t^2] < \infty$ for all $t$.
+
+## Mean, autocovariance and autocorrelation function
+
+\begin{definition}[Mean function]\label{def:mean}
+The \emph{mean function} of $\{y_t\}$ is defined, for $t \in \mathbb{Z}$, as
+$$
+\mu(t) := E[y_t] .
+$$
+\end{definition}
+
+\begin{definition}[Autocovariance function]\label{def:acvf}
+The \emph{autocovariance function} (ACVF) of $\{y_t\}$ is defined, for $t, s \in \mathbb{Z}$, as
+$$
+\gamma(t,s) := \operatorname{Cov}(y_t, y_s) .
+$$
+\end{definition}
+
+\begin{definition}[Autocorrelation function]\label{def:acf}
+Let $\operatorname{Var}(y_t) > 0$ for all $t$. The \emph{autocorrelation function} (ACF) of $\{y_t\}$ is defined, for $t, s \in \mathbb{Z}$, as
+$$
+\rho(t,s) := \operatorname{Cor}(y_t, y_s) .
+$$
+\end{definition}
+
+\begin{proposition}[Mean of a linear combination]\label{prp:meanlin}
+Let $c, c_1, \dots, c_m \in \mathbb{R}$ and $x_t := c + \sum_{i=1}^m c_i \, y_{t-i}$. Then
+$$
+\mu_x(t) = c + \sum_{i=1}^m c_i \, \mu_y(t-i) .
+$$
+\end{proposition}
+
+\begin{proof}
+By linearity of the expectation, $E\big[c + \sum_{i=1}^m c_i y_{t-i}\big] = c + \sum_{i=1}^m c_i E[y_{t-i}]$. Linearity does not require the $y_{t-i}$ to be independent.
+\end{proof}
+
+\begin{proposition}[Properties of the ACVF]\label{prp:acvf}
+For all $t, s \in \mathbb{Z}$:
+\begin{enumerate}
+\item[(i)] $\gamma(t,t) = \operatorname{Var}(y_t)$,
+\item[(ii)] $\gamma(t,s) = \gamma(s,t)$,
+\item[(iii)] $|\gamma(t,s)| \leq \sqrt{\gamma(t,t)\,\gamma(s,s)}$,
+\item[(iv)] for $c_1, \dots, c_m, d_1, \dots, d_n \in \mathbb{R}$ and time points $t_1, \dots, t_m$, $s_1, \dots, s_n$,
+$$
+\operatorname{Cov}\Big(\sum_{i=1}^m c_i\, y_{t_i},\ \sum_{j=1}^n d_j\, y_{s_j}\Big) = \sum_{i=1}^m \sum_{j=1}^n c_i d_j\, \gamma(t_i, s_j) ,
+$$
+\item[(v)] if $x_t := a\, y_t + b$ with $a, b \in \mathbb{R}$, then $\gamma_x(t,s) = a^2\, \gamma_y(t,s)$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) $\gamma(t,t) = \operatorname{Cov}(y_t,y_t) = \operatorname{Var}(y_t)$ by definition of the variance.
+
+(ii) The covariance is symmetric in its arguments, $E[(y_t - \mu(t))(y_s - \mu(s))] = E[(y_s - \mu(s))(y_t - \mu(t))]$.
+
+(iii) This is the Cauchy--Schwarz inequality applied to the centred variables $y_t - \mu(t)$ and $y_s - \mu(s)$:
+$$
+|\operatorname{Cov}(y_t,y_s)| = \big|E[(y_t-\mu(t))(y_s-\mu(s))]\big| \leq \sqrt{E[(y_t-\mu(t))^2]\,E[(y_s-\mu(s))^2]} = \sqrt{\gamma(t,t)\gamma(s,s)} .
+$$
+
+(iv) Centring and expanding the product,
+$$
+\operatorname{Cov}\Big(\sum_i c_i y_{t_i}, \sum_j d_j y_{s_j}\Big)
+= E\Big[\sum_i c_i (y_{t_i} - \mu(t_i)) \sum_j d_j (y_{s_j} - \mu(s_j))\Big]
+= \sum_i \sum_j c_i d_j\, E\big[(y_{t_i}-\mu(t_i))(y_{s_j}-\mu(s_j))\big],
+$$
+where the last step uses linearity of the expectation; the summands are $\gamma(t_i,s_j)$.
+
+(v) By (iv) with $m = n = 1$, $\operatorname{Cov}(a y_t + b, a y_s + b) = a^2 \operatorname{Cov}(y_t,y_s)$; the constant $b$ drops out under centring.
+\end{proof}
+
+\begin{proposition}[Properties of the ACF]\label{prp:acfprop}
+Let $\operatorname{Var}(y_t) > 0$ for all $t$. Then, for all $t,s \in \mathbb{Z}$:
+\begin{enumerate}
+\item[(i)] $\displaystyle \rho(t,s) = \frac{\gamma(t,s)}{\sqrt{\gamma(t,t)\,\gamma(s,s)}}$,
+\item[(ii)] $\rho(t,t) = 1$ and $\rho(t,s) = \rho(s,t)$,
+\item[(iii)] $|\rho(t,s)| \leq 1$,
+\item[(iv)] if $x_t := a\, y_t + b$ with $a \neq 0$, then $\rho_x(t,s) = \rho_y(t,s)$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) By definition of the correlation and Proposition~\ref{prp:acvf}(i),
+$\rho(t,s) = \operatorname{Cov}(y_t,y_s) / \sqrt{\operatorname{Var}(y_t)\operatorname{Var}(y_s)} = \gamma(t,s)/\sqrt{\gamma(t,t)\gamma(s,s)}$.
+
+(ii) With $s = t$, (i) gives $\rho(t,t) = \gamma(t,t)/\gamma(t,t) = 1$; symmetry follows from Proposition~\ref{prp:acvf}(ii) and the symmetry of the denominator in (i).
+
+(iii) Divide the Cauchy--Schwarz bound of Proposition~\ref{prp:acvf}(iii) by $\sqrt{\gamma(t,t)\gamma(s,s)} > 0$.
+
+(iv) By Proposition~\ref{prp:acvf}(v), $\gamma_x(t,s) = a^2 \gamma_y(t,s)$ and $\gamma_x(t,t) = a^2\gamma_y(t,t)$, so in (i) the factor $a^2$ cancels between numerator and denominator. In particular the ACF is unit-free: it is unchanged by a change of measurement units of $y_t$.
+\end{proof}
+
+## The random walk
+
+\begin{definition}[Random walk]\label{def:rw}
+Let $\{e_t\}$, $t \in \mathbb{N}$, be independent and identically distributed (i.i.d.) random variables with $E[e_t] = 0$ and $\operatorname{Var}(e_t) = \sigma_e^2$. The \emph{random walk} $\{y_t\}$ is defined, for $t \in \mathbb{N}$, as
+$$
+y_t := \sum_{j=1}^t e_j ,
+$$
+with the empty sum $y_0 = 0$.
+\end{definition}
+
+\begin{proposition}[Moments of the random walk]\label{prp:rw}
+For the random walk of Definition~\ref{def:rw} and $1 \leq t \leq s$:
+\begin{enumerate}
+\item[(i)] $y_t = y_{t-1} + e_t$ for all $t \geq 1$,
+\item[(ii)] $\mu(t) = 0$,
+\item[(iii)] $\operatorname{Var}(y_t) = t\,\sigma_e^2$,
+\item[(iv)] $\gamma(t,s) = \min\{t,s\}\,\sigma_e^2 = t\,\sigma_e^2$,
+\item[(v)] $\rho(t,s) = \sqrt{t/s}$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) $y_t = \sum_{j=1}^t e_j = \sum_{j=1}^{t-1} e_j + e_t = y_{t-1} + e_t$.
+
+(ii) $\mu(t) = E[\sum_{j=1}^t e_j] = \sum_{j=1}^t E[e_j] = 0$.
+
+(iii) A special case of (iv) with $s = t$, using Proposition~\ref{prp:acvf}(i).
+
+(iv) By Proposition~\ref{prp:acvf}(iv) and independence of the $e_j$, which gives $\operatorname{Cov}(e_i,e_j) = \sigma_e^2$ for $i = j$ and $0$ otherwise,
+$$
+\gamma(t,s) = \operatorname{Cov}\Big(\sum_{i=1}^t e_i, \sum_{j=1}^s e_j\Big) = \sum_{i=1}^t \sum_{j=1}^s \operatorname{Cov}(e_i,e_j) = \sum_{i=1}^{\min\{t,s\}} \sigma_e^2 = \min\{t,s\}\,\sigma_e^2 ,
+$$
+which equals $t\,\sigma_e^2$ for $t \leq s$.
+
+(v) By Proposition~\ref{prp:acfprop}(i) and (iii), (iv),
+$$
+\rho(t,s) = \frac{t\,\sigma_e^2}{\sqrt{t\,\sigma_e^2 \cdot s\,\sigma_e^2}} = \frac{t}{\sqrt{ts}} = \sqrt{\frac{t}{s}} . \qedhere
+$$
+\end{proof}
+
+## The MA(1) process
+
+\begin{definition}[MA(1) process]\label{def:ma1}
+Let $\{e_t\}$ be i.i.d. with $E[e_t] = 0$ and $\operatorname{Var}(e_t) = \sigma_e^2$, and let $\theta \in \mathbb{R}$. A \emph{moving average process of order 1}, MA(1), is defined by
+$$
+y_t := e_t + \theta\, e_{t-1} .
+$$
+\end{definition}
+
+\begin{proposition}[Moments of the MA(1) process]\label{prp:ma1}
+For the MA(1) process of Definition~\ref{def:ma1} and all $t,s$:
+\begin{enumerate}
+\item[(i)] $\mu(t) = 0$,
+\item[(ii)] $\displaystyle \gamma(t,s) = \begin{cases} (1+\theta^2)\sigma_e^2, & |t-s| = 0, \\ \theta\,\sigma_e^2, & |t-s| = 1, \\ 0, & |t-s| > 1, \end{cases}$
+\item[(iii)] $\displaystyle \rho(t,s) = \begin{cases} 1, & |t-s| = 0, \\ \dfrac{\theta}{1+\theta^2}, & |t-s| = 1, \\ 0, & |t-s| > 1, \end{cases}$
+\item[(iv)] $|\rho(t,s)| \leq \tfrac12$ for $|t-s| = 1$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) $\mu(t) = E[e_t] + \theta E[e_{t-1}] = 0$.
+
+(ii) Write $\operatorname{Cov}(e_i,e_j) = \sigma_e^2$ for $i = j$ and $0$ otherwise. For $|t-s| = 0$, Proposition~\ref{prp:acvf}(iv) gives
+$\operatorname{Var}(y_t) = \operatorname{Var}(e_t) + \theta^2 \operatorname{Var}(e_{t-1}) = (1+\theta^2)\sigma_e^2$.
+For $s = t-1$,
+$$
+\gamma(t,t-1) = \operatorname{Cov}(e_t + \theta e_{t-1},\, e_{t-1} + \theta e_{t-2}) = \theta \operatorname{Var}(e_{t-1}) = \theta\,\sigma_e^2 ,
+$$
+since $e_{t-1}$ is the only innovation common to both arguments. For $|t-s| > 1$ the two arguments involve disjoint sets of innovations, so every covariance in the expansion vanishes. The value depends on $t$ and $s$ only through $|t-s|$ by the symmetry of Proposition~\ref{prp:acvf}(ii).
+
+(iii) Divide (ii) by $\gamma(t,t) = (1+\theta^2)\sigma_e^2$, as in Proposition~\ref{prp:acfprop}(i).
+
+(iv) $|\theta|/(1+\theta^2) \leq 1/2$ is equivalent to $2|\theta| \leq 1 + \theta^2$, i.e.\ to $0 \leq (|\theta| - 1)^2$, which always holds.
+\end{proof}
+
+## Stationarity
+
+\begin{definition}[Weak stationarity]\label{def:weakstat}
+A stochastic process $\{y_t\}$ with $\operatorname{Var}(y_t) < \infty$ is \emph{weakly stationary} (also called wide-sense stationary or second-order stationary) if
+\begin{enumerate}
+\item[(i)] $\mu(t) = \mu(0)$ for all $t$,
+\item[(ii)] $\gamma(t, t-k) = \gamma(0,k)$ for all $t$ and $k$.
+\end{enumerate}
+\end{definition}
+
+\begin{proposition}[Shift invariance of the ACVF]\label{prp:shift}
+Let $\{y_t\}$ be weakly stationary. Then, for all $t,s,k \in \mathbb{Z}$,
+$$
+\gamma(t,s) = \gamma(t-k, s-k) = \gamma(0, |t-s|) .
+$$
+\end{proposition}
+
+\begin{proof}
+Put $h := t - s$. By Definition~\ref{def:weakstat}(ii), applied at time $t$ and at time $t-k$ with the same lag $h$,
+$$
+\gamma(t,s) = \gamma(t, t-h) = \gamma(0,h) \qquad \text{and} \qquad \gamma(t-k,s-k) = \gamma(t-k, (t-k)-h) = \gamma(0,h) ,
+$$
+which proves the first equality and $\gamma(t,s) = \gamma(0,h)$. It remains to show $\gamma(0,h) = \gamma(0,-h)$. By Proposition~\ref{prp:acvf}(ii) and the first equality with $k = -h$,
+$$
+\gamma(0,h) = \gamma(h,0) = \gamma(h - h, 0 - h) = \gamma(0,-h) . \qedhere
+$$
+\end{proof}
+
+\begin{definition}[ACVF and ACF in lag notation]\label{def:lagnot}
+Let $\{y_t\}$ be weakly stationary. For $k \in \mathbb{Z}$ the \emph{autocovariance function at lag $k$} is
+$$
+\gamma(k) := \operatorname{Cov}(y_t, y_{t-k}) ,
+$$
+and, if $\gamma(0) > 0$, the \emph{autocorrelation function at lag $k$} is
+$$
+\rho(k) := \operatorname{Cor}(y_t, y_{t-k}) .
+$$
+\end{definition}
+
+Both are well defined, i.e.\ independent of $t$, by Proposition~\ref{prp:shift}.
+
+\begin{proposition}[Properties of the ACVF and ACF of a stationary process]\label{prp:statprop}
+Let $\{y_t\}$ be weakly stationary with $\gamma(0) > 0$. Then, for all $k \in \mathbb{Z}$:
+\begin{enumerate}
+\item[(i)] $\gamma(0) = \operatorname{Var}(y_t)$ and $\rho(0) = 1$,
+\item[(ii)] $\rho(k) = \gamma(k)/\gamma(0)$,
+\item[(iii)] $\gamma(k) = \gamma(-k)$ and $\rho(k) = \rho(-k)$,
+\item[(iv)] $|\gamma(k)| \leq \gamma(0)$ and $|\rho(k)| \leq 1$.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) Take $k = 0$ in Definition~\ref{def:lagnot} and use Proposition~\ref{prp:acvf}(i); then $\rho(0) = \operatorname{Cor}(y_t,y_t) = 1$.
+
+(ii) By Proposition~\ref{prp:acfprop}(i), $\rho(k) = \gamma(t,t-k)/\sqrt{\gamma(t,t)\gamma(t-k,t-k)} = \gamma(k)/\gamma(0)$, since both variances equal $\gamma(0)$.
+
+(iii) $\gamma(-k) = \gamma(0,-k) = \gamma(0,k) = \gamma(k)$ by Proposition~\ref{prp:shift}; divide by $\gamma(0)$ for $\rho$.
+
+(iv) By Proposition~\ref{prp:acvf}(iii), $|\gamma(k)| \leq \sqrt{\gamma(0)\gamma(0)} = \gamma(0)$; divide by $\gamma(0)$.
+\end{proof}
+
+\begin{definition}[Nonnegative definite function]\label{def:nnd}
+A function $f: \mathbb{Z} \to \mathbb{R}$ is \emph{nonnegative definite} if for all $n \in \mathbb{N}$, all $(a_1,\dots,a_n)^\top \in \mathbb{R}^n$ and all time points $(t_1,\dots,t_n)^\top \in \mathbb{Z}^n$,
+$$
+\sum_{i=1}^n \sum_{j=1}^n a_i\, f(t_i - t_j)\, a_j \geq 0 .
+$$
+\end{definition}
+
+\begin{theorem}[Characterization of the ACF]\label{thm:acf}
+A function $\rho: \mathbb{Z} \to \mathbb{R}$ is the autocorrelation function of a weakly stationary process if and only if
+\begin{enumerate}
+\item[(i)] $\rho(0) = 1$,
+\item[(ii)] $\rho(-h) = \rho(h)$ for all $h$,
+\item[(iii)] $\rho$ is nonnegative definite.
+\end{enumerate}
+Every such $\rho$ satisfies in addition $0 \leq |\rho(h)| \leq 1$ for all $h$.
+\end{theorem}
+
+\begin{proof}
+\emph{Necessity.} Let $\rho$ be the ACF of a weakly stationary process $\{y_t\}$ with $\gamma(0) > 0$. Properties (i) and (ii) are Proposition~\ref{prp:statprop}(i) and (iii), and the bound $|\rho(h)| \leq 1$ is Proposition~\ref{prp:statprop}(iv). For (iii), fix $n$, $a = (a_1,\dots,a_n)^\top$ and $t_1,\dots,t_n$, and set $Y := (y_{t_1},\dots,y_{t_n})^\top$ with covariance matrix $\operatorname{Cov}(Y) = [\gamma(t_i - t_j)]_{i,j}$. A variance is nonnegative, so by Proposition~\ref{prp:acvf}(iv)
+$$
+0 \leq \operatorname{Var}(a^\top Y) = a^\top \operatorname{Cov}(Y)\, a = \sum_{i=1}^n \sum_{j=1}^n a_i\, \gamma(t_i-t_j)\, a_j = \gamma(0) \sum_{i=1}^n \sum_{j=1}^n a_i\, \rho(t_i-t_j)\, a_j ,
+$$
+using $\gamma(h) = \gamma(0)\rho(h)$ from Proposition~\ref{prp:statprop}(ii). Dividing by $\gamma(0) > 0$ gives (iii).
+
+\emph{Sufficiency.} Let $\rho$ satisfy (i)--(iii). We construct a Gaussian process with ACF $\rho$.
+
+\emph{Step 1 (the candidate covariance matrices are valid).} For $n \in \mathbb{N}$ and time points $t_1, \dots, t_n \in \mathbb{Z}$ put
+$$
+\Sigma_{t_1,\dots,t_n} := \big[\,\rho(t_i - t_j)\,\big]_{i,j=1}^n .
+$$
+This matrix is symmetric by (ii) and nonnegative definite by (iii), because $a^\top \Sigma_{t_1,\dots,t_n} a = \sum_i \sum_j a_i \rho(t_i-t_j) a_j \geq 0$ for every $a \in \mathbb{R}^n$. A symmetric nonnegative definite matrix is the covariance matrix of some $n$-dimensional random vector.
+
+\emph{Step 2 (finite-dimensional distributions).} Define
+$$
+P_{t_1,\dots,t_n} := \mathcal{N}\big(0, \Sigma_{t_1,\dots,t_n}\big) ,
+$$
+the (possibly degenerate) multivariate normal distribution with mean vector $0$ and covariance matrix $\Sigma_{t_1,\dots,t_n}$.
+
+\emph{Step 3 (consistency).} The family $\{P_{t_1,\dots,t_n}\}$ satisfies Kolmogorov's consistency conditions. Permuting $t_1,\dots,t_n$ by a permutation matrix $P$ replaces $\Sigma$ by $P \Sigma P^\top$, and the corresponding permutation of a $\mathcal{N}(0,\Sigma)$ vector has exactly that distribution. Omitting $t_n$ means taking the marginal distribution of the first $n-1$ coordinates, which is normal with covariance matrix the leading $(n-1)\times(n-1)$ submatrix of $\Sigma_{t_1,\dots,t_n}$; since the entries $\rho(t_i - t_j)$ do not depend on the remaining time points, that submatrix is $\Sigma_{t_1,\dots,t_{n-1}}$.
+
+\emph{Step 4 (existence).} By the Kolmogorov extension theorem there exists a stochastic process $\{y_t\}_{t \in \mathbb{Z}}$ on some probability space whose finite-dimensional distributions are the $P_{t_1,\dots,t_n}$.
+
+\emph{Step 5 (the process is stationary with ACF $\rho$).} By construction $E[y_t] = 0$ for all $t$ and $\operatorname{Cov}(y_t,y_s) = \rho(t-s)$, so $\operatorname{Var}(y_t) = \rho(0) = 1 < \infty$ by (i). The mean function is constant and $\gamma(t,t-k) = \rho(k) = \gamma(0,k)$ depends on $t$ only through the lag $k$, so $\{y_t\}$ is weakly stationary by Definition~\ref{def:weakstat}. Its ACF is, by Proposition~\ref{prp:statprop}(ii),
+$$
+\frac{\gamma(k)}{\gamma(0)} = \frac{\rho(k)}{1} = \rho(k) . \qedhere
+$$
+\end{proof}
+
+Property (ii) of Theorem~\ref{thm:acf} is not needed as a separate assumption in the necessity part, and the bound $0 \leq |\rho(h)| \leq 1$ is not needed in the sufficiency part: it follows from (i) and (iii) by taking $n = 2$ in Definition~\ref{def:nnd}.
+
+\begin{definition}[Difference stationarity]\label{def:diffstat}
+A stochastic process $\{y_t\}$ is \emph{difference stationary} if $\{\Delta y_t\}$, with $\Delta y_t = y_t - y_{t-1}$, is weakly stationary.
+\end{definition}
+
+\begin{proposition}[Stationarity of the two examples]\label{prp:examples}
+\begin{enumerate}
+\item[(i)] The MA(1) process of Definition~\ref{def:ma1} is weakly stationary for every $\theta \in \mathbb{R}$.
+\item[(ii)] The random walk of Definition~\ref{def:rw} is not weakly stationary, but it is difference stationary.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) By Proposition~\ref{prp:ma1}(i) the mean function is constant, and by Proposition~\ref{prp:ma1}(ii) the ACVF depends on $t$ and $s$ only through $|t-s|$; in particular $\gamma(t,t-k) = \gamma(0,k)$ for all $t,k$.
+
+(ii) By Proposition~\ref{prp:rw}(iii), $\gamma(t,t) = t\,\sigma_e^2$, which for $\sigma_e^2 > 0$ is not constant in $t$, contradicting Definition~\ref{def:weakstat}(ii) with $k = 0$. By Proposition~\ref{prp:rw}(i), $\Delta y_t = e_t$, and $\{e_t\}$ has constant mean $0$ and $\gamma_e(t,s) = \sigma_e^2$ for $t = s$ and $0$ otherwise, which depends on $t$ and $s$ only through $t-s$; hence $\{\Delta y_t\}$ is weakly stationary.
+\end{proof}
+
+\begin{proposition}[Level shift]\label{prp:levelshift}
+Let $\{y_t\}$ be weakly stationary, let $t_0 \in \mathbb{Z}$ and $c \neq 0$, and define
+$$
+x_t := \begin{cases} y_t, & t < t_0, \\ y_t + c, & t \geq t_0 . \end{cases}
+$$
+Then $\{x_t\}$ is not weakly stationary.
+\end{proposition}
+
+\begin{proof}
+By Proposition~\ref{prp:meanlin}, $\mu_x(t) = \mu_y(t)$ for $t < t_0$ and $\mu_x(t) = \mu_y(t) + c$ for $t \geq t_0$. Since $\mu_y$ is constant by Definition~\ref{def:weakstat}(i), $\mu_x(t_0) - \mu_x(t_0-1) = c \neq 0$, so $\mu_x$ is not constant.
+\end{proof}
+
+\begin{definition}[Strict stationarity]\label{def:strictstat}
+A stochastic process $\{y_t\}$ is \emph{strictly stationary} if
+$$
+(y_{t_1}, \dots, y_{t_n}) \stackrel{d}{=} (y_{t_1-k}, \dots, y_{t_n-k})
+$$
+for all $n \in \mathbb{N}$, all time points $(t_1,\dots,t_n) \in \mathbb{Z}^n$ and all lags $k \in \mathbb{Z}$.
+\end{definition}
+
+\begin{proposition}[Strict stationarity implies weak stationarity]\label{prp:stricttoweak}
+Let $\{y_t\}$ be strictly stationary with $E[y_t^2] < \infty$ for all $t$. Then $\{y_t\}$ is weakly stationary.
+\end{proposition}
+
+\begin{proof}
+Taking $n = 1$ in Definition~\ref{def:strictstat}, $y_t \stackrel{d}{=} y_{t-k}$ for all $t$ and $k$, so all marginal distributions coincide; with $k = t$ this gives $\mu(t) = E[y_t] = E[y_0] = \mu(0)$ and $\gamma(t,t) = \operatorname{Var}(y_t) = \operatorname{Var}(y_0) = \gamma(0,0)$.
+
+Taking $n = 2$, $(y_t, y_s) \stackrel{d}{=} (y_{t-k}, y_{s-k})$, and since the covariance is a functional of the joint distribution, $\operatorname{Cov}(y_t,y_s) = \operatorname{Cov}(y_{t-k},y_{s-k})$ for all $k$. With $s = t-h$ and $k = t$ this gives $\gamma(t,t-h) = \gamma(0,-h)$. Applying the same identity to the pair $(y_0, y_{-h})$ with $k = -h$ and using the symmetry of the covariance, $\gamma(0,-h) = \operatorname{Cov}(y_0,y_{-h}) = \operatorname{Cov}(y_h,y_0) = \gamma(0,h)$. Hence $\gamma(t,t-h) = \gamma(0,h)$ for all $t,h$, which is Definition~\ref{def:weakstat}(ii). All moments used are finite by assumption.
+\end{proof}
+
+\begin{proposition}[Weak stationarity does not imply strict stationarity]\label{prp:weaknotstrict}
+There exists a weakly stationary process that is not strictly stationary.
+\end{proposition}
+
+\begin{proof}
+Let the $y_t$ be independent with
+$$
+y_t \sim \begin{cases} \mathcal{N}(1,1), & t \text{ even}, \\ \mathrm{Exp}(1), & t \text{ odd} . \end{cases}
+$$
+Both distributions have mean $1$ and variance $1$, so $\mu(t) = 1$ for all $t$ and $\gamma(t,t) = 1$; by independence $\gamma(t,s) = 0$ for $t \neq s$. Hence $\gamma(t,t-k) = \gamma(0,k)$ for all $t$ and $k$, and the process is weakly stationary. It is not strictly stationary: with $n = 1$, $t_1 = 0$ and $k = 1$, Definition~\ref{def:strictstat} would require $y_0 \stackrel{d}{=} y_{-1}$, whereas $P(y_0 < 0) > 0 = P(y_{-1} < 0)$.
+\end{proof}
+
+\begin{proposition}[Gaussian processes]\label{prp:gaussstat}
+Let $\{y_t\}$ be a Gaussian process, i.e.\ let $(y_{t_1},\dots,y_{t_n})^\top$ be multivariate normal for all $n$ and all $t_1 < \dots < t_n$. Then $\{y_t\}$ is strictly stationary if and only if it is weakly stationary.
+\end{proposition}
+
+\begin{proof}
+($\Rightarrow$) A multivariate normal vector has finite second moments, so Proposition~\ref{prp:stricttoweak} applies.
+
+($\Leftarrow$) The distribution of a multivariate normal vector is determined by its mean vector and covariance matrix. For weakly stationary $\{y_t\}$, the vectors $(y_{t_1},\dots,y_{t_n})^\top$ and $(y_{t_1-k},\dots,y_{t_n-k})^\top$ are both multivariate normal with mean vector $(\mu(0),\dots,\mu(0))^\top$ and, by Proposition~\ref{prp:shift}, with the same covariance matrix $[\gamma(0,|t_i-t_j|)]_{i,j}$. Hence they have the same distribution, which is Definition~\ref{def:strictstat}.
+\end{proof}
+
+## White noise
+
+\begin{definition}[White noise]\label{def:wn2}
+A stochastic process $\{e_t\}$ is a \emph{(weak) white noise} if it is weakly stationary with
+$$
+\gamma(k) = 0 \qquad \text{for all } k \neq 0 .
+$$
+If in addition $\mu(t) = 0$ and $\gamma(0) = \sigma_e^2$, one writes $\{e_t\} \sim WN(0,\sigma_e^2)$. The process is a \emph{strict white noise} (or i.i.d. noise) if the $e_t$ are independent and identically distributed.
+\end{definition}
+
+\begin{proposition}[Strict white noise is not a weak white noise in general]\label{prp:strictnotweak}
+There exists a strict white noise that is not a weak white noise.
+\end{proposition}
+
+\begin{proof}
+Let the $e_t$ be i.i.d. standard Cauchy. The process is a strict white noise by Definition~\ref{def:wn2}. It is not a weak white noise, since $E[e_t^2] = \infty$, so $\operatorname{Var}(e_t)$ does not exist and the process is not weakly stationary in the sense of Definition~\ref{def:weakstat}.
+\end{proof}
+
+\begin{proposition}[ARCH(1) is a weak but not a strict white noise]\label{prp:arch1}
+Let $\omega > 0$ and $0 \leq \alpha < 1$, let $\{\varepsilon_t\}$ be i.i.d. with $E[\varepsilon_t] = 0$ and $\operatorname{Var}(\varepsilon_t) = 1$, and let $\varepsilon_t$ be independent of $y_{t-k}$ for all $k \geq 1$. Let $\{y_t\}$ satisfy
+$$
+y_t = \sigma_t\, \varepsilon_t , \qquad \sigma_t^2 = \omega + \alpha\, y_{t-1}^2 ,
+$$
+and assume that $v := E[y_t^2]$ is finite and does not depend on $t$. Then
+\begin{enumerate}
+\item[(i)] $E[y_t] = 0$,
+\item[(ii)] $\operatorname{Var}(y_t) = \omega/(1-\alpha)$,
+\item[(iii)] $\operatorname{Cov}(y_t, y_{t-k}) = 0$ for all $k \neq 0$,
+\end{enumerate}
+so $\{y_t\} \sim WN\big(0, \omega/(1-\alpha)\big)$. If moreover $\alpha > 0$, $E[y_t^4] < \infty$ and $\operatorname{Var}(y_{t-1}^2) > 0$, then $\{y_t\}$ is not a strict white noise.
+\end{proposition}
+
+\begin{proof}
+Note first that $\sigma_t$ is a function of $y_{t-1}$ and hence independent of $\varepsilon_t$.
+
+(i) $E[y_t] = E[\sigma_t \varepsilon_t] = E[\sigma_t]\,E[\varepsilon_t] = 0$.
+
+(ii) By independence and $E[\varepsilon_t^2] = 1$,
+$$
+v = E[y_t^2] = E[\sigma_t^2 \varepsilon_t^2] = E[\sigma_t^2]\,E[\varepsilon_t^2] = E[\omega + \alpha y_{t-1}^2] = \omega + \alpha v .
+$$
+Since $\alpha < 1$, this gives $v = \omega/(1-\alpha)$, and $\operatorname{Var}(y_t) = v$ by (i).
+
+(iii) Let $k \geq 1$. Then $\varepsilon_t$ is independent of $\sigma_t y_{t-k}$, because both $\sigma_t$ and $y_{t-k}$ are functions of $y_{t-1}, y_{t-2}, \dots$. Hence
+$$
+\operatorname{Cov}(y_t, y_{t-k}) = E[y_t y_{t-k}] = E[\sigma_t \varepsilon_t y_{t-k}] = E[\sigma_t y_{t-k}]\, E[\varepsilon_t] = 0 ,
+$$
+and the case $k \leq -1$ follows by symmetry of the covariance. Together with (i) and (ii), the mean function is constant, the variance is finite and constant, and the ACVF vanishes off the diagonal, so $\{y_t\}$ is weakly stationary and a weak white noise with $\gamma(0) = \omega/(1-\alpha)$.
+
+Finally, assume $\alpha > 0$, $E[y_t^4] < \infty$ and $\operatorname{Var}(y_{t-1}^2) > 0$. Using $E[\varepsilon_t^2] = 1$ and the independence of $\varepsilon_t$ from $y_{t-1}$,
+$$
+E[y_t^2 y_{t-1}^2] = E[\sigma_t^2 \varepsilon_t^2 y_{t-1}^2] = E\big[(\omega + \alpha y_{t-1}^2) y_{t-1}^2\big] = \omega E[y_{t-1}^2] + \alpha E[y_{t-1}^4] ,
+$$
+while $E[y_t^2]\,E[y_{t-1}^2] = (\omega + \alpha E[y_{t-1}^2])E[y_{t-1}^2]$. Subtracting,
+$$
+\operatorname{Cov}(y_t^2, y_{t-1}^2) = \alpha\Big(E[y_{t-1}^4] - \big(E[y_{t-1}^2]\big)^2\Big) = \alpha \operatorname{Var}(y_{t-1}^2) > 0 .
+$$
+If $y_t$ and $y_{t-1}$ were independent, then $y_t^2$ and $y_{t-1}^2$ would be independent and this covariance would be zero. Hence the $y_t$ are not independent and $\{y_t\}$ is not a strict white noise.
+\end{proof}

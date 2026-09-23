@@ -1,0 +1,688 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Ch. 2 – Fundamental Concepts <br><br> HS 2026 · based on material by Christian Kleiber (University of Basel)"
+format:
+  clean-revealjs:
+    self-contained: true
+    css: [styles.css, legibility.css]
+    width: 1600
+    height: 900
+    scrollable: true
+    include-after-body: autofit.html
+author:
+  - name: Patrick Schmidt
+    email: patrick.schmidt@awi.uni-heidelberg.de
+    affiliations: University of Heidelberg
+execute:
+  cache: true
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(fig.width = 12, fig.height = 6, fig.align = "center", dpi = 150)
+# larger fonts for every base R plot, without cluttering the code shown on the slides
+knitr::knit_hooks$set(par_ts = function(before, options, envir) {
+  if (before) par(mar = c(4.5, 4.5, 3, 1), cex.main = 1.6, cex.lab = 1.4, cex.axis = 1.3)
+})
+knitr::opts_chunk$set(par_ts = TRUE)
+```
+
+## Contents
+
+1. Time series and stochastic processes
+2. Mean, autocovariance and autocorrelation function
+3. Example: random walk
+4. Example: moving average process of order 1 (MA(1))
+5. Stationarity
+6. Keywords
+7. Further reading
+
+# Time series and stochastic processes
+
+## How to model a time series?
+
+:::{.clean-box}
+**definition:** a [**stochastic process**]{.alert} $\{y_t\}$ is a family of random variables indexed by $t \in \mathcal T$
+:::
+
+- discrete time ($\mathcal T = \mathbb N$ or $\mathcal T = \mathbb Z$)
+- not our focus: continuous time ($\mathcal T = [0, \infty)$ or $\mathcal T = \mathbb R$)
+- $\mathcal T$ is identified with time: we speak of 'past', 'present' and 'future'
+
+- the **distribution of $\{y_t\}$** is determined by the joint distribution of all finite sets of $y_t$'s (so very complex!)
+
+- **time series models** specify the distribution of $\{y_t\}$
+
+:::{.clean-box}
+**time series data** are considered **realizations** of the **stochastic process $\{y_t\}$**
+:::
+
+## Time series and stochastic processes
+
+- standard models focus on means, variances and covariances of a time series
+    - we call those also the first two moments
+    - for *normally distributed* $y$'s, these determine the entire distribution
+
+- three functions describe these moments: [**mean function**]{.alert}, [**autocovariance function**]{.alert}, [**autocorrelation function**]{.alert}
+
+- throughout: $\{y_t\}$ is a stochastic process with $E(y_t^2) < \infty$ for all $t$, so all moments below exist
+
+# Mean, autocovariance and autocorrelation function
+
+## Mean function
+
+:::{.clean-box}
+**definition:** let $\{y_t\}$ be a stochastic process with $E(y_t^2) < \infty$ for all $t$. the [**mean function**]{.alert} is defined, for $t \in \mathbb Z$, as
+$$\mu(t) := E(y_t)$$
+:::
+
+:::: {.columns}
+
+::: {.column width="48%"}
+recall the **linearity** of expectations:
+$$
+\begin{aligned}
+E(aX + bY + c) &= a\,E(X) + b\,E(Y) + c \\
+E\Big(\sum_{i=1}^m c_i\, y_{t_i}\Big) &= \sum_{i=1}^m c_i\, E(y_{t_i})
+\end{aligned}
+$$
+:::
+
+::: {.column width="52%"}
+**implications** for the mean function:
+
+- one number per time point: $\mu(t)$ may change with $t$
+- for any linear combination $x_t = c + \sum_i c_i\, y_{t-i}$: $\quad \mu_x(t) = c + \sum_i c_i\, \mu_y(t - i)$
+- holds irrespective of dependence between the $y_t$ (as linearity of expectation $E[\dots]$ does not require independence)
+:::
+
+::::
+
+## Autocovariance function
+
+:::{.clean-box}
+**definition:** the [**autocovariance function (ACVF)**]{.alert} of $\{y_t\}$ is defined, for $t, s \in \mathbb Z$, as
+$$\gamma(t, s) := \mathrm{Cov}(y_t, y_s)$$
+:::
+
+**recall** the rules for variances and covariances:
+
+$$\mathrm{Cov}(X, Y) := E\big[(X - E(X))(Y - E(Y))\big]= E(XY) - E(X) \cdot E(Y)$$
+in particular, $\mathrm{Cov}(y_t, y_s) = E[(y_t - \mu(t))(y_s - \mu(s))] = E(y_t y_s) - \mu(t)\mu(s)$
+
+and others:
+
+$$
+\begin{aligned}
+\mathrm{Var}(X) &= E(X^2) - [E(X)]^2, \\
+\mathrm{Var}(aX + bY + c) &= a^2 \mathrm{Var}(X) + b^2 \mathrm{Var}(Y) + 2ab\,\mathrm{Cov}(X, Y), \\
+\mathrm{Cov}(aX + bY + c, Z) &= a\,\mathrm{Cov}(X, Z) + b\,\mathrm{Cov}(Y, Z).
+\end{aligned}
+$$
+
+
+---
+
+also, for arbitrary numbers $m, n$ of random variables,
+$$
+\mathrm{Cov}\Big(\sum_{i=1}^m c_i\, y_{t_i}, \sum_{j=1}^n d_j\, y_{s_j}\Big) = \sum_{i=1}^m \sum_{j=1}^n c_i d_j\, \mathrm{Cov}(y_{t_i}, y_{s_j})
+$$
+
+$$
+\mathrm{Var}\Big(\sum_{i=1}^m c_i\, y_{t_i}\Big) = \sum_{i=1}^m c_i^2\, \mathrm{Var}(y_{t_i}) + 2 \sum_{i=2}^m \sum_{j=1}^{i-1} c_i c_j\, \mathrm{Cov}(y_{t_i}, y_{t_j})
+$$
+
+## Autocovariance function
+
+**implications** for the ACVF:
+
+- on the diagonal it is the variance function, and it is symmetric: 
+$$\gamma(t, t) = \mathrm{Var}(y_t), \qquad \gamma(t, s) = \gamma(s, t)$$
+
+- bounded by the diagonal, by the **Cauchy-Schwarz inequality** $|\mathrm{Cov}(X, Y)| \leqslant \sqrt{\mathrm{Var}(X)\,\mathrm{Var}(Y)}$:
+$$|\gamma(t, s)| \leqslant \sqrt{\gamma(t, t)\,\gamma(s, s)}$$
+
+- bilinearity is the workhorse: the ACVF of any linear combination of the $y_t$ follows from the ACVF of $\{y_t\}$
+
+---
+
+- $\gamma$ carries the units of $y_t$, squared: 
+    - hard to interpret and changes with linear transformation: for $x_t := a\, y_t + b$ we get $\gamma_x(t, s) = a^2\, \gamma_y(t, s)$
+    - example: same temperature series in $^\circ$F instead of $^\circ$C ($a = 1.8$) multiplies every autocovariance by $3.24$, although the dependence is unchanged
+    - need to normalize!
+
+::: {.notes}
+- Cauchy-Schwarz bound is equivalent to $|\rho(t,s)| \leq 1$
+- linear transformation example: $\gamma_x(t,s) = \mathrm{Cov}(a y_t + b, a y_s + b) = a^2 \mathrm{Cov}(y_t, y_s)$, shift $b$ drops out
+:::
+
+## Autocorrelation function
+
+:::{.clean-box}
+**definition:** the [**autocorrelation function (ACF)**]{.alert} of $\{y_t\}$ is defined, for $t, s \in \mathbb Z$, as
+$$\rho(t, s) := \mathrm{Cor}(y_t, y_s)$$
+:::
+
+:::: {.columns}
+
+::: {.column width="45%"}
+$$\mathrm{Cor}(X, Y) := \frac{\mathrm{Cov}(X, Y)}{\sqrt{\mathrm{Var}(X)\,\mathrm{Var}(Y)}}$$
+in particular,
+$$\rho(t, s) = \frac{\gamma(t, s)}{\sqrt{\gamma(t, t)\,\gamma(s, s)}}$$
+
+:::
+
+::: {.column width="55%"}
+**implications** for the ACF:
+
+- $\rho(t, t) = 1$ and $\rho(t, s) = \rho(s, t)$
+- $0 \leqslant |\rho(t, s)| \leqslant 1$, the same statement as the bound on $\gamma$
+- unit-free: $\rho$ is unchanged by $y_t \mapsto a\, y_t + b$ (with $a>0$), hence comparable across series
+- sign and size measure the direction and strength of the dependence between $y_t$ and $y_s$
+:::
+
+::::
+
+# Example: random walk
+
+## Example: random walk
+
+:::{.clean-box}
+**definition:** let $\{e_t\}$, $t \in \mathbb N$, be a sequence of independent and identically distributed (i.i.d.) random variables with zero mean and variance $\sigma_e^2$. a [**random walk**]{.alert} $\{y_t\}$ is defined as
+$$y_t := \sum_{j=1}^t e_j$$
+:::
+
+- equivalently, in recursive form: $y_0 = 0, \quad y_t = y_{t-1} + e_t$
+- simple approximation for stock prices
+
+- **first properties:**
+$$
+\begin{aligned}
+\mu(t) = E(y_t) &= E(e_1 + \dots + e_t) = 0, \\
+\mathrm{Var}(y_t) &= \mathrm{Var}(e_1 + \dots + e_t) = t\,\sigma_e^2.
+\end{aligned}
+$$
+
+## Example: random walk
+
+**autocovariance and autocorrelation function:** for $1 \leqslant t \leqslant s$
+
+$$
+\begin{aligned}
+\gamma(t, s) &= \mathrm{Cov}(e_1 + \dots + e_t,\; e_1 + \dots + e_t + e_{t+1} + \dots + e_s) \\
+&= \sum_{i=1}^t \sum_{j=1}^s \mathrm{Cov}(e_i, e_j) \\
+&= \min\{t, s\}\,\sigma_e^2 \\
+&= t \cdot \sigma_e^2
+\end{aligned}
+$$
+
+thus, the ACF is
+$$\rho(t, s) = \frac{\gamma(t, s)}{\sqrt{\gamma(t, t)\gamma(s, s)}} = \sqrt{\frac{t}{s}}$$
+
+---
+
+**interpretation:**
+
+- mean is zero for all time points
+- nevertheless: increasing variance and correlation approaching 1, hence long excursions away from the mean level of zero
+- values of $y_t$ at neighboring time points are more and more strongly and positively correlated as time goes by. values of $y_t$ at distant time points are less and less correlated
+
+## Example: random walk
+
+**simulation** in R is straightforward:
+
+```{r rw-code}
+#| eval: false
+set.seed(1)       ## simulation is reproducible
+e <- rnorm(60)
+y <- cumsum(c(0, e))
+y <- ts(y, start = 0)
+plot(y, type = "o")
+abline(h = 0, col = "lightgray")
+```
+
+for exact replication one must use the function `set.seed()` prior to simulation (initialization of the 'random' numbers)
+
+## Example: random walk
+
+:::: {.columns}
+
+::: {.column width="32%"}
+**remarks:**
+
+- this realization of a random walk looks like a trending series 
+
+- but the trend is purely random! 
+
+- distinguishing between trends and random noise is an important issue
+:::
+
+::: {.column width="68%"}
+```{r rw}
+#| echo: false
+#| ref.label: rw-code
+#| fig-width: 8
+#| fig-height: 5.5
+#| out-width: "100%"
+```
+
+<!-- figure: line plot with circle markers of a simulated random walk y (seed 1, 60 standard normal increments), x axis Time 0 to 60, y axis about -1.5 to 7.5, light grey horizontal line at 0. Starts at 0, dips slightly below 0 around t = 3, then wanders upward with swings: about 3 at t = 12, back to 0.5 at t = 15, up to 5.5 around t = 22, down to 2 around t = 30 and 37, then up to 7 near t = 55, ending around 6.5. Looks like an upward trending series although it is pure noise accumulation. -->
+:::
+
+::::
+
+# Example: MA(1) process
+
+## Example: MA(1) process
+
+:::{.clean-box}
+**definition:** let $\{e_t\}$, $t \in \mathbb N$, be a sequence of independent and identically distributed (i.i.d.) random variables with zero mean and variance $\sigma_e^2$. a [**moving average process**]{.alert} $\{y_t\}$ of order 1, or [**MA(1) process**]{.alert}, is defined as
+$$y_t := e_t + \theta e_{t-1}$$
+:::
+
+:::: {.columns}
+
+::: {.column width="55%"}
+**properties:**
+$$
+\begin{aligned}
+\mu(t) = E(y_t) &= E(e_t + \theta e_{t-1}) = 0, \\
+\mathrm{Var}(y_t) &= \mathrm{Var}(e_t + \theta e_{t-1}) \\
+&= \mathrm{Var}(e_t) + \theta^2 \mathrm{Var}(e_{t-1}) = (1 + \theta^2)\sigma_e^2, \\
+\mathrm{Cov}(y_t, y_{t-1}) &= \mathrm{Cov}(e_t + \theta e_{t-1},\, e_{t-1} + \theta e_{t-2}) = \theta \sigma_e^2.
+\end{aligned}
+$$
+
+all $\mathrm{Cov}(y_t, y_{t-k})$ with $k > 1$ are zero
+:::
+
+::: {.column width="45%"}
+**autocovariance function (ACVF)** is therefore
+$$
+\gamma(t, s) = \begin{cases}
+(1 + \theta^2)\sigma_e^2 & \text{for } |t - s| = 0 \\
+\theta \sigma_e^2 & \text{for } |t - s| = 1 \\
+0 & \text{for } |t - s| > 1
+\end{cases}
+$$
+:::
+
+::::
+
+## Example: MA(1) process
+
+**autocorrelation function (ACF)** is therefore
+$$
+\rho(t, s) = \begin{cases}
+1 & \text{for } |t - s| = 0 \\
+\dfrac{\theta}{1 + \theta^2} & \text{for } |t - s| = 1 \\
+0 & \text{for } |t - s| > 1
+\end{cases}
+$$
+
+**remarks:**
+
+- values of $y$ exactly one time unit apart have exactly the same correlation – no matter where they occur in time
+- more generally, $\rho(t, t-k)$ only depends on $k$ ... but not on $t$! (how does this differ from random walk?)
+- note that
+$0 \leqslant |\rho(t, t+1)| \leqslant \frac{1}{2},$
+so only limited amount of dependence in MA(1) possible. (sometimes we need models allowing for stronger dependence at lag 1.)
+- MA(1) is an example of a process with 'short memory'
+
+## Example: MA(1) process
+
+**illustration:** simulation in R. there are several options:
+
+(1) 'by hand:'
+
+```{r ma1-sim-byhand}
+#| eval: false
+set.seed(2)       ## simulation is reproducible
+e <- rnorm(61)
+y <- rep(0, 60)
+for(i in 1:60) y[i] <- e[i+1] + 0.5 * e[i]
+y <- ts(y, start = 1)
+```
+
+(2) same in a single line using `filter()`:
+
+```{r ma1-sim-filter}
+#| eval: false
+y <- filter(rnorm(61), c(1, 0.5))
+```
+
+(3) yet another solution: MA(1) is a specific example of an ARMA process, hence we can do
+
+```{r ma1-sim-arima}
+#| eval: false
+set.seed(2)
+arima.sim(n = 60, list(ma = 0.5))
+```
+
+
+## Example: MA(1) process
+
+the i.i.d. sequence $\{e_t\}$ (the 'input'):
+
+```{r ma1-e-code}
+#| eval: false
+set.seed(2)
+e <- rnorm(61)
+e <- ts(e, start = 0)
+plot(e, type = "o", main = "Sequence of i.i.d. standard normal random variables")
+abline(h = 0, col = "lightgray")
+```
+
+## Example: MA(1) process
+
+```{r ma1-e}
+#| echo: false
+#| ref.label: ma1-e-code
+#| fig-width: 8
+#| fig-height: 5.5
+#| out-width: "100%"
+```
+
+<!-- figure: line plot with circle markers of 61 i.i.d. standard normal draws e (seed 2), x axis Time 0 to 60, y axis -3 to 3, light grey horizontal line at 0, title 'Sequence of i.i.d. standard normal random variables'. Erratic zig-zag around zero with no visible pattern; values between about -2.4 (near t = 25) and 2.1, sign changes almost every step. -->
+
+## Example: MA(1) process
+
+the MA(1) process $\{y_t\}$ with $\theta = 0.5$ built from the same $\{e_t\}$:
+
+```{r ma1-y-code}
+#| eval: false
+set.seed(2)
+e <- rnorm(61)
+y <- rep(0, 60)
+for(i in 1:60) y[i] <- e[i+1] + 0.5 * e[i]
+y <- ts(y, start = 1)
+plot(y, type = "o", main = "MA(1) process")
+abline(h = 0, col = "lightgray")
+```
+
+## Example: MA(1) process
+
+```{r ma1-y}
+#| echo: false
+#| ref.label: ma1-y-code
+#| fig-width: 8
+#| fig-height: 5.5
+#| out-width: "100%"
+```
+
+<!-- figure: line plot with circle markers of the simulated MA(1) process y_t = e_t + 0.5 e_{t-1} (seed 2, 60 points), x axis Time 1 to 60, y axis -3 to 3, light grey horizontal line at 0, title 'MA(1) process'. Fluctuates around zero like the input noise but slightly smoother: neighbouring values tend to have the same sign (short runs above or below zero, e.g. a negative stretch around t = 35 to 42), range about -2.7 to 2.8. -->
+
+# Stationarity
+
+## Stationarity
+
+**motivation:** need reasonable simplifying assumptions about structure of stochastic processes for making statistical inference from realizations (i.e., time series)
+
+**idea:** need process whose probabilistic properties are stable enough over time
+
+:::{.clean-box}
+**definition:** a stochastic process $\{y_t\}$ with $\mathrm{Var}(y_t) < \infty$ is [**weakly stationary**]{.alert} if
+
+- mean function is constant over time: $\mu(t) = \mu(0)$, for all $t$
+- $\gamma(t, t-k) = \gamma(0, k)$ for all $t$ and $k$
+:::
+
+- also called [**wide-sense stationary**]{.alert} or [**second-order stationary**]{.alert}
+
+## Stationarity
+
+stationarity says the ACVF is unchanged when both time points are shifted by the same $k$:
+$$\gamma(t, s) = \gamma(t - k, s - k)$$
+
+choose $k = s$ (wlog $t \geqslant s$):
+$$\gamma(t, s) = \gamma(t - s, 0) = \mathrm{Cov}(y_{t-s}, y_0) = \gamma(0, |t - s|)$$
+
+hence the covariance only depends on the time lag between $t$ and $s$
+
+**implication:** can simplify notation for stationary processes: $\quad \gamma(k) := \mathrm{Cov}(y_t, y_{t-k}), \qquad \rho(k) := \mathrm{Cor}(y_t, y_{t-k})$
+
+as before, $\rho(k) = \gamma(k)/\gamma(0)$, hence
+$$
+\begin{aligned}
+\gamma(0) &= \mathrm{Var}(y_t), & \rho(0) &= 1, \\
+\gamma(k) &= \gamma(-k), & \rho(k) &= \rho(-k), \\
+\gamma(k) &\leqslant |\gamma(0)|, & |\rho(k)| &\leqslant 1.
+\end{aligned}
+$$
+
+we collect all this in a theorem:
+
+## Stationarity
+
+:::{.clean-box}
+**theorem (properties of the ACF):** the autocorrelation function of a stationary stochastic process $\{y_t\}$ is characterized by the following properties:
+
+- $\rho(0) = 1$
+- $0 \leqslant |\rho(h)| \leqslant 1$
+- $\rho(-h) = \rho(h)$
+- $\sum_i \sum_j a_i \rho(t_i - t_j) a_j \geqslant 0$, for all vectors $(a_1, \dots, a_n)^\top$ and time points $(t_1, \dots, t_n)^\top$
+:::
+
+- the first three conditions follow directly from the definitions of the ACVF and ACF
+
+- the last property just rewrites the familiar rule
+$$0 \leqslant \mathrm{Var}(a^\top Y) = \mathrm{Cov}(a^\top Y a) = a^\top \mathrm{Cov}(Y)\, a$$
+and normalizes by the variance. it states that the ACF is a [**nonnegative definite function**]{.alert}
+
+- the theorem also states that any function $\rho$ with those properties is the ACF of a stationary process (which is more difficult to prove)
+
+## Stationarity: MA(1) process
+
+- is the MA(1) process stationary?
+
+:::{.clean-box}
+**recall definition: MA(1).** $\{e_t\}$ i.i.d. with zero mean and variance $\sigma_e^2$, and $y_t := e_t + \theta e_{t-1}$
+:::
+
+- mean: $\mu(t) = E(e_t) + \theta E(e_{t-1}) = 0$ for all $t$, hence constant
+- ACVF, by bilinearity and $\mathrm{Cov}(e_i, e_j) = 0$ for $i \neq j$:
+$$
+\gamma(t, t-k) = \mathrm{Cov}(e_t + \theta e_{t-1},\; e_{t-k} + \theta e_{t-k-1}) = \begin{cases}
+(1 + \theta^2)\sigma_e^2 & k = 0 \\
+\theta \sigma_e^2 & |k| = 1 \\
+0 & |k| > 1
+\end{cases}
+$$
+- the right-hand side depends on $k$ only, not on $t$, so $\gamma(t, t-k) = \gamma(0, k)$
+- no restriction on $\theta$ was used: stationary for every $\theta \in \mathbb R$ $\checkmark$
+
+## Stationarity: random walk
+
+- is the random walk stationary?
+
+:::{.clean-box}
+**recall definition: random walk.** $\{e_t\}$ i.i.d. with zero mean and variance $\sigma_e^2$, and $y_t := \sum_{j=1}^t e_j$, i.e. $y_0 = 0$, $y_t = y_{t-1} + e_t$
+:::
+
+**argument:** check the two conditions of weak stationarity
+
+- mean: $\mu(t) = 0$ for all $t$, hence constant
+- ACVF: $\gamma(t, t) = \mathrm{Var}(y_t) = t\,\sigma_e^2$ grows with $t$, so $\gamma(t, t) = \gamma(0, 0)$ fails ('variance nonstationarity')
+- more generally, $\gamma(t, s) = \min\{t, s\}\,\sigma_e^2$ depends on the time points, not only on the lag $|t - s|$: e.g. $\gamma(1, 2) = \sigma_e^2$ but $\gamma(10, 11) = 10\,\sigma_e^2$
+- differences $\Delta y_t = y_t - y_{t-1} = e_t$ are i.i.d., hence stationary: the random walk is [**difference stationary**]{.alert}, i.e. stationary after a suitable transformation
+- the random walk is not stationary $\checkmark$
+
+## Stationarity: level shift
+
+- is a stationary process with a level shift stationary?
+
+:::{.clean-box}
+**definition: level shift.** $\{y_t\}$ stationary with mean $\mu$ and ACVF $\gamma(k)$, $c \neq 0$ a constant, and
+$$
+x_t := \begin{cases}
+y_t, & t < 2001, \\
+y_t + c, & t \geqslant 2001
+\end{cases}
+$$
+:::
+
+**argument:** check the two conditions of weak stationarity
+
+- mean: $\mu_x(t) = \mu$ for $t < 2001$ and $\mu_x(t) = \mu + c$ for $t \geqslant 2001$
+- ACVF: $c$ is deterministic and drops out, $\mathrm{Cov}(x_t, x_s) = \mathrm{Cov}(y_t, y_s) = \gamma(t - s)$, depends on $t - s$ only
+- only the mean fails: $\{x_t\}$ is not stationary for any $c \neq 0$ $\checkmark$
+
+- in econometrics, this is often called [**structural change**]{.alert} or a structural break
+
+- very few series in economics, business are stationary before transformations
+
+## Stationarity
+
+:::{.clean-box}
+**definition:** a stochastic process is [**strictly stationary**]{.alert} if
+$$(y_{t_1}, \dots, y_{t_n}) \stackrel{d}{=} (y_{t_1 - k}, \dots, y_{t_n - k})$$
+for all choices of time points $(t_1, \dots, t_n) \in \mathbb Z^n$ and all lags $k \in \mathbb Z$
+:::
+
+- reminder: **equal in distribution:** two random vectors $X, Y \in \mathbb R^n$ satisfy $X \stackrel{d}{=} Y$ if they have the same joint distribution.
+
+- a statement about probabilities, not about realizations: $X \stackrel{d}{=} Y$ does not mean $X = Y$
+- strict stationarity: shifting a window of time points by $k$ leaves the distribution unchanged
+
+---
+
+**implications of strict stationarity:**
+
+- for $n = 1$: $y_t$ and $y_{t-k}$ have the same distribution for all $k$. 
+    - in particular, mean function $\mu(t) = \mu(0)$ constant over time and 
+    - variance function $\gamma(t, t) = \gamma(0, 0)$ constant over time
+- for $n = 2$: $\mathrm{Cov}(y_t, y_s) = \mathrm{Cov}(y_{t-k}, y_{s-k})$
+
+**structure**
+
+$$
+\text{strictly stationary}
+\quad
+\begin{array}{c}
+\xrightarrow[\hphantom{\quad \text{if Gaussian} \quad}]{\quad \text{if } E(y_t^2) < \infty \quad} \\[0.6em]
+\xleftarrow[\quad \text{if Gaussian} \quad]{\hphantom{\quad \text{if } E(y_t^2) < \infty \quad}}
+\end{array}
+\quad
+\text{weakly stationary}
+$$
+
+- Gaussian process (all $(y_{t_1}, \dots, y_{t_n})$ multivariate normal): both arrows hold, strict $\Leftrightarrow$ weak
+
+## Stationarity
+
+**example:** (strict vs. weak stationarity)
+
+consider a sequence with independent $y_t$ where
+$$
+y_t := \begin{cases}
+\mathcal N(1, 1) & \text{for } t \text{ even,} \\
+Exp(1) & \text{for } t \text{ odd.}
+\end{cases}
+$$
+
+we can show
+- $E(y_t) = 1$, 
+- $\gamma(0) = 1$, and 
+- $\gamma(h) = 0$ for $h \neq 0$, 
+
+$\Rightarrow$ weakly stationary
+
+yet, clearly, the distributions are different
+
+$\Rightarrow$ not strictly stationary
+
+## Stationarity
+
+:::{.clean-box}
+**definition (white noise):** a stochastic process $\{e_t\}$ is called a [**white noise**]{.alert} if it is 
+
+(i) weakly stationary 
+(ii) with $\mathrm{Cov}(e_t, e_{t-k}) = \gamma(k) = 0$ for all $k \neq 0$.
+:::
+
+**remarks:**
+
+- we typically assume that $\mu(t) = 0$ and write $\{e_t\} \sim WN(0, \sigma_e^2)$
+- if the $e_t$ are even i.i.d., then the process is called strict white noise or sometimes i.i.d. noise (notation: $\{e_t\} \sim iid(0, \sigma_e^2)$). 
+- white noise is the basic building block for other more realistic stochastic processes 
+    - random walk: cumulative sum of white noise
+    - moving averages: weighted sum of current and past white noise
+
+::: {.notes}
+- same object as the white noise of Ch. 1 (constant mean zero, constant variance, uncorrelated), now phrased via stationarity
+:::
+
+## Stationarity: ARCH(1) process
+
+- is the ARCH(1) process a white noise?
+
+:::{.clean-box}
+**definition: ARCH(1).** $\{\varepsilon_t\} \sim iid(0, 1)$ (a [**strict**]{.alert} white noise or iid noise) and
+$$y_t := \sigma_t\, \varepsilon_t, \qquad \sigma_t^2 := \omega + \alpha y_{t-1}^2,$$
+with 
+
+- $\varepsilon_t$ independent of $y_{t-k}$, for $k \geqslant 1$, and
+- $\omega > 0$, $\alpha \geqslant 0$
+:::
+
+**argument:** check the conditions of weak and strict white noise
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**weak white noise:** moments only
+
+- constant mean: $E(y_t) = 0$
+- constant, finite variance: $\mathrm{Var}(y_t) = \sigma^2 < \infty$
+- uncorrelated: $\mathrm{Cov}(y_t, y_{t-k}) = 0$ for $k \neq 0$
+:::
+
+::: {.column width="50%"}
+**strict white noise:** whole distribution
+
+- identically distributed $y_t$
+- independent: $y_t$ independent of $y_{t-1}, y_{t-2}, \dots$
+:::
+
+::::
+
+
+---
+
+weak white noise:
+
+- mean: $E(y_t) = E(\sigma_t)\, E(\varepsilon_t) = 0$
+- covariance, $k \geqslant 1$: $\mathrm{Cov}(y_t, y_{t-k}) = E(\sigma_t\, y_{t-k})\, E(\varepsilon_t) = 0$
+- variance: $E(y_t^2) = E(\sigma_t^2)\, E(\varepsilon_t^2) = \omega + \alpha E(y_{t-1}^2)$, constant variance solves $v = \omega + \alpha v$, so $\mathrm{Var}(y_t) = \omega / (1 - \alpha)$ (only valid for $\alpha < 1$)
+- $\{y_t\}$ is a weak white noise $\checkmark$
+
+strict white noise:
+
+- not independent (for $\alpha > 0$): the conditional variance $\sigma_t^2 = \omega + \alpha y_{t-1}^2$ of $y_t$ depends on $y_{t-1}$
+
+- $\{y_t\}$ is not strict white noise $\checkmark$
+
+# Keywords
+
+## Keywords
+
+- stochastic process
+- mean function
+- autocovariance and autocorrelation (functions)
+- random walk
+- MA(1) process
+- stationarity, strict and weak
+- white noise
+
+# Further reading
+
+## Further reading
+
+- Brockwell and Davis (2016), Ch. 1 and Ch. 2.1–2.2
+- Chan (2010), Ch. 2
+- Cryer and Chan (2008), Ch. 2, incl. Appendix A (review expectations etc.)
+- Neusser and Wagner (2022), Ch. 1
+- Neusser (2016), Ch. 1
