@@ -304,7 +304,10 @@ the turn. Both calls use the course model.
 | `scripts/make_qr.py` | IID-MULTI-DEPLOY | Generates QR codes for every deployed instance into `qr/` (PNG + SVG). QR codes live **only** in `qr/`, never in `public/` (Chainlit static assets, deployed) |
 | `scripts/archive_sheet.py` | IID-SHEETS-LOG | Downloads Sheet → `exports/sheets_backup_<date>.csv`, then clears it |
 | `scripts/archive_sheet.bat` | IID-SHEETS-LOG | Windows Task Scheduler wrapper for the archive script |
-| `scripts/render_chats.py` | IID-CHAT-VIEW | Reads all `exports/*.csv` backups → `exports/chats.html` self-contained viewer |
+| `scripts/render_chats.py` | IID-CHAT-VIEW | Reads all `exports/*.csv` backups → `exports/chats.html` self-contained viewer (`--input`/`--output` for a subset) |
+| `scripts/weekly_report.py` | IID-WEEKLY-REPORT | Wednesday Timeseries report: archive Sheet → chats.html + agent inputs → headless Claude agent → Gmail |
+| `scripts/weekly_report.bat` | IID-WEEKLY-REPORT | Task Scheduler wrapper, logs to `exports/timeseries/weekly_log.txt` |
+| `.claude/skills/weekly-report/SKILL.md` | IID-WEEKLY-REPORT | The agent's instructions: report sections, what counts as a bad answer. Edit this to change the report |
 | `exports/` | IID-SHEETS-LOG | Gitignored folder for weekly CSV backups of Google Sheet |
 | `intentions.md` | — | All IIDs and their lifecycle status |
 | `standards.md` | — | All SIDs (cross-cutting standards) |
@@ -331,6 +334,47 @@ Output is appended to `exports/archive_log.txt`. To check or remove the task:
 ```bat
 schtasks /query /tn "teachbot-archive"
 schtasks /delete /tn "teachbot-archive" /f
+```
+`archive_sheet.py --config config_<x>.yaml --out-dir <dir>` archives another instance's Sheet;
+`--keep` downloads without clearing. Rows are only removed after the CSV is verified, and if
+students wrote during the download only the archived rows are deleted.
+
+## Weekly Timeseries report (IID-WEEKLY-REPORT)
+
+Every Wednesday (or at the next PC start, if missed) a mail to `GMAIL_USER` reports on the
+week's `teachbot-timeseries` chats: stats, tool problems, worst AI answers (checked against
+`content_timeseries/`), a verdict on every student flag, what students focused on and
+struggled with, suggestions — plus all flags verbatim and `chats.html` attached.
+
+- **Pipeline** (`scripts/weekly_report.py`): archive + clear the "Lectos Timeseries logs" Sheet →
+  `exports/timeseries/week_<date>/` with `chats.html`, `transcripts.md`, `flags.md`, `stats.json` →
+  `claude -p` (Opus) follows `.claude/skills/weekly-report/SKILL.md` and writes `report_body.html`
+  (read-only on the repo, may write only into the week folder, no shell, `.env`/`credentials/` denied)
+  → Gmail SMTP. If the agent fails, the mail still goes out with stats + flags, subject "[analysis failed]".
+- **Once per ISO week**, resumable: `exports/timeseries/state.json` records the stage
+  (archived/prepared/analysed/sent); a crashed run continues without downloading again.
+- **Secrets** in `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Google app password; spaces are fine),
+  optional `REPORT_TO`. The agent uses the Claude Code login of the Windows user, so the task must
+  run as that user.
+- **Who counts as student:** e-mails in `auth.allowed_domains` of `config_timeseries.yaml`; others are
+  marked NON-STUDENT and excluded from the focus/struggle analysis.
+
+```bash
+python scripts/weekly_report.py                    # normal run (skips if this week is done)
+python scripts/weekly_report.py --force            # run again this week (downloads what is new)
+python scripts/weekly_report.py --keep --skip-agent --no-send   # dry run: no clearing, no agent, no mail
+python scripts/weekly_report.py --week-dir exports/timeseries/week_2026-09-26 --no-send   # redo the analysis
+```
+
+**Task Scheduler** (Wednesdays 07:00; if missed, starts as soon as the PC is on):
+```powershell
+$a = New-ScheduledTaskAction -Execute "C:\Users\Schmidt\Dropbox\R packages\teachbot\scripts\weekly_report.bat"
+$t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Wednesday -At 7am
+$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Hours 1)
+Register-ScheduledTask -TaskName "lectos-timeseries-weekly" -Action $a -Trigger $t -Settings $s
+# check / remove
+Get-ScheduledTask lectos-timeseries-weekly | Get-ScheduledTaskInfo
+Unregister-ScheduledTask lectos-timeseries-weekly -Confirm:$false
 ```
 
 ## Authentication (IID-AUTH-BASIC)

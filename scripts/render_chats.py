@@ -5,8 +5,10 @@ HTML viewer: exports/chats.html
 
 Usage:
     python scripts/render_chats.py
+    python scripts/render_chats.py --input exports/timeseries/x.csv --output week/chats.html  # IID-WEEKLY-REPORT
 """
 
+import argparse
 import csv
 import json
 import pathlib
@@ -73,8 +75,9 @@ def normalize_row(row):
     return row  # unknown – pass through as-is
 
 
-def load_sessions():
-    csv_files = sorted(EXPORTS_DIR.glob("sheets_backup_*.csv"))
+def load_sessions(csv_files=None):
+    if csv_files is None:
+        csv_files = sorted(EXPORTS_DIR.glob("sheets_backup_*.csv"))
     if not csv_files:
         return []
 
@@ -487,18 +490,29 @@ buildSessionList();
 """
 
 
-def main():
-    session_list = load_sessions()
+def render(csv_files=None, out_file=OUT_FILE):
+    """Write the viewer for the given CSV backups (default: all in exports/). Returns #sessions."""
+    session_list = load_sessions(csv_files)
     if not session_list:
-        print("No sheets_backup_*.csv files found in", EXPORTS_DIR)
-        return
+        print("No sheets_backup_*.csv rows found in", csv_files or EXPORTS_DIR)
+        return 0
 
     data = build_session_data(session_list)
     sessions_json = json.dumps(data, ensure_ascii=False, indent=2)
 
     html = HTML_TEMPLATE.format(sessions_json=sessions_json)
-    OUT_FILE.write_text(html, encoding="utf-8")
-    print(f"Wrote {OUT_FILE} ({len(data)} sessions)")
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    out_file.write_text(html, encoding="utf-8")
+    print(f"Wrote {out_file} ({len(data)} sessions)")
+    return len(data)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", type=pathlib.Path, nargs="+", help="CSV backup(s) (default: exports/sheets_backup_*.csv)")
+    parser.add_argument("--output", type=pathlib.Path, default=OUT_FILE, help="HTML file (default: exports/chats.html)")
+    args = parser.parse_args()
+    render(args.input, args.output)
 
 
 if __name__ == "__main__":

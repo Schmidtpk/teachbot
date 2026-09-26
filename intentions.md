@@ -332,6 +332,20 @@ and benefits automatically).
 **Key files:** `scripts/render_chats.py`
 **CLI:** `python scripts/render_chats.py` → `exports/chats.html`
 **No-Goals:** Live/real-time view, server-side hosting, search across sessions.
+`render_chats.py --input <csv…> --output <html>` renders a subset (used by IID-WEEKLY-REPORT).
+
+### IID-WEEKLY-REPORT
+**Lifecycle:** DONE (Timeseries instance)
+**Description:** Every Wednesday the lecturer receives an e-mail report on the week's Timeseries chats. Windows Task Scheduler runs `scripts/weekly_report.bat` (missed runs start as soon as the PC is on; at most once per ISO week, resumable via `exports/timeseries/state.json`). Pipeline: (1) download the "Lectos Timeseries logs" Sheet to CSV and clear it — only after the CSV is verified, and only the archived rows if students wrote meanwhile (IID-SHEETS-LOG); (2) render `chats.html` (IID-CHAT-VIEW) and write agent inputs `transcripts.md` (sessions S01…, flags F1…, full names derived from the e-mail), `flags.md`, `stats.json`; (3) a headless Claude Code agent (`claude -p`, Opus; read-only on the repo, may write only into the week folder, no shell) follows `.claude/skills/weekly-report/SKILL.md`, checks doubtful answers against `content_timeseries/`, and writes `report_body.html` with the sections summary, tool problems, worst AI answers, flag verdicts, what students focused on, what they struggled with, suggestions; (4) Gmail SMTP sends stats + agent report + all student flags verbatim (deterministic, IID-STUDENT-FEEDBACK-STORE), with `chats.html` attached.
+**Success criteria:**
+- Flags and counts reach the lecturer even when the agent fails (mail subject then says "[analysis failed]").
+- Worst answers are verified against the lecture material, quoted, and located (file + section); none are invented to fill the list.
+- The report prompt is editable as a skill file and runnable by hand (`/weekly-report`).
+**Inputs:** `config_timeseries.yaml` (`sheets_log_id`, `auth.allowed_domains` = who counts as student); `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, optional `REPORT_TO`.
+**Outputs:** `exports/timeseries/week_<date>/` (CSV, chats.html, agent inputs, report.html, agent_log.json); log `exports/timeseries/weekly_log.txt`.
+**Key files:** `scripts/weekly_report.py`, `scripts/weekly_report.bat`, `.claude/skills/weekly-report/SKILL.md`
+**Standards:** SID-PRIVACY-DATA (all outputs under gitignored `exports/`)
+**No-Goals:** Cloud scheduling, reports for the other instances (CANDO: parametrise the config), pseudonymisation (lecturer asked for full names).
 
 ### IID-EDUCATOR-CONFIG
 **Lifecycle:** v1
