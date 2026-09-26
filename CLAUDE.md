@@ -356,8 +356,9 @@ struggled with, suggestions — plus all flags verbatim and `chats.html` attache
 - **Secrets** in `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Google app password; spaces are fine),
   optional `REPORT_TO`. The agent uses the Claude Code login of the Windows user, so the task must
   run as that user.
-- **Who counts as student:** e-mails in `auth.allowed_domains` of `config_timeseries.yaml`; others are
-  marked NON-STUDENT and excluded from the focus/struggle analysis.
+- **Who counts as student:** e-mails in `auth.allowed_domains` of `config_timeseries.yaml`, minus
+  `weekly_report.non_student_emails` (the lecturer's test account `me@stud.unibas.ch`); others are
+  marked NON-STUDENT and excluded from student counts and the focus/struggle analysis.
 
 ```bash
 python scripts/weekly_report.py                    # normal run (skips if this week is done)

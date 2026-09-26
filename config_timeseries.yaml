@@ -18,6 +18,12 @@ auth:
     - stud.unibas.ch
   allowed_emails: []
 
+# IID-WEEKLY-REPORT: accounts inside allowed_domains that are not students (lecturer tests).
+# Marked NON-STUDENT in the weekly report and left out of student counts, focus and struggles.
+weekly_report:
+  non_student_emails:
+    - me@stud.unibas.ch
+
 # LLM settings — SID-LLM-PROVIDER
 # This service has its own OPENROUTER_API_KEY (Railway variable), separate budget.
 llm:

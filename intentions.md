@@ -341,7 +341,7 @@ and benefits automatically).
 - Flags and counts reach the lecturer even when the agent fails (mail subject then says "[analysis failed]").
 - Worst answers are verified against the lecture material, quoted, and located (file + section); none are invented to fill the list.
 - The report prompt is editable as a skill file and runnable by hand (`/weekly-report`).
-**Inputs:** `config_timeseries.yaml` (`sheets_log_id`, `auth.allowed_domains` = who counts as student); `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, optional `REPORT_TO`.
+**Inputs:** `config_timeseries.yaml` (`sheets_log_id`, `auth.allowed_domains` minus `weekly_report.non_student_emails` = who counts as student); `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, optional `REPORT_TO`.
 **Outputs:** `exports/timeseries/week_<date>/` (CSV, chats.html, agent inputs, report.html, agent_log.json); log `exports/timeseries/weekly_log.txt`.
 **Key files:** `scripts/weekly_report.py`, `scripts/weekly_report.bat`, `.claude/skills/weekly-report/SKILL.md`
 **Standards:** SID-PRIVACY-DATA (all outputs under gitignored `exports/`)
