@@ -341,7 +341,7 @@ students wrote during the download only the archived rows are deleted.
 
 ## Weekly Timeseries report (IID-WEEKLY-REPORT)
 
-Every Wednesday (or at the next PC start, if missed) a mail to `GMAIL_USER` reports on the
+Every Wednesday (or at the next PC start, if missed) a mail to `REPORT_TO` reports on the
 week's `teachbot-timeseries` chats: stats, tool problems, worst AI answers (checked against
 `content_timeseries/`), a verdict on every student flag, what students focused on and
 struggled with, suggestions — plus all flags verbatim and `chats.html` attached.
@@ -353,8 +353,8 @@ struggled with, suggestions — plus all flags verbatim and `chats.html` attache
   → Gmail SMTP. If the agent fails, the mail still goes out with stats + flags, subject "[analysis failed]".
 - **Once per ISO week**, resumable: `exports/timeseries/state.json` records the stage
   (archived/prepared/analysed/sent); a crashed run continues without downloading again.
-- **Secrets** in `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD` (Google app password; spaces are fine),
-  optional `REPORT_TO`. The agent uses the Claude Code login of the Windows user, so the task must
+- **Secrets** in `.env`: `GMAIL_USER` (sending account, a separate Gmail), `GMAIL_APP_PASSWORD`
+  (its app password; spaces are fine), `REPORT_TO` (recipient; default `GMAIL_USER`). The agent uses the Claude Code login of the Windows user, so the task must
   run as that user.
 - **Who counts as student:** e-mails in `auth.allowed_domains` of `config_timeseries.yaml`, minus
   `weekly_report.non_student_emails` (the lecturer's test account `me@stud.unibas.ch`); others are
