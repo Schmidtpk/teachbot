@@ -574,7 +574,7 @@ template students fill in, coding exercise 1, the lecturer's reference solution,
 via `extra_content`. Own `_system_prompt.md`: short concise explanations for questions; for solving, the
 tutor states it cannot run code or see output, gives **one** small code step at a time, asks the student
 to run it and describe what they see, and only then continues. It never quotes or reveals the solution,
-and asks for the student's object names instead of guessing. Visible until the due date (`last_date`).
+and asks for the student's object names instead of guessing.
 **Source files:** copied from `junctions/lecture_timeseries/` (gitignored junction to
 `Dropbox/teaching/lecture_timeseries`); re-copy after editing the originals.
 **Solution secrecy:** the GitHub repo is public, so `*_solution.qmd` under `content_timeseries/` is

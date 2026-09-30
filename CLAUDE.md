@@ -67,7 +67,7 @@ Plan/documentation should be intention-first:
   Analysis" (domain `stud.unibas.ch`, model `deepseek/deepseek-v4-flash-0731`, own OpenRouter key,
   own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has two courses
   (IID-MULTI-COURSE): `lecture/` (slides + script Q&A) and `assignment1/` (Assignment 1 &
-  Exercise 1 helper, IID-ASSIGNMENT-HELP, visible until 2026-10-09). Source files come from
+  Exercise 1 helper, IID-ASSIGNMENT-HELP). Source files come from
   `junctions/lecture_timeseries/` (gitignored junction to `Dropbox/teaching/lecture_timeseries`)
   and are copied in. **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
   service with `railway up --service teachbot-timeseries --no-gitignore --detach`, which
