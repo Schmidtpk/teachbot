@@ -1,0 +1,375 @@
+---
+title: "Exploratory Data Analysis and Visualization"
+subtitle: "Univariate Time Series Analysis, coding exercise. HS 2026, University of Basel, based on material by Christian Kleiber and Kevin Huynh"
+author: "Patrick Schmidt (University of Heidelberg)"
+format:
+  html:
+    embed-resources: true
+    toc: true
+    number-sections: true
+execute:
+  warning: false
+  message: false
+solutions: false
+---
+
+# Data
+
+## Import and `ts` objects
+
+- R reads many (binary) formats, especially with the help of packages such as `haven` (Wickham, Miller, and Smith 2025)
+- here: import from a `.csv` file
+- working example: monthly number of air passengers at EuroAirport Basel (BSL), 2009–2019, in `airPassengersBSL.csv` ([source](https://www.bfs.admin.ch/bfs/de/home/statistiken/mobilitaet-verkehr/querschnittsthemen/zivilluftfahrt/linien-charterverkehr.assetdetail.14067609.html))
+- a regular time series (monthly frequency, no missing values), so we store it as a `ts` object
+
+```{r}
+# read raw data
+raw <- read.table("airPassengersBSL.csv", sep = ",", header = TRUE)
+head(raw) # inspect
+```
+
+```{r}
+# convert to ts object: starts in January 2009 with monthly frequency (12)
+# no need to specify end, R will figure it out.
+ap <- ts(raw[, "BSL_total"], start = c(2009, 1), frequency = 12)
+```
+
+- check that `ap` is a `ts` object with `str()` or `class()`
+- `ts` objects are essentially vectors labelled with time information ('time stamps')
+- they come with specialized methods for time series, e.g. for inspecting and plotting
+
+```{r}
+str(ap)
+class(ap)
+```
+
+```{r}
+# basic info
+tsp(ap)
+start(ap)
+end(ap)
+frequency(ap)
+```
+
+time stamps (output not shown):
+
+```{r}
+#| eval: false
+time(ap)
+```
+
+## First look and log transformation
+
+a simple plot for a first impression:
+
+```{r}
+plot(ap)
+```
+
+<!-- figure: time series plot of monthly air passengers at Basel airport, 2009 to 2019, y axis about 220,000 to 950,000. Clear upward trend, strong seasonal pattern with summer peaks and winter troughs, and seasonal swings that grow with the level. -->
+
+the basic time series plot already shows:
+
+- upward trend
+- seasonal pattern: more passengers in summer (holidays)
+- growing 'fluctuations': the seasonal ups and downs get more extreme over time
+
+the last point is addressed by a log transformation:
+
+- commonly used to linearize exponentially growing data (e.g. stock indices)
+- often makes the series (more) homoskedastic
+- alternative: plot the data on a log scale
+- from here on we only work with the log-transformed data
+
+```{r}
+# plot on log scale
+plot(ap, log = "y")
+```
+
+<!-- figure: same series as before on a logarithmic y axis. The seasonal swings now have roughly constant size over time, trend roughly linear. -->
+
+```{r}
+# log-transformation
+logap <- log(ap)
+plot(logap)
+```
+
+<!-- figure: log passengers 2009 to 2019, y axis about 12.3 to 13.8. Linear upward trend with a stable seasonal pattern of constant amplitude; a sharp dip in spring 2010. -->
+
+## Seasonality plots
+
+naive separation of trend and season:
+
+- sum the values of all months in each year with `aggregate()` (drops unfinished years)
+- month-wise boxplots for a first grasp of the seasonality
+
+```{r}
+# plot trend
+plot(aggregate(logap), ylab = "log(ap)")
+```
+
+<!-- figure: annual sums of log passengers, 2009 to 2019, a steadily increasing almost straight line. -->
+
+```{r}
+# boxplot for each month
+boxplot(logap ~ cycle(logap), ylab = "log(ap)", xlab = "Month")
+```
+
+<!-- figure: boxplots of log passengers by month 1 to 12. Lowest in January and February, rising through spring to a maximum in July and August, falling in autumn, low again in November with a small increase in December. -->
+
+the package `forecast` (Hyndman et al. 2025) has handy plotting functions that visualize the seasonality better:
+
+```{r}
+library("forecast")
+# plots values for each year separately, highlights seasonality
+seasonplot(logap, col = 1:12, year.labels = TRUE)
+```
+
+<!-- figure: seasonal plot, one coloured line per year 2009 to 2019 across the months Jan to Dec, labelled with the year. All lines share the same summer hump; later years lie higher. -->
+
+- more air passengers in summer, likely due to the summer holidays
+- a small increase in December, probably Christmas vacation
+- the upward trend: in the `seasonplot` the curves shift upwards every year
+
+# Decomposition
+
+- starting point: a time series is made up of unobserved components
+- **classical decomposition model**: additive decomposition into (smooth) trend $T_t$, seasonal/cyclical pattern $S_t$ and random/irregular component $E_t$,
+$$
+y_t = T_t + S_t + E_t.
+$$
+- three methods to deal with trends and seasonality:
+  1. linear filters
+  2. differencing
+  3. regression modelling
+
+## Method 1: linear filters
+
+**definition:** a **one-sided linear filter** with weights $a_0, \dots, a_{m-1}$ and $\sum_j a_j = 1$ maps a series $\{y_t\}$ to the series
+$$
+\tilde y_t := \sum_{j=0}^{m-1} a_j\, y_{t-j}.
+$$
+
+- a weighted average of the current and the $m - 1$ previous values: it smooths the series (also called smoothing)
+- example: the **simple moving average of length $m$**, $a_j = 1/m$:
+$$
+\tilde y_t = \frac{1}{m} \sum_{j=0}^{m-1} y_{t-j}
+$$
+- in R: `filter(y, a, sides = 1)`
+
+**decomposition with filters:** let $s$ be the number of observations per season (here $s = 12$, monthly data). the components $T_t$, $S_t$ and $E_t$ are estimated in four steps.
+
+### Step 1: estimate the trend $T_t$
+
+- simple moving average over the past $s = 12$ months:
+$$
+\tilde y_t = \frac{1}{12}\big(y_t + y_{t-1} + \dots + y_{t-11}\big)
+$$
+- **removes the season**: the window covers each month exactly once, so for $S_t = S_{t+12}$ the filtered seasonal part is $\tilde S_t = \frac{1}{12} \sum_{j=1}^{12} S_j$, the same constant for every $t$ (zero if the seasonal effects sum to zero)
+- **lags behind the trend**: the average is centred at $t - 5.5$, not at $t$, so the estimate trails the trend by about half a year 
+- 'end effects': the first 11 months have no full window and are missing
+
+```{r}
+# filter weights: average of the current and the previous 11 months
+ma12 <- rep(1, 12)/12
+
+# apply one-sided filter
+logap_filtered <- filter(logap, ma12, sides = 1)
+plot(logap_filtered, ylab = "Trend")
+```
+
+<!-- figure: trend from the one-sided 12-month average, December 2009 to December 2019 (the first 11 months missing), rising from about 12.65 to 13.5; steep in 2010-2011, flatter around 2016. -->
+
+### Step 2: compute the detrended series $y_t - \hat{T}_t$
+
+```{r}
+logap_detrend <- logap - logap_filtered
+plot(logap_detrend, ylab = "Detrended series")
+```
+
+<!-- figure: detrended log passengers, December 2009 to December 2019, oscillating between about -0.36 and 0.34 with a regular yearly seasonal pattern (summer peaks, winter troughs); the oscillation is centred slightly above zero because the lagging trend leaves a positive offset. -->
+
+### Step 3: estimate the seasonal pattern $\hat{S}_t$
+
+average over common periods: all detrended January observations, all detrended February observations, etc.
+
+```{r}
+# create vector to select January, February etc. of all years
+mvec <- cycle(ap) # cycle() shows season of each observation
+print(mvec)
+```
+
+```{r}
+# take monthly average with tapply
+mmeans <- tapply(logap_detrend, mvec, FUN = mean, na.rm = TRUE)
+
+# repeat one season over all years
+freq <- frequency(ap)
+st <- ts(mmeans[cycle(ap)], start = start(ap), frequency = freq)
+plot(st, ylab = "Season")
+```
+
+<!-- figure: estimated seasonal component, the same 12-month pattern repeated every year 2009 to 2019, from about -0.30 in January to about 0.28 in July (monthly means not centred, so the pattern sits about 0.04 above zero). -->
+
+### Step 4: obtain the remainder $\hat{E}_t$
+
+remainder $\hat{E}_t = y_t - \hat{T}_t - \hat{S}_t$:
+
+```{r}
+et <- logap - logap_filtered - st
+plot(et, ylab = "Remainder")
+```
+
+<!-- figure: remainder of the one-sided filter decomposition, December 2009 to December 2019, mostly within +-0.06, with a dip to about -0.2 in April 2010, a run of positive values up to about 0.17 through late 2010 and early 2011 (the lagging trend misses the fast growth), then fluctuating around zero with short runs. -->
+
+## Method 2: differencing
+
+- sometimes we just want to remove simple forms of trend and/or season
+- ordinary and seasonal differencing operators:
+$$
+\Delta y_t = y_t - y_{t-1} \qquad \text{and} \qquad \Delta_S y_t = y_t - y_{t-S}
+$$
+
+illustration, compare:
+
+```{r}
+#| layout-ncol: 2
+plot(logap)
+plot(diff(logap))
+plot(diff(logap, 12))
+plot(diff(diff(logap), 12))
+```
+
+<!-- figure: four panels. (1) log passengers with trend and seasonality. (2) first differences: no trend, fluctuating around zero between about -0.3 and 0.2 with a strong regular seasonal pattern. (3) seasonal differences (lag 12): no seasonal pattern, positive level around 0.05-0.1 with long slow swings away from the mean and a dip in 2010. (4) first and seasonal differences: noise around zero without trend or season, largest values around 2010-2011. -->
+
+- first differences remove the trend: `diff(logap)` may be mean stationary
+- seasonal differences `diff(logap, 12)` remove the seasonal pattern, but the series is still strongly autocorrelated (long paths away from the mean)
+- first and seasonal differences combined seem, a priori, the best series for ARMA modelling: no seasonal pattern, and no long paths away from the mean
+
+## Method 3: regression
+
+estimate $T_t$ and $S_t$ by least squares in a (non)linear regression model.
+
+linear trend plus monthly dummies for the airline data:
+$$
+\log(ap)_t = \beta_1 + \beta_2 \cdot \tilde t + \beta_3 \cdot I_\mathsf{Feb}(t) + \dots + E_t,
+$$
+where $\tilde{t} = 2009 + (t-1)/12$ is time in years.
+
+for (linear) time series regression, `dynlm()` (Zeileis 2019) is more convenient than `lm()`:
+
+- time series properties are retained, e.g. in residuals
+- formulas can use functions such as `season()` for seasonal dummies
+- also `d()` (differences) and `L()` (lags), details later
+
+```{r}
+library("dynlm")
+logap_lm <- dynlm(logap ~ time(logap) + season(logap))
+summary(logap_lm)
+```
+
+problem of the regression approach: it assumes a simple, stable ('global') trend and/or seasonal pattern, which is not always realistic
+
+# Comparing filtering and regression
+
+```{r}
+col_fil <- "#C8254E"
+col_lm <- "#3F5BD8"
+
+# trend: one-sided filter vs. fitted linear trend from dynlm()
+# (January is the baseline month, so add the average seasonal level)
+season_raw <- c(0, coef(logap_lm)[-(1:2)])
+trend_lm <- coef(logap_lm)[1] + mean(season_raw) + coef(logap_lm)[2] * time(logap)
+plot(logap, ylab = "log(ap)", main = "Trend")
+lines(logap_filtered, col = col_fil, lwd = 2)
+lines(trend_lm, col = col_lm, lwd = 2)
+legend("topleft", c("filter", "dynlm"), col = c(col_fil, col_lm), lwd = 2, bty = "n")
+```
+
+<!-- figure: 'Trend'. log passengers 2009 to 2019 (black, seasonal) with two trend estimates: the one-sided filter trend (red, December 2009 to December 2019) and the dynlm linear trend (blue, straight line from about 12.65 to 13.6). The red curve starts well below the line in 2010, meets it around 2012-2016, and runs below it again from 2017, ending about 0.08 lower in 2019. -->
+
+- the filter trend lags: it starts only in December 2009 and runs below the regression line where passenger numbers grow fast (2010-2011, 2017-2019), by about half a year of growth
+
+```{r}
+# season: monthly means vs. dummy coefficients, both centred to mean zero
+season_fil <- mmeans - mean(mmeans)
+season_lm <- season_raw - mean(season_raw)
+barplot(rbind(season_fil, season_lm), beside = TRUE,
+  names.arg = month.abb, main = "Season",
+  col = adjustcolor(c(col_fil, col_lm), alpha.f = 0.5),
+  legend.text = c("filter", "dynlm"), args.legend = list(x = "topleft", bty = "n"))
+```
+
+<!-- figure: 'Season'. paired bar chart Jan to Dec of the seasonal effects, filter monthly means (red) and dynlm dummies (blue), both centred to mean zero. Pairs almost identical: about -0.34 Jan, -0.27 Feb, -0.09 Mar, 0.05 Apr, 0.12 May, 0.14 Jun, 0.24 Jul, 0.23 Aug, 0.16 Sep, 0.15 Oct, -0.21 Nov, -0.18 Dec. -->
+
+- the estimated seasonal 'effects' are very similar: the lag of the trend only shifts all monthly means by the same constant, which the centring removes
+
+```{r}
+# remainder: filter decomposition vs. dynlm() residuals
+plot(residuals(logap_lm), col = col_lm, lwd = 2, ylab = "", main = "Error")
+lines(et, col = col_fil, lwd = 2)
+abline(h = 0)
+legend("topleft", c("filter", "dynlm"), col = c(col_fil, col_lm), lwd = 2, bty = "n")
+```
+
+<!-- figure: 'Error'. remainders 2009 to 2019: dynlm residuals (blue, full sample) and the filter remainder (red, from December 2009), both mostly within +-0.1, with a deep dip in April 2010 (dynlm about -0.29, filter about -0.2). The filter remainder is high in late 2010 and early 2011, the dynlm residuals are high in 2011-2012 and 2014-2015; from 2016 on the two lines nearly coincide. -->
+
+- the remainders are similar from 2016 on; earlier each method leaves its own slow swings: the filter remainder is high in 2010-2011, when growth was fastest and the lagging trend fell behind
+- the filter remainder is shorter: the one-sided filter loses the first 11 observations ('end effects')
+
+**remark:**
+
+- the air passenger data are well described by a stable linear trend and stable additive seasonality (in logs)
+- then linear regression is typically more efficient. (why? OLS is BLUE!)
+
+# Residual analysis
+
+**definition:** the **sample autocorrelation function (ACF)** of a series $\{y_t\}$ at lag $k$ is
+$$
+\hat \rho (k) := \frac{\sum_{t = k + 1}^n (y_t - \bar y) (y_{t-k} - \bar y)}{\sum_{t = 1}^n (y_t - \bar y)^2}.
+$$
+
+- R plots $\hat \rho (0)$ although $\hat \rho (0)=1$ always
+- by default $\texttt{lag.max} = 10\cdot \log_{10}(n)$ (can be changed)
+- plots of $\hat{\rho}(k)$ against $k$ are also called **correlograms**
+- the blue dashed lines are pointwise 95% confidence intervals under certain technical assumptions (more on that later)
+
+ideally the remainder of a decomposition resembles a white noise process, i.e. zero ACF at all lags. we check this for all three methods.
+
+remainder of the filter decomposition (method 1); `na.pass` because the filter leaves the first 11 values missing:
+
+```{r}
+acf(et, na.action = na.pass)
+```
+
+<!-- figure: correlogram of the filter remainder et, lags 0 to about 1.75 years, blue dashed bands at about +-0.18. Clear positive autocorrelation at short lags: about 0.44 at lags 1 and 2 months, about 0.3 at lags 3 and 4, then near zero; small negative values afterwards, one just beyond the band at lag 9 months (about -0.23). -->
+
+first and seasonally differenced series (method 2):
+
+```{r}
+acf(diff(diff(log(ap)), 12))
+```
+
+<!-- figure: correlogram of the first and seasonally differenced log series, lags 0 to about 1.7 years, blue dashed bands at about +-0.18. Clear negative spike at lag 1 month, a few further spikes at or near the bands, including one at lag 1 year. -->
+
+regression residuals (method 3):
+
+```{r}
+acf(residuals(logap_lm))
+```
+
+<!-- figure: correlogram of the dynlm residuals, lags 0 to about 1.7 years. Large positive autocorrelations that decay slowly (about 0.6 at lag 1 month), far outside the blue bands for many lags. -->
+
+**remarks:**
+
+- the regression residuals are strongly autocorrelated: further modelling needed. but how do we model dependence? ARMA models are an option
+- the filter remainder is autocorrelated too, but only at short lags (about 0.44 at lags 1 and 2, gone after 4 months): the lagging trend leaves part of the trend's movement in the remainder
+- the OLS output assumes uncorrelated errors, hence we cannot trust the SEs, $t$-statistics and $p$-values here!
+
+
+
+# Software references {.unnumbered}
+
+- Hyndman, Rob, George Athanasopoulos, Christoph Bergmeir, Gabriel Caceres, Leanne Chhay, Mitchell O'Hara-Wild, Fotios Petropoulos, Slava Razbash, Earo Wang, and Farah Yasmeen. 2025. forecast: Forecasting Functions for Time Series and Linear Models. <https://pkg.robjhyndman.com/forecast/>.
+- Wickham, Hadley, Evan Miller, and Danny Smith. 2025. Haven: Import and Export 'SPSS', 'Stata' and 'SAS' Files. <https://CRAN.R-project.org/package=haven>.
+- Zeileis, Achim. 2019. dynlm: Dynamic Linear Regression. <https://CRAN.R-project.org/package=dynlm>.

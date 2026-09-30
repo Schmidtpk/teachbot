@@ -1,0 +1,4 @@
+# IID-MULTI-COURSE: plain lecture Q&A (IID-QNA-CORE); uses root _system_prompt.md / _welcome.md
+lecture_name: "Q&A: Lecture"
+order: 1
+description: "Ask questions about the lecture slides and script."

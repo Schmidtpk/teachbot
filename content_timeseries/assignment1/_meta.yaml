@@ -1,0 +1,9 @@
+# IID-MULTI-COURSE, IID-ASSIGNMENT-HELP: helper for Assignment 1 and coding exercise 1.
+# assignment1_solution.qmd is gitignored (public repo) — see .railwayignore for how it is deployed.
+lecture_name: "Assignment 1 & Exercise 1 helper"
+order: 2
+description: "Help with **coding exercise 1** (exploratory analysis) and **Assignment 1** (Starbucks sales), one step at a time. Due Friday, 9 October 2026."
+last_date: 2026-10-09
+extra_content:            # lecture notes, so concept questions can be answered from the script
+  - lecture/script_01-utsa-intro.qmd
+  - lecture/script_02-utsa-fundamentals.qmd

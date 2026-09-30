@@ -1,0 +1,104 @@
+---
+title: "Univariate Time Series Analysis: Assignment 1"
+subtitle: "HS 2026, University of Basel"
+author:
+  - "First Name Last Name (team member 1)"
+  - "First Name Last Name (team member 2)"
+  - "First Name Last Name (team member 3)"
+date: today
+format:
+  html:
+    embed-resources: true
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+<!--
+template for your submission. replace the names above (up to three team members),
+fill in the code chunks and write your answers in full sentences below each question.
+this file must render without errors when it sits in the same folder as
+StarbucksSales.csv. load every package you use in the first chunk.
+-->
+
+```{r}
+# packages
+
+
+# data (relative path, file next to this .qmd)
+starbucks <- read.csv("StarbucksSales.csv", sep = ";")
+```
+
+# Problem 1 (preprocessing and data analysis)
+
+> we analyse the quarterly sales of Starbucks Corporation (in million USD) from January 1995 to December 2018. the data `StarbucksSales.csv` are on OLAT; the file runs to December 2024, use only the observations up to December 2018. provide your R code, present your results clearly and justify your answers where required.
+
+## (a)
+
+> load the data set and plot the time series from January 1995 to December 2018. make sure the plot is clear. make three observations from the graph.
+
+```{r}
+
+```
+
+**Observations:**
+
+1. ...
+2. ...
+3. ...
+
+## (b)
+
+> find the two highest sales values and give the corresponding year and quarter.
+
+```{r}
+
+```
+
+**Answer:** ...
+
+## (c)
+
+> consider the regression model with a linear trend
+> $$
+> \mathit{Sales}_t = \beta_0 + \beta_1 \cdot t + \epsilon_t.
+> $$
+> estimate the model by ordinary least squares, present the results, and add the estimated trend to the graph from (a).
+
+```{r}
+
+```
+
+**Answer:** ...
+
+## (d)
+
+> use `predict()` to compute the predicted values for the four quarters of 2019.
+
+```{r}
+
+```
+
+**Answer:** ...
+
+## (e)
+
+> we now apply the classical decomposition of a time series with linear filters. all steps must be computed manually, i.e. R functions such as `decompose()` are not allowed. first, estimate the trend $T_t$ with the one-sided simple moving average over the past four quarters, $T_t := \frac{1}{4} \sum_{j=0}^{3} \mathit{Sales}_{t-j}$, and plot $T_t$.
+
+```{r}
+
+```
+
+**Answer:** ...
+
+## (f)
+
+> building on (e), estimate the seasonal component $S_t$ and the remainder $E_t$ and plot them in two separate graphs. what do you observe in these two plots?
+
+```{r}
+
+```
+
+**Observations:** ...

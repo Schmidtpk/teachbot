@@ -65,8 +65,13 @@ Plan/documentation should be intention-first:
   "Lectos DCM logs".
 - `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
   Analysis" (domain `stud.unibas.ch`, model `deepseek/deepseek-v4-flash-0731`, own OpenRouter key,
-  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` holds a placeholder until the
-  lecture slides (`.qmd`) are added — delete `placeholder_intro.md` then.
+  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has two courses
+  (IID-MULTI-COURSE): `lecture/` (slides + script Q&A) and `assignment1/` (Assignment 1 &
+  Exercise 1 helper, IID-ASSIGNMENT-HELP, visible until 2026-10-09). Source files come from
+  `junctions/lecture_timeseries/` (gitignored junction to `Dropbox/teaching/lecture_timeseries`)
+  and are copied in. **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
+  service with `railway up --service teachbot-timeseries --no-gitignore --detach`, which
+  uses `.railwayignore` (= `.gitignore` minus the solution rule; keep both in sync).
   **Thinking is off by default here** (`llm.reasoning: false`, IID-LLM-THINKING) because this
   model reasons for 10-25s before its first visible token; students can switch to
   "Thorough (thinks first, slower)" in the ⚙ Chat Settings menu. Manual deploys like the

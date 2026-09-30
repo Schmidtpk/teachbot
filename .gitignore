@@ -41,3 +41,9 @@ agent/done/
 
 # Test reports (generated locally by tests/compare.py — IID-TEST-MODEL-COMPARE)
 reports/
+
+# IID-ASSIGNMENT-HELP: assignment solutions must not be published (the GitHub repo is public).
+# Deployed to Railway via .railwayignore + `railway up --no-gitignore` (see CLAUDE.md).
+content_timeseries/**/*_solution.qmd
+# Local junctions to lecture folders outside the repo (source of the copied content files)
+junctions/

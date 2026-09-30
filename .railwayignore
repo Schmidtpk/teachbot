@@ -1,0 +1,27 @@
+# IID-ASSIGNMENT-HELP, IID-MULTI-DEPLOY: used by `railway up --no-gitignore` for teachbot-timeseries.
+# Mirrors .gitignore EXCEPT that assignment solutions (gitignored: the repo is public) ARE uploaded.
+# Keep in sync with .gitignore — anything secret or local must be listed here too.
+.git/
+.env
+google-credentials*.json
+credentials/
+users.yaml
+logs/
+exports/
+progress/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+.chainlit/translations/
+chainlit.md
+.DS_Store
+Thumbs.db
+agent/
+reports/
+junctions/
+qr/
+.claude/

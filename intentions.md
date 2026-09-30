@@ -466,7 +466,7 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   (IID-PUBLIC-RATELIMIT). Link distributed via QR code in an intro class (2026-09). Content is
   a generic primer until the actual lecture material is dropped into `content_dcm/`.
 - `teachbot-timeseries` (login-protected Q&A, Basel): `config_timeseries.yaml`,
-  `content_timeseries/` (single-course mode), login for `stud.unibas.ch`, model
+  `content_timeseries/` (multi-course: `lecture/` Q&A + `assignment1/` helper, IID-ASSIGNMENT-HELP), login for `stud.unibas.ch`, model
   `deepseek/deepseek-v4-flash-0731`, own OpenRouter key + own `CHAINLIT_AUTH_SECRET`, own log
   Sheet ("Lectos Timeseries logs"). No session caps (authenticated). Set up 2026-09-15 with a
   placeholder content file until the lecture slides are added.
@@ -564,6 +564,24 @@ OpenRouter API key.
 **Description:** Allow student to download a PDF/Markdown transcript of their chat session or of lessons learned
 
 ---
+
+### IID-ASSIGNMENT-HELP
+**Status:** Implemented (2026-09-30)
+**Description:** A course subfolder that helps students with a coding exercise and a graded assignment
+without doing it for them. First instance: `content_timeseries/assignment1/` ("Assignment 1 & Exercise 1
+helper") in `teachbot-timeseries`, next to the lecture Q&A (`lecture/`). Content: task sheet, the Quarto
+template students fill in, coding exercise 1, the lecturer's reference solution, plus the lecture scripts
+via `extra_content`. Own `_system_prompt.md`: short concise explanations for questions; for solving, the
+tutor states it cannot run code or see output, gives **one** small code step at a time, asks the student
+to run it and describe what they see, and only then continues. It never quotes or reveals the solution,
+and asks for the student's object names instead of guessing. Visible until the due date (`last_date`).
+**Source files:** copied from `junctions/lecture_timeseries/` (gitignored junction to
+`Dropbox/teaching/lecture_timeseries`); re-copy after editing the originals.
+**Solution secrecy:** the GitHub repo is public, so `*_solution.qmd` under `content_timeseries/` is
+gitignored and reaches Railway only via `railway up --no-gitignore` with `.railwayignore` (a copy of
+`.gitignore` minus the solution rule — keep them in sync).
+**Key files:** `content_timeseries/assignment1/_meta.yaml`, `_system_prompt.md`, `_welcome.md`, `.railwayignore`
+**No-Goals:** executing student code; grading submissions.
 
 ## Testing
 

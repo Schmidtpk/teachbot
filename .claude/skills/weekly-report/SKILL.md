@@ -19,9 +19,12 @@ failed and where the students are.
   on or struggle with.
 - `flags.md` — every student flag (F1, F2, …): the student's comment and the tutor
   message they flagged.
-- The lecture material the tutor had: `content_timeseries/*.qmd` (`script_*` = lecture
+- The lecture material the tutor had: `content_timeseries/lecture/*.qmd` (`script_*` = lecture
   notes with definitions and derivations, the others = slide decks) and the tutor's
-  instructions `content_timeseries/_system_prompt.md`.
+  instructions `content_timeseries/_system_prompt.md`. Sessions whose course is the
+  assignment helper used `content_timeseries/assignment1/` (task sheet, template,
+  exercise 1, reference solution) with its own `_system_prompt.md` there: it must guide one
+  step at a time and never give away the solution — judge those answers by that standard.
 
 Do not open `chats.html` (it is the same data as markup) and never read `.env` or
 `credentials/`.
@@ -30,7 +33,8 @@ If no week folder was given, use the newest `exports/timeseries/week_*` folder.
 
 ## Method
 
-1. Read `stats.json`, `flags.md`, `content_timeseries/_system_prompt.md`, then all of
+1. Read `stats.json`, `flags.md`, both tutor prompts (`content_timeseries/_system_prompt.md`,
+   `content_timeseries/assignment1/_system_prompt.md`), then all of
    `transcripts.md` (in chunks if long).
 2. For every tutor answer that looks doubtful, **check it against the lecture material**
    with Grep/Read before judging it: notation, definitions, conditions of theorems, signs,
@@ -89,7 +93,7 @@ given `id` (the script checks the ids):
    misconception in one sentence, who (names, sessions), a telling quote, and whether
    the tutor resolved it.
 7. `<h3 id="suggestions">Suggestions</h3>` — concrete, few: what to clarify in the next
-   lecture, what to change in the tutor prompt (`content_timeseries/_system_prompt.md`) or
+   lecture, what to change in the tutor prompt (`content_timeseries/_system_prompt.md` or `assignment1/_system_prompt.md`) or
    in the material. Only suggestions backed by something above.
 
 Keep the whole fragment to what can be read in ~5 minutes. Be factual; no praise

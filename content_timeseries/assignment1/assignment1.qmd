@@ -1,0 +1,37 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Assignment 1. HS 2026, University of Basel, based on material by Christian Kleiber"
+author: "Patrick Schmidt (University of Heidelberg)"
+format:
+  pdf:
+    documentclass: article
+    papersize: a4
+    fontsize: 11pt
+---
+
+**handed out:** Friday, 25 September 2026. **due:** Friday, 9 October 2026, before class (10.15), via OLAT. no late submissions.
+
+I recommend using Rstudio on your laptop or [PositCloud](https://posit.cloud/).
+
+# Submission guidelines
+
+- **file:** submit one Quarto (`.qmd`) or R Markdown (`.Rmd`) file that contains your code, results and written answers
+- **runnable:** the file must render without errors and without modification when placed in a folder next to the data file `StarbucksSales.csv`. read the data with a relative path (`read.csv("StarbucksSales.csv", sep = ";")`), no absolute paths such as `C:/Users/...`, and load every package you use inside the file. errors when rendering cost points
+- **teams:** teams of up to three students are allowed. state the names of **all team members** in the header of the file (`author:` field). 
+- **answers:** answer in full sentences in the text of the document, not in code comments. justify your answers where asked. quality of the report (clarity, completeness, clean plots and writing) counts
+- **language:** English
+
+# Problem 1 (preprocessing and data analysis)
+
+we analyse the quarterly sales of Starbucks Corporation (in million USD) from January 1995 to December 2018. the data `StarbucksSales.csv` are on OLAT; the file runs to December 2024, use only the observations up to December 2018. provide your R code, present your results clearly and justify your answers where required.
+
+a. load the data set and plot the time series from January 1995 to December 2018. make sure the plot is clear. make three observations from the graph.
+b. find the two highest sales values and give the corresponding year and quarter.
+c. consider the regression model with a linear trend
+   $$
+   \mathit{Sales}_t = \beta_0 + \beta_1 \cdot t + \epsilon_t.
+   $$
+   estimate the model by ordinary least squares, present the results, and add the estimated trend to the graph from (a).
+d. use `predict()` to compute the predicted values for the four quarters of 2019.
+e. we now apply the classical decomposition of a time series with linear filters. all steps must be computed manually, i.e. R functions such as `decompose()` are not allowed. first, estimate the trend $T_t$ with the one-sided simple moving average over the past four quarters, $T_t := \frac{1}{4} \sum_{j=0}^{3} \mathit{Sales}_{t-j}$, and plot $T_t$.
+f. building on (e), estimate the seasonal component $S_t$ and the remainder $E_t$ and plot them in two separate graphs. what do you observe in these two plots?

@@ -2,12 +2,13 @@
 # Config for the Basel time-series deploy (Railway service `teachbot-timeseries`).
 # Selected there via the env var TEACHBOT_CONFIG=config_timeseries.yaml. Same repo as
 # the Heidelberg student deploy (config.yaml) and the free public deploys.
-# Login required (stud.unibas.ch), plain Q&A only.
+# Login required (stud.unibas.ch).
 
 course_name: "Univariate Time Series Analysis"
 
 # IID-MULTI-DEPLOY: each deploy points to its own content folder.
-# content_timeseries/ has no subfolders → single-course mode, plain Q&A (IID-QNA-CORE).
+# content_timeseries/ has two course subfolders (IID-MULTI-COURSE): lecture/ (plain Q&A,
+# IID-QNA-CORE) and assignment1/ (step-by-step assignment helper, IID-ASSIGNMENT-HELP).
 content_dir: content_timeseries   # IID-LECTURE-CONTENT
 logs_dir: logs                    # IID-CHAT-LOG
 sheets_log_id: "16xdFMSLu7T4Cgy3pu10JKn78EKCe8vz1tGkDa8xcq1g"  # IID-SHEETS-LOG: "Lectos Timeseries logs" Sheet
