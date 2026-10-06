@@ -130,7 +130,7 @@ course_name: "Your Course Name"
 content_dir: content
 logs_dir: logs
 llm:
-  model: anthropic/claude-sonnet-5
+  model: anthropic/claude-sonnet-5.5
   diagnose_model: google/gemini-3-flash-preview  # optional; cheap model for Learn-mode diagnose calls
   temperature: 0.3
   max_tokens: 4096
@@ -292,7 +292,7 @@ lectos/
 
 - Python 3.11+
 - [Chainlit 2.x](https://docs.chainlit.io) — chat UI with Markdown + LaTeX rendering
-- [OpenRouter](https://openrouter.ai) — LLM API (`anthropic/claude-sonnet-5` by default; prompt caching enabled where the provider supports it)
+- [OpenRouter](https://openrouter.ai) — LLM API (`anthropic/claude-sonnet-5.5` by default; prompt caching enabled where the provider supports it)
 
 ## Roadmap
 
