@@ -29,15 +29,18 @@ weekly_report:
 # This service has its own OPENROUTER_API_KEY (Railway variable), separate budget.
 llm:
   base_url: https://openrouter.ai/api/v1
-  model: deepseek/deepseek-v4-flash-0731   # SID-LLM-PROVIDER
+  model: openai/gpt-6-luna   # SID-LLM-PROVIDER
   temperature: 0.3
   max_tokens: 4096
-  # IID-LLM-THINKING: this model is a *reasoning* model — left to its default it emits
-  # 80-480 chain-of-thought deltas before its first content token, which is what produced a
-  # 13.7% "taking too long" rate on 2026-09-18 (see IID-STREAM-RESILIENCE). For grounded Q&A
-  # over supplied lecture notes the chain-of-thought buys little, so it is off by default.
-  # Measured 2026-09-22 on this exact prompt: time-to-first-content 11.3s -> 1.2s,
-  # 26.1s -> 3.3s, 13.4s -> 3.0s, with answer lengths comparable.
+  # IID-LLM-THINKING: chain-of-thought off by default. Reasoning models cost time-to-first-token,
+  # which is what produced a 13.7% "taking too long" rate on 2026-09-18 under the previous
+  # model (deepseek/deepseek-v4-flash-0731, see IID-STREAM-RESILIENCE).
+  # check_reasoning_support.py --live, 2026-10-06: 7/7 providers declare `reasoning`;
+  # reasoning=false honoured (96 -> 0 reasoning deltas, first content 3.4s -> 1.0s).
+  # Switched from deepseek-v4-flash 2026-10-06 after replaying the week's failed helper turns
+  # (8 replies per variant): deepseek leaked reference-solution numbers / wrote students'
+  # answers / made false claims; Luna (thinking off) did none of these, first token 1-2s.
+  # deepseek with low thinking was not an option: 30-70s to first token, 1/8 never answered.
   reasoning: false
 
 # IID-STUDENT-MODEL-CHOICE, IID-LLM-THINKING: students can switch in the ⚙ Chat Settings
@@ -46,9 +49,9 @@ llm:
 # Before adding a model here, confirm it honours the parameter:
 #   python scripts/check_reasoning_support.py <model-id>
 student_model_choices:
-  - id: deepseek/deepseek-v4-flash-0731
+  - id: openai/gpt-6-luna
     label: "Fast (no thinking)"
     reasoning: false
-  - id: deepseek/deepseek-v4-flash-0731
+  - id: openai/gpt-6-luna
     label: "Thorough (thinks first, slower)"
     reasoning: true

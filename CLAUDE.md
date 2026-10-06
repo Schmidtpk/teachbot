@@ -64,7 +64,8 @@ Plan/documentation should be intention-first:
   redeploy manually (same procedure as `teachbot-public`, `--service teachbot-dcm`). Log Sheet:
   "Lectos DCM logs".
 - `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
-  Analysis" (domain `stud.unibas.ch`, model `deepseek/deepseek-v4-flash-0731`, own OpenRouter key,
+  Analysis" (domain `stud.unibas.ch`, model `openai/gpt-6-luna` since 2026-10-06
+  (was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key,
   own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has two courses
   (IID-MULTI-COURSE): `lecture/` (slides + script Q&A) and `assignment1/` (Assignment 1 &
   Exercise 1 helper, IID-ASSIGNMENT-HELP). Source files come from
@@ -72,8 +73,8 @@ Plan/documentation should be intention-first:
   and are copied in. **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
   service with `railway up --service teachbot-timeseries --no-gitignore --detach`, which
   uses `.railwayignore` (= `.gitignore` minus the solution rule; keep both in sync).
-  **Thinking is off by default here** (`llm.reasoning: false`, IID-LLM-THINKING) because this
-  model reasons for 10-25s before its first visible token; students can switch to
+  **Thinking is off by default here** (`llm.reasoning: false`, IID-LLM-THINKING) because
+  thinking delays the first visible token (deepseek: 10-25s; Luna: ~3s); students can switch to
   "Thorough (thinks first, slower)" in the ⚙ Chat Settings menu. Manual deploys like the
   public instances (`--service teachbot-timeseries`). Log Sheet: "Lectos Timeseries logs".
   The weekly archive script only covers the main Sheet.
@@ -173,7 +174,8 @@ Why this matters: whether a model reasons dominates its time-to-first-token, and
 the student experiences as the app hanging. A reasoning model buys little for grounded Q&A
 over supplied lecture notes and cost `teachbot-timeseries` a 13.7% failure rate
 (IID-STREAM-RESILIENCE). Verified 2026-09-22 for `deepseek/deepseek-v4-flash-0731`: 29/29
-providers, honoured, first-content 11.3s -> 1.2s with reasoning off.
+providers, honoured, first-content 11.3s -> 1.2s with reasoning off. Verified 2026-10-06 for
+`openai/gpt-6-luna`: 7/7 providers, honoured, first-content 3.4s -> 1.0s.
 
 ## Multi-course mode (IID-MULTI-COURSE)
 
