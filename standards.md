@@ -23,9 +23,12 @@ LLM provider, model name, temperature, and token limits are configured via a sin
 
 ---
 
-### SID-CONTENT-RENDER (CANDO)
-`.qmd` and `.md` content files are pre-rendered to HTML at app startup for display in the UI (IID-UI-CONTENT-VIEW).
-- Quarto auto-generates section anchor IDs (e.g. `#sec-equilibrium`) — the LLM can reference these in responses as fragment links.
+### SID-CONTENT-RENDER (v1)
+Course material shown in the UI (IID-UI-CONTENT-VIEW) is **pre-rendered HTML supplied by the lecturer** (Quarto output, the `../graph` card viewer, any page) and placed in the course folder. The app never renders `.qmd` itself.
+- Self-contained HTML (Quarto `self-contained: true`) is preferred: one file, no asset folders.
+- Locations are addressed by stable ids: reveal.js slide `<section id>` (fragment `#/id`), card id (`#id`), any other anchor (`#id`). The LLM references them as `view:DOC/LOC` (IID-UI-CONTENT-MARK).
+- The HTML is indexed to text once at startup (`src/viewer_docs.py`); it is never injected whole (decks are ~7 MB, mostly images).
+- A deck and the `.qmd` it was rendered from share a file stem (`03_1-utsa-arma.qmd` ↔ `03_1-utsa-arma.html`) — card `sources` rely on it.
 
 ---
 

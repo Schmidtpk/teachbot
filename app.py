@@ -1,6 +1,6 @@
 """
 IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC, IID-STUDENT-FEEDBACK-STORE,
-IID-MULTI-COURSE
+IID-MULTI-COURSE, IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK
 Chainlit entry point for Lectos v1.
 Run with:  chainlit run app.py
 """
@@ -16,19 +16,24 @@ from pathlib import Path
 from typing import Optional
 
 import chainlit as cl
+from chainlit.auth import get_current_user  # IID-UI-CONTENT-VIEW: login check for viewer files
 from chainlit.input_widget import Select
+from chainlit.server import app as chainlit_app  # IID-UI-CONTENT-VIEW: extra FastAPI route
 from chainlit.utils import utc_now  # IID-STREAM-RESILIENCE: Step start/end timestamps
 import yaml
 from dotenv import load_dotenv
+from fastapi import Depends, HTTPException
+from fastapi.responses import FileResponse
 
 from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
-from src.course_loader import CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, parse_model_choices
+from src.course_loader import ROOT_COURSE_ID, CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, load_root_viewer, parse_model_choices
 from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
 from src.llm_client import CONTENT, REASONING, build_client, stream_events
 from src.progress_store import ProgressStore
 from src.tutor_loop import build_act_instruction, diagnose_answer
+from src.viewer_docs import ViewerSet
 
 # SID-API-CONFIG: load secrets from .env (never hardcoded)
 load_dotenv()
@@ -49,6 +54,47 @@ LLM_CLIENT = build_client(CFG)
 # IID-MULTI-COURSE: discover course subfolders at startup; [] = single-course fallback mode
 _ROOT_CONTENT = Path(CFG.get("content_dir", "content"))
 COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
+
+# IID-UI-CONTENT-VIEW: single-course mode reads HTML from the content root; with courses,
+# each CourseConfig carries its own `viewer`. None everywhere = feature invisible.
+ROOT_VIEWER: ViewerSet | None = None if COURSES else load_root_viewer(_ROOT_CONTENT)
+
+
+def _viewer_for(course_id: str, user: cl.User | None) -> ViewerSet | None:
+    """IID-UI-CONTENT-VIEW, IID-COURSE-ACCESS: the viewer documents of `course_id`, if
+    this user may open that course right now — same rules as the profile chooser."""
+    if not COURSES:
+        return ROOT_VIEWER if course_id == ROOT_COURSE_ID else None
+    course = next((c for c in COURSES if c.course_id == course_id), None)
+    if course is None or course.viewer is None:
+        return None
+    email = user.identifier if user else None
+    if not course.is_available(date.today()) or not course.is_accessible(email):
+        return None
+    return course.viewer
+
+
+@chainlit_app.get("/viewer/{course_id}/{filename}")
+async def serve_viewer_file(course_id: str, filename: str, user=Depends(get_current_user)):
+    """IID-UI-CONTENT-VIEW: serve a course's HTML to the viewer panel's iframe.
+
+    Not under /public (served to anyone): with login enabled, `get_current_user` reads
+    Chainlit's auth cookie and rejects requests without one (401). Only files indexed at
+    startup are served, so no path from the URL ever reaches the file system.
+    `no-cache` = revalidate via ETag: a 7 MB deck is downloaded once, not on every open.
+    """
+    viewer = _viewer_for(course_id, user)
+    doc = next((d for d in viewer.docs.values() if d.filename == filename), None) if viewer else None
+    if doc is None:
+        raise HTTPException(status_code=404)
+    return FileResponse(doc.path, media_type="text/html",
+                        headers={"Cache-Control": "private, no-cache"})
+
+
+# IID-UI-CONTENT-VIEW: importing chainlit.server already registered its catch-all GET
+# route (`/{full_path:path}` → the chat UI). Starlette matches in order, so a route added
+# afterwards is never reached — move ours in front.
+chainlit_app.router.routes.insert(0, chainlit_app.router.routes.pop())
 
 
 _AUTH_CFG = CFG.get("auth", {})
@@ -191,9 +237,25 @@ async def _aclose(token_stream) -> None:
         print(f"[_aclose] {type(exc).__name__}: {exc}", file=sys.stderr)
 
 
+def _with_page_context(history: list[dict], page_context: str | None) -> list[dict]:
+    """IID-UI-CONTENT-CONTEXT: request-only copy of `history` with the open page in front
+    of the latest student message.
+
+    Never stored: the history keeps a one-line marker instead, so it does not grow by a
+    slide per turn, and the long system prompt in front stays identical across turns
+    (provider prompt caching, IID-COST-CACHE).
+    """
+    if not page_context or not history or history[-1].get("role") != "user":
+        return history
+    last = history[-1]
+    return history[:-1] + [
+        {**last, "content": f"{page_context}\n\nStudent's message:\n{last['content']}"}
+    ]
+
+
 async def _stream_once(
     history: list[dict], course_llm: dict, response_msg: cl.Message,
-    show_reasoning: bool = True,
+    show_reasoning: bool = True, page_context: str | None = None,
 ) -> tuple[bool, str]:
     """IID-STREAM-RESILIENCE: one streaming attempt into `response_msg`.
 
@@ -215,7 +277,9 @@ async def _stream_once(
     expected answer, so revealing it would hand the student exactly what the Socratic
     dialogue is meant to draw out of them.
     """
-    events = stream_events(LLM_CLIENT, {"llm": course_llm}, history).__aiter__()
+    events = stream_events(
+        LLM_CLIENT, {"llm": course_llm}, _with_page_context(history, page_context)  # IID-UI-CONTENT-CONTEXT
+    ).__aiter__()
     start = time.monotonic()
     thinking: cl.Step | None = None
     text = ""
@@ -279,7 +343,8 @@ async def _stream_once(
 
 
 async def _stream_assistant(
-    history: list[dict], course_llm: dict, show_reasoning: bool = True
+    history: list[dict], course_llm: dict, show_reasoning: bool = True,
+    page_context: str | None = None,
 ) -> tuple[cl.Message, str, str, bool]:
     """IID-QNA-CORE, IID-UI-RENDER, IID-STREAM-RESILIENCE: stream one assistant turn.
 
@@ -295,6 +360,9 @@ async def _stream_assistant(
     `show_reasoning=False` keeps a reasoning model's chain-of-thought hidden behind a
     neutral "Thinking…" step — required in learning-goals mode, where it would spoil the
     answer the Socratic dialogue is supposed to elicit.
+
+    `page_context` (IID-UI-CONTENT-CONTEXT): the page open in the viewer panel, added to
+    the request only (see `_with_page_context`).
     """
     active_model = course_llm.get("model", "")  # IID-STUDENT-MODEL-CHOICE
     response_msg = cl.Message(content="")
@@ -302,7 +370,7 @@ async def _stream_assistant(
 
     start = time.monotonic()
     for attempt in range(1 + STREAM_RETRIES):
-        ok, text = await _stream_once(history, course_llm, response_msg, show_reasoning)
+        ok, text = await _stream_once(history, course_llm, response_msg, show_reasoning, page_context)
         if ok:
             await response_msg.update()
             print(
@@ -461,6 +529,15 @@ async def _diagnostic_turn(
     await _send_actions(response_msg.id, full_response, "learning_goals")
 
 
+def _with_viewer_catalog(system_prompt: str, viewer: ViewerSet | None, mode: str) -> str:
+    """IID-UI-CONTENT-MARK: append the linkable-pages catalogue in Q&A mode. Returns the
+    prompt object itself when there is nothing to add — a course without HTML gets exactly
+    the prompt it had before this feature."""
+    if viewer is None or mode != "qa":
+        return system_prompt
+    return f"{system_prompt}\n{viewer.catalog()}\n"
+
+
 @cl.on_chat_start
 async def on_chat_start() -> None:
     """IID-CHAT-SHELL1, IID-AUTH-BASIC, IID-MULTI-COURSE: Initialise session state."""
@@ -532,6 +609,13 @@ async def on_chat_start() -> None:
     # IID-LEARN-GOALS: learning-goals practice mode — load progress, sample one goal,
     # inject ONLY that goal into the system prompt. `current_goal is None` ⇒ all goals done.
     mode = course.mode if COURSES else "qa"
+
+    # IID-UI-CONTENT-VIEW, IID-UI-CONTENT-MARK: HTML documents next to the chat. In Q&A mode
+    # the bot also gets their catalogue (static → part of the cached system prompt) so it can
+    # link slides and cards. Learning-goals mode shows the panel but keeps its own prompt.
+    viewer: ViewerSet | None = course.viewer if COURSES else ROOT_VIEWER
+    system_prompt = _with_viewer_catalog(system_prompt, viewer, mode)
+
     progress_store: ProgressStore | None = None
     current_goal: dict | None = None
     completed: set[str] = set()
@@ -568,6 +652,8 @@ async def on_chat_start() -> None:
     # copy, one student picking a model (or a reasoning setting) would change it for everyone.
     cl.user_session.set("course_llm", dict(course_llm))
     cl.user_session.set("model_choice_map", model_choice_map)  # IID-STUDENT-MODEL-CHOICE
+    cl.user_session.set("viewer", viewer)  # IID-UI-CONTENT-VIEW
+    cl.user_session.set("viewer_state", {"open": False, "doc": "", "loc": ""})  # IID-UI-CONTENT-CONTEXT
 
     # IID-STUDENT-MODEL-CHOICE: show model selector when the course defines choices
     if model_choice_map:
@@ -585,6 +671,11 @@ async def on_chat_start() -> None:
                    initial_value=current_label)
         ]).send()
 
+    # IID-UI-CONTENT-VIEW: tell public/viewer.js whether this course has documents — it
+    # shows/hides the header button and opens the panel on wide screens.
+    await cl.send_window_message(
+        {"type": "lectos_viewer_available", "count": len(viewer.docs) if viewer else 0}
+    )
     await cl.Message(content=welcome).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
 
     # IID-LEARN-GOALS: in learning-goals mode, either announce completion or pose the first question
@@ -655,10 +746,26 @@ async def on_message(message: cl.Message) -> None:
                 return
 
     user_text = message.content.strip()
-    history.append({"role": "user", "content": user_text})
-    logger.log("user", user_text)  # IID-CHAT-LOG
+
+    # IID-UI-CONTENT-CONTEXT: the page open in the viewer panel goes into this request only;
+    # the history keeps a one-line marker of it. Q&A mode only — learning-goals turns are
+    # driven by the goal, not by whatever page happens to be open.
+    viewer: ViewerSet | None = cl.user_session.get("viewer")
+    page_context: str | None = None
+    viewer_tag: str | None = None
+    stored_text = user_text
+    if viewer is not None and mode == "qa":
+        state = cl.user_session.get("viewer_state") or {}
+        open_page = viewer.validate(state.get("doc"), state.get("loc")) if state.get("open") else None
+        if open_page:
+            page_context = viewer.page_context(*open_page)
+            viewer_tag = viewer.tag(*open_page)
+            stored_text = f"{viewer.marker(*open_page)}\n{user_text}"
+
+    history.append({"role": "user", "content": stored_text})
+    logger.log("user", user_text, viewer=viewer_tag)  # IID-CHAT-LOG
     if sheets_logger:
-        sheets_logger.log("user", user_text)  # IID-SHEETS-LOG
+        sheets_logger.log("user", user_text, viewer=viewer_tag)  # IID-SHEETS-LOG
 
     # IID-LEARN-DIAGNOSE: in learning-goals mode, each answer is a two-step diagnose→act turn.
     # Guarded by an active goal (None ⇒ all goals done, fall through to a plain reply).
@@ -674,16 +781,82 @@ async def on_message(message: cl.Message) -> None:
         return
 
     # Stream response — IID-UI-RENDER (Chainlit renders MD + LaTeX natively)
-    response_msg, full_response, active_model, ok = await _stream_assistant(history, course_llm)
+    response_msg, full_response, active_model, ok = await _stream_assistant(
+        history, course_llm, page_context=page_context)
     if not ok:  # IID-STREAM-RESILIENCE: every attempt stalled — history already rewound
         _log_stream_failure(logger, sheets_logger, full_response, active_model)
         return
+    # IID-UI-CONTENT-MARK: `[t](view:DOC/LOC)` → links that open the page in the panel.
+    # Done once streaming has finished; history and logs keep the model's own wording.
+    if viewer is not None:
+        shown = viewer.rewrite_links(full_response)
+        if shown != full_response:
+            response_msg.content = shown
+            await response_msg.update()
     logger.log("assistant", full_response, model=active_model)  # IID-CHAT-LOG, IID-STUDENT-MODEL-CHOICE
     if sheets_logger:
         sheets_logger.log("assistant", full_response, model=active_model)  # IID-SHEETS-LOG, IID-STUDENT-MODEL-CHOICE
 
     # IID-STUDENT-FEEDBACK-STORE + IID-LEARN-GOALS: flag button (+ goal-complete button in goals mode)
     await _send_actions(response_msg.id, full_response, mode)
+
+
+# IID-UI-CONTENT-VIEW: key of the viewer panel in Chainlit's element sidebar. Re-sending
+# elements under the same key while the panel is open is a no-op on the client, so "open"
+# can be sent unconditionally without reloading a 7 MB deck the student is reading.
+_VIEWER_KEY = "lectos-viewer"
+
+
+async def _open_viewer(viewer: ViewerSet, target: tuple[str, str] | None) -> None:
+    """IID-UI-CONTENT-VIEW: open the panel at `target`, else where the student last was."""
+    state = cl.user_session.get("viewer_state") or {}
+    if target is None:
+        target = viewer.validate(state.get("doc"), state.get("loc")) or viewer.default_target()
+    element = cl.CustomElement(
+        name="HtmlViewer",  # public/elements/HtmlViewer.jsx
+        props={"docs": viewer.client_docs(), "start": viewer.url(*target)},
+    )
+    # Title "canvas" = Chainlit's full-bleed side view: 50% width, no padding, no title bar
+    # (only its close button). Set before the elements: setting a title drops the key.
+    await cl.ElementSidebar.set_title("canvas")
+    # Not `cl.ElementSidebar.set_elements`: it first sends the element into the chat's
+    # element list, and the client resets the side view whenever that list changes (losing
+    # the "canvas" title) — and it writes a file per open under .files/. A custom element
+    # carries everything in its props, so the sidebar event alone is enough. Same event
+    # and payload as chainlit/sidebar.py (2.11.0); tests/content_view.py pins this.
+    await cl.context.emitter.emit(
+        "set_sidebar_elements", {"elements": [element.to_dict()], "key": _VIEWER_KEY}
+    )
+
+
+@cl.on_window_message
+async def on_window_message(data: object) -> None:
+    """IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK: viewer events.
+
+    Chainlit forwards every `postMessage` the chat window receives, from any sender — so
+    each payload is validated against this session's indexed documents, and anything
+    unknown is ignored. Senders: public/elements/HtmlViewer.jsx (panel state) and
+    public/viewer.js (header button, clicks on viewer links in answers).
+    """
+    viewer: ViewerSet | None = cl.user_session.get("viewer")
+    if viewer is None or not isinstance(data, dict):
+        return
+    kind = data.get("type")
+    state: dict = cl.user_session.get("viewer_state") or {"open": False, "doc": "", "loc": ""}
+    if kind == "lectos_viewer_state":
+        if not data.get("open"):
+            state["open"] = False
+        else:
+            page = viewer.validate(data.get("doc"), data.get("loc"))
+            if page:
+                state.update(open=True, doc=page[0], loc=page[1])
+        cl.user_session.set("viewer_state", state)
+    elif kind == "lectos_viewer_open":
+        await _open_viewer(viewer, viewer.parse_href(data.get("href")))
+    elif kind == "lectos_viewer_close":
+        state["open"] = False
+        cl.user_session.set("viewer_state", state)
+        await cl.ElementSidebar.set_elements([])
 
 
 @cl.action_callback("complete_goal")

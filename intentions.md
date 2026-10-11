@@ -34,24 +34,36 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Description:** LLM responses are rendered as Markdown in the chat UI. LaTeX math (inline `$...$` and block `$$...$$`) must be rendered correctly. Implemented via Chainlit's built-in renderer (see SID-STACK).
 
 ### IID-UI-CONTENT-VIEW
-**Lifecycle:** CANDO
-**Description:** The UI can display course material alongside the chat. Students can open/view the material.
-**Inputs:** `content/` folder (`.qmd` + `.md` files) or AI generated content.
-**Outputs:** Rendered HTML pages accessible within or adjacent to the chat UI.
+**Lifecycle:** DONE (2026-10-11; switched on for `teachbot-timeseries` once its HTML is uploaded)
+**Description:** If a course folder contains `*.html` files (pre-rendered slides, the knowledge-card graph from `../graph`, any page), students can open them in a viewer panel next to the chat. Desktop: Chainlit's side view (resizable split, opens by itself on wide screens unless the student closed it with the header button — remembered per browser). Phone: a full-screen sheet over the chat, opened with the header button "📖 Slides" and left with "💬 Chat" — it works like a tab. The panel has a document picker and an "open in new tab" link.
+**Inputs:** `*.html` in a course folder (or the content root in single-course mode). Optional `viewer` key in `_meta.yaml`: `false` (off) or a list of `{file, label}` (which files, order, labels); default = every non-`_` `.html`, sorted by name, labels auto-detected (reveal deck: subtitle; otherwise `<title>`).
+**Outputs:** `/viewer/<course>/<file>` (login + course access checked, only indexed files served, ETag revalidation); panel `public/elements/HtmlViewer.jsx`; header button + link handling `public/viewer.js` (Chainlit `custom_js`).
 **Success criteria:**
-- Rendered output preserves math, code blocks, and slide structure.
-- A student can navigate to a specific lecture/section from within the chat (e.g. via a link or button).
-**No-Goals:** In-browser editing of content.
-**v1 implementation note:** Pre-render files to scrollable HTML. Mount the output directory as static files on Chainlit's FastAPI server. Bot responses include Markdown links to `#section-id` anchors (Quarto auto-generates these). Renders in a new browser tab — no custom UI component needed. See SID-CONTENT-RENDER.
+- A course without HTML behaves exactly as before: no button, no panel, identical system prompt (tested).
+- Files are only served to users who may open that course (IID-AUTH-BASIC, IID-COURSE-ACCESS); a 7 MB deck is downloaded once, not on every open.
+- Unreadable HTML or a bad `viewer` entry stops startup naming the folder.
+**Key files:** `src/viewer_docs.py`, `src/course_loader.py` (`build_viewer`, `load_root_viewer`), `app.py` (`serve_viewer_file`, `_open_viewer`, `on_window_message`), `public/elements/HtmlViewer.jsx`, `public/viewer.js`, `public/custom.css`, `tests/content_view.py`
+**Mechanics (Chainlit 2.11 internals, pinned by `tests/content_view.py`):** the panel is Chainlit's element side view with title `"canvas"` (full-bleed); it is opened by emitting `set_sidebar_elements` directly (not `ElementSidebar.set_elements`, whose element send resets the side view). Browser → server: `window.postMessage`, which Chainlit forwards to `@cl.on_window_message`; every payload is validated against the indexed documents. The custom route is moved in front of Chainlit's catch-all UI route.
+**No-Goals:** In-browser editing of content; rendering `.qmd` in the app (the lecturer supplies rendered HTML, SID-CONTENT-RENDER).
+**Known limitation:** when Lectos itself runs inside an iframe (e.g. embedded in an LMS page), Chainlit sends server window messages to the parent page, so the header button never appears.
+
+### IID-UI-CONTENT-CONTEXT
+**Lifecycle:** DONE (2026-10-11)
+**Description:** Before answering, the bot gets the page the student has open in the viewer panel. The panel reports its location (reveal.js: current slide id; card graph / other pages: `#anchor`) by polling the same-origin iframe. In Q&A mode each request gets a block in front of the student's message: first, prominently and in full, the open slide/card/page ("the student is looking at this right now"; position and section for slides; type for cards), then — fenced off as "for orientation only" — previous/next slide excerpts, a card's key concepts / generalizations / users (summaries), and related cards/slides. Slides and cards are linked through the cards' `sources` (`"<deck>.qmd: <slide title>"` matched against the deck of the same file stem).
+**Success criteria:**
+- "This slide / this plot / here" questions are answered about the open page (verified locally 2026-10-11).
+- The block goes into the request only; the stored history keeps a one-line marker (`[Student had open: …]`), so history does not grow by a slide per turn and the system prompt stays cacheable (IID-COST-CACHE).
+- Closed panel → no page context. Learning-goals mode → no page context (the goal drives the turn).
+- Math in the extracted text is normalised to `$…$` / `$$…$$` (the model copies the delimiters it sees; `\(` does not render, IID-UI-RENDER).
+- The open page is logged with each student message: `viewer` field in `logs/*.jsonl`, `viewer` column (last) in the Sheet (IID-CHAT-LOG, IID-SHEETS-LOG).
+**No-Goals:** Images of figures (text only: figures appear as `[figure]`, the R code that drew them is in the slide text); speaker notes (`aside.notes`) are never given to the bot.
 
 ### IID-UI-CONTENT-MARK
-**Lifecycle:** CANDO
-**Description:** The agent (or student) can highlight or annotate specific passages in the displayed course material — e.g. the bot response links to a section anchor in the rendered HTML, scrolling the content panel to the relevant passage or visually marking it.
-**Inputs:** Section/anchor identifier produced by the LLM response (e.g. a fragment URL `#section-id`).
-**Outputs:** Visual highlight or scroll-to in the content viewer panel.
+**Lifecycle:** DONE (2026-10-11)
+**Description:** The bot chooses slides and cards to point to. In Q&A mode the system prompt holds a catalogue of every linkable page (`DOC` = file stem, `LOC` = slide/card id, with titles); the bot writes `[text](view:DOC/LOC)`. After streaming, the server rewrites valid targets to `/viewer/<course>/<file>#<fragment>`; invented ids lose the link but keep the text. A click on such a link opens/moves the viewer panel (same document: only the fragment changes, no reload); Ctrl/middle click opens a new tab as usual. History and logs keep the model's own `view:` wording.
 **Success criteria:**
-- Bot can reference a specific slide or section and the UI reflects that reference visually.
-**No-Goals:** Persistent student-side annotations, shared annotations across students.
+- Never a dead link in an answer; at most three links per answer (prompt rule).
+**No-Goals:** Highlighting passages inside a page; persistent or shared annotations.
 
 
 ## Content

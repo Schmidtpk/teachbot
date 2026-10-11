@@ -20,6 +20,9 @@ lets several courses share one file without duplication.
 Optional `access` in _meta.yaml (IID-COURSE-ACCESS): `allowed_domains` / `allowed_emails`
 lists restricting which logged-in users see the course (same matching as the login
 allowlist in IID-AUTH-BASIC). Absent → visible to everyone who can log in.
+
+Optional `viewer` in _meta.yaml (IID-UI-CONTENT-VIEW): which `*.html` files of the folder
+are shown in the viewer panel next to the chat (default: all; `false`: none).
 """
 
 import sys
@@ -31,6 +34,33 @@ from typing import Any
 
 from src.auth import auth_enabled, is_email_allowed
 from src.content_loader import load_content, load_files
+from src.viewer_docs import ViewerSet, load_viewer_docs
+
+# IID-UI-CONTENT-VIEW: URL path segment for the root content folder in single-course mode.
+# Course folders never start with "_" (discovery skips them), so this cannot collide.
+ROOT_COURSE_ID = "_root"
+
+
+def build_viewer(folder: Path, spec: Any, course_id: str, where: str) -> ViewerSet | None:
+    """IID-UI-CONTENT-VIEW: index the folder's HTML files; None when there are none, so a
+    course without HTML is exactly the course it was before this feature."""
+    docs = load_viewer_docs(folder, spec, where)
+    return ViewerSet(docs, f"/viewer/{course_id}") if docs else None
+
+
+def load_root_viewer(root: Path) -> ViewerSet | None:
+    """IID-UI-CONTENT-VIEW: single-course mode — HTML files directly in the content root,
+    optionally configured by a `viewer` key in the root `_meta.yaml`."""
+    root = Path(root).resolve()
+    meta_path = root / "_meta.yaml"
+    spec = None
+    if meta_path.exists():
+        try:
+            with meta_path.open(encoding="utf-8") as fh:
+                spec = (yaml.safe_load(fh) or {}).get("viewer")
+        except yaml.YAMLError as exc:
+            sys.exit(f"[Lectos] ERROR: failed to parse '{meta_path}': {exc}")
+    return build_viewer(root, spec, ROOT_COURSE_ID, f"'{meta_path}'")
 
 
 @dataclass
@@ -52,6 +82,7 @@ class CourseConfig:
     learning_goals: list[dict] = field(default_factory=list)  # IID-LEARN-GOALS: [{id, title, goal, material?}, ...]
     extra_content: list[Path] = field(default_factory=list)  # IID-MULTI-COURSE: shared files injected before folder content
     access: dict | None = None  # IID-COURSE-ACCESS: {allowed_domains, allowed_emails} or None (= everyone)
+    viewer: ViewerSet | None = None  # IID-UI-CONTENT-VIEW: HTML documents shown next to the chat (None = none)
 
     def is_accessible(self, user_email: str | None) -> bool:
         """IID-COURSE-ACCESS: True iff the logged-in user may see this course.
@@ -390,6 +421,9 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             learning_goals=learning_goals,
             extra_content=extra_content,
             access=access,
+            # IID-UI-CONTENT-VIEW: optional `viewer` key; default = every *.html in the folder
+            viewer=build_viewer(folder, meta.get("viewer"), folder.name,
+                                f"'_meta.yaml' of course '{folder.name}'"),
         ))
 
     # Sort by order field (from _meta.yaml) then lecture_name for deterministic profile ordering

@@ -20,6 +20,8 @@ At startup, all files in the active course folder are loaded and injected into t
 
 **Learn mode (learning-goals practice):** Set `mode: learning_goals` in a course's `_meta.yaml` and add a `_learning_goals.yaml`. The bot drills the student through the goals one at a time: It poses a test question, diagnoses each answer (a structured LLM call that credits earlier points and picks the single most important misconception), and gives Socratic feedback until the goal is mastered, at which point the student clicks **✅ Mark goal complete** to move on. Progress persists per student across sessions and redeploys.
 
+**Slides and cards next to the chat:** Put pre-rendered HTML (Quarto slides with `self-contained: true`, the knowledge-card graph, any page) into a course folder and students can open it in a panel beside the chat (a full-screen tab on phones). The bot sees the slide or card that is open, with its neighbours, before it answers, so "what does this plot show?" works, and it can link to slides and cards; a click opens them in the panel. Courses without HTML are unchanged.
+
 **Cost control:** Every request marks the stable prompt prefix (instructions + lecture content) with cache-control breakpoints, so providers with prompt caching (e.g. Anthropic) bill repeated content at a fraction of the input price.
 
 ## Quick start
@@ -173,6 +175,21 @@ chainlit create-secret
 
 Course subfolders can have their own `_system_prompt.md`, `_welcome.md`, and `_diagnose_prompt.md`; missing files fall back to the root `content/` versions.
 
+**Viewer panel (HTML next to the chat):** every `*.html` file in a course folder (or in the content root of a single-course deploy) is offered in the viewer panel. Nothing to configure; to choose files, order and labels, or to switch it off, add to the course's `_meta.yaml`:
+
+```yaml
+viewer:                         # optional; default = every *.html, sorted by name
+  - file: cards.html
+    label: "Knowledge cards"
+  - file: 01-utsa-intro.html    # label optional (slides: taken from the subtitle)
+# viewer: false                 # no panel for this course
+```
+
+- Slide decks: render Quarto reveal.js with `self-contained: true`; keep the file stem of the `.qmd` (`03_1-utsa-arma.qmd` → `03_1-utsa-arma.html`) so cards can be matched to their slides.
+- The knowledge-card graph: copy `graph/site/index.html` in under a name such as `cards.html`.
+- The bot gets the open slide/card as text only (figures appear as `[figure]`; the code that drew them is visible). Speaker notes are never passed on.
+- The files are served only to logged-in users who may open the course. They are large, so do not commit them to a public repo (see `.gitignore` and the deployment notes in `CLAUDE.md`).
+
 ## Chat logs and educator tools
 
 Every session is written to `logs/<session-id>.jsonl` — plain newline-delimited JSON. If `sheets_log_id` is set in `config.yaml`, turns are also appended to a Google Sheet (useful for Railway deployments where the local filesystem resets on redeploy).
@@ -248,7 +265,8 @@ lectos/
 ├── .env                        # API secrets — never commit
 ├── .env.example                # Template for .env
 ├── railway.toml                # Railway build/deploy settings
-├── public/                     # Chainlit branding (logo, favicon, custom.css)
+├── public/                     # Chainlit branding (logo, favicon, custom.css),
+│                               #   viewer.js + elements/HtmlViewer.jsx (viewer panel)
 ├── content/                    # Lecture files (.qmd, .md)
 │   ├── _system_prompt.md       # Default LLM instructions
 │   ├── _welcome.md             # Default welcome message
@@ -269,6 +287,7 @@ lectos/
 │   ├── progress_store.py       # Per-student completed-goal store
 │   ├── llm_client.py           # OpenRouter async streaming client
 │   ├── chat_logger.py          # JSONL + Google Sheets logging
+│   ├── viewer_docs.py          # Indexes course HTML for the viewer panel + page context
 │   └── auth.py                 # Allowlist check, user registry, bcrypt
 ├── scripts/
 │   ├── archive_sheet.py        # Download + clear Google Sheet
@@ -282,6 +301,7 @@ lectos/
 │   ├── learn_goals.py          # Learn-mode multi-turn test harness
 │   ├── learn_goals_report.py   # HTML report from learn_goals.py --json results
 │   ├── smoke.py                # Deployment health check
+│   ├── content_view.py         # Viewer panel: indexing, page context, links (offline)
 │   ├── cases/                  # YAML test cases (qna, behavior, learn goals)
 │   └── configs/variants.yaml   # Model/prompt variants for comparison
 ├── intentions.md               # Feature roadmap and IID tags

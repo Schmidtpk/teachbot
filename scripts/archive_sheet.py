@@ -20,7 +20,8 @@ from pathlib import Path
 
 REPO_DIR = Path(__file__).parent.parent
 SHEET_ID = "1Hg-r3cLuzGC8wAoYJFvyVlcDdLFVdDRcL77bVs5wpD8"
-HEADER = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message", "model"]
+# IID-UI-CONTENT-CONTEXT: `viewer` = page the student had open (same order as chat_logger._HEADER_ROW)
+HEADER = ["timestamp", "session_id", "user_email", "course", "role", "content", "flagged_message", "model", "viewer"]
 EXPORTS_DIR = REPO_DIR / "exports"
 CREDENTIALS = REPO_DIR / "credentials" / "service_account.json"
 

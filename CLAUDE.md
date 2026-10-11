@@ -284,11 +284,35 @@ the turn. Both calls use the course model.
   `content/<course>/_diagnose_prompt.md` (same subfolder→root fallback as `_system_prompt.md`).
 - The plain Q&A path (IID-QNA-CORE) is untouched — only `mode: learning_goals` courses use this loop.
 
+## Viewer panel: HTML next to the chat (IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK)
+
+`*.html` files in a course folder (Quarto reveal.js decks, the `../graph` card viewer as
+`cards.html`, any page) are shown in a panel next to the chat: Chainlit's side view on
+desktop (opens by itself), a full-screen sheet on phones (header button "📖 Slides" /
+"💬 Chat"). Optional `viewer:` in `_meta.yaml` (`false` or a list of `{file, label}`).
+No HTML → nothing changes (tested in `tests/content_view.py`).
+
+- **Before each Q&A answer** the open slide/card goes into the request (not the history):
+  the page in full first, then previous/next slide, card neighbours and related cards
+  (slides ↔ cards via the cards' `sources`). The history keeps a one-line marker.
+- **Links:** the system prompt lists every slide/card id; the bot writes
+  `[text](view:DOC/LOC)`, rewritten after streaming to `/viewer/<course>/<file>#…`.
+- **Logs:** `viewer` field / last Sheet column = page open when the student asked.
+- **Files are gitignored** (`content_timeseries/**/*.html`, a deck is ~7 MB): copy them from
+  `junctions/lecture_timeseries/slides/*.html` and `../graph/site/index.html` (→ `cards.html`)
+  into `content_timeseries/lecture/`, then deploy with
+  `railway up --service teachbot-timeseries --no-gitignore --detach` (`.railwayignore` does not
+  exclude them). Re-copy + redeploy after re-rendering slides or rebuilding the graph.
+- **Relies on Chainlit 2.11 internals** (canvas side view, `set_sidebar_elements`, window-message
+  forwarding) — `tests/content_view.py` fails loudly if a Chainlit upgrade changes them.
+- **Local testing:** run only ONE local instance — a second one that fails to bind the port
+  deletes the shared `.files/` folder on exit and breaks the first.
+
 ## Key files
 
 | File | IID/SID | Description |
 |------|---------|-------------|
-| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC, IID-MULTI-COURSE, IID-STREAM-RESILIENCE | Chainlit entry point. `_stream_assistant` retries a stalled turn, rewinds history on total failure, and shows a "Thinking…" step while a reasoning model works |
+| `app.py` | IID-CHAT-SHELL1, IID-QNA-CORE, IID-AUTH-BASIC, IID-MULTI-COURSE, IID-STREAM-RESILIENCE, IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK | Chainlit entry point. `/viewer/<course>/<file>` route, `on_window_message` (viewer panel), page context per request, `view:` link rewriting. `_stream_assistant` retries a stalled turn, rewinds history on total failure, and shows a "Thinking…" step while a reasoning model works |
 | `config.yaml` | IID-EDUCATOR-CONFIG, SID-API-CONFIG | Course + LLM config |
 | `requirements.txt` | SID-STACK | Pinned dependencies |
 | `.env` | SID-API-CONFIG | API secrets — gitignored, never commit |
@@ -296,7 +320,7 @@ the turn. Both calls use the course model.
 | `content/_system_prompt.md` | IID-EDUCATOR-CONFIG, IID-QNA-CORE | Editable LLM behaviour instructions; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `content/_welcome.md` | IID-EDUCATOR-CONFIG, IID-CHAT-SHELL1 | Editable first chat message shown to students; `{{course_name}}` substituted per session. Default fallback for course subfolders that omit their own copy. |
 | `content/_readme.md` | IID-EDUCATOR-CONFIG, IID-MULTI-DEPLOY | Editable sidebar/welcome panel template; `{{course_name}}` substituted. Per-deploy override: `<content_dir>/_readme.md`. Written to `chainlit.md` (generated, gitignored) at startup because Chainlit only reads that fixed root path |
-| `src/course_loader.py` | IID-MULTI-COURSE, IID-COURSE-ACCESS, IID-LEARN-GOALS | Discovers course subfolders, loads `_meta.yaml` (incl. `mode`, `access` + `_learning_goals.yaml`), merges LLM config, resolves fallback paths for system prompt and welcome text |
+| `src/course_loader.py` | IID-MULTI-COURSE, IID-COURSE-ACCESS, IID-LEARN-GOALS, IID-UI-CONTENT-VIEW | Discovers course subfolders, loads `_meta.yaml` (incl. `mode`, `access`, `viewer` + `_learning_goals.yaml`), merges LLM config, resolves fallback paths for system prompt and welcome text |
 | `src/goals.py` | IID-LEARN-GOALS | Samples one uncompleted learning goal; builds the per-goal system prompt (only one goal in context) |
 | `src/tutor_loop.py` | IID-LEARN-DIAGNOSE | Two-step turn: structured `diagnose_answer` (ranks misconceptions, picks top-1 + tactic) + `build_act_instruction` seeding the streamed reply |
 | `content/_diagnose_prompt.md` | IID-LEARN-DIAGNOSE | Editable diagnostic instructions (JSON output); default fallback for goals courses that omit their own copy |
@@ -304,6 +328,9 @@ the turn. Both calls use the course model.
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
 | `src/llm_client.py` | SID-LLM-PROVIDER, IID-STREAM-RESILIENCE, IID-LLM-THINKING | OpenRouter async client. `stream_events` yields `(reasoning\|content, text)`; `stream_response` is its content-only view. `_reasoning_kwargs` turns `llm.reasoning` into OpenRouter's `extra_body` |
 | `scripts/check_reasoning_support.py` | IID-LLM-THINKING | Checks whether a model's providers declare `reasoning` **and** whether a live request honours it. Run before configuring any model with a thinking option |
+| `src/viewer_docs.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK | Indexes course HTML (reveal decks, card graph, any page) into slides/cards/pages; builds the per-turn page context, the link catalogue, rewrites `view:` links |
+| `public/elements/HtmlViewer.jsx` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT | Viewer panel (Chainlit custom element): document picker + iframe; reports the open slide/card |
+| `public/viewer.js` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-MARK | Chainlit `custom_js`: header button, auto-open on desktop, answer links open in the panel |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
 | `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
@@ -423,6 +450,7 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/cases/learn_part1_goals.yaml` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Goal cases for "Practice: Part I": per-goal `question_rubric` + student personas with `feedback_rubric` |
 | `tests/stream_resilience.py` | IID-STREAM-RESILIENCE | Offline: retry, history rewind, stream cleanup, reasoning-as-liveness, Thinking step |
 | `tests/model_choices.py` | IID-LLM-THINKING, IID-STUDENT-MODEL-CHOICE | Offline: `reasoning` translation, choice validation, chooser behaviour, all configs import |
+| `tests/content_view.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK | Offline: HTML indexing, page context, links, window messages, route order, Chainlit internals, no-HTML courses unchanged |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
 | `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |
 | `tests/cases/behavior.yaml` | IID-TEST-LLM-EVAL | Behavior/hallucination guard test cases |
