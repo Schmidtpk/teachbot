@@ -1,0 +1,7 @@
+# IID-MULTI-COURSE, IID-CONTENT-FROM-HTML: the ../graph knowledge cards, all chapters.
+# cards.html (copied by scripts/sync_timeseries.py) is both the viewer panel and, through
+# content_from_viewer, the lecture content: there is no .qmd here.
+lecture_name: "Knowledge cards"
+order: 4
+description: "Browse the **knowledge cards** of all chapters (definitions, results, examples) and ask about them."
+content_from_viewer: true

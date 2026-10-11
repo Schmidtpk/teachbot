@@ -35,7 +35,7 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 
 ### IID-UI-CONTENT-VIEW
 **Lifecycle:** DONE (2026-10-11; switched on for `teachbot-timeseries` once its HTML is uploaded)
-**Description:** If a course folder contains `*.html` files (pre-rendered slides, the knowledge-card graph from `../graph`, any page), students can open them in a viewer panel next to the chat. Desktop: Chainlit's side view (resizable split, opens by itself on wide screens unless the student closed it with the header button — remembered per browser). Phone: a full-screen sheet over the chat, opened with the header button "📖 Slides" and left with "💬 Chat" — it works like a tab. The panel has a document picker and an "open in new tab" link.
+**Description:** If a course folder contains `*.html` files (pre-rendered slides, the knowledge-card graph from `../graph`, any page), students can open them in a viewer panel next to the chat. Desktop: Chainlit's side view (resizable split, opens by itself on wide screens unless the student closed it with the header button — remembered per browser). Phone: a full-screen sheet over the chat, opened with the header button "📖 Slides" and left with "💬 Chat" — it works like a tab. The button says "Cards" in a course showing only the card graph, "Pages" for other HTML. The panel has a document picker and an "open in new tab" link.
 **Inputs:** `*.html` in a course folder (or the content root in single-course mode). Optional `viewer` key in `_meta.yaml`: `false` (off) or a list of `{file, label}` (which files, order, labels); default = every non-`_` `.html`, sorted by name, labels auto-detected (reveal deck: subtitle; otherwise `<title>`).
 **Outputs:** `/viewer/<course>/<file>` (login + course access checked, only indexed files served, ETag revalidation); panel `public/elements/HtmlViewer.jsx`; header button + link handling `public/viewer.js` (Chainlit `custom_js`).
 **Success criteria:**
@@ -64,6 +64,17 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Success criteria:**
 - Never a dead link in an answer; at most three links per answer (prompt rule).
 **No-Goals:** Highlighting passages inside a page; persistent or shared annotations.
+
+### IID-CONTENT-FROM-HTML
+**Lifecycle:** DONE (2026-10-11)
+**Description:** A course whose material exists only as HTML (first case: the knowledge-card graph from `../graph`) uses the text of its viewer documents as lecture content. `content_from_viewer: true` in the course's `_meta.yaml` puts the indexed text of every card/slide/page (IID-UI-CONTENT-CONTEXT) into the lecture-content block of the system prompt: per card its title, `view:` id, type, summary, full text (incl. extra pages) and the ids of the cards it builds on / uses / generalises / specialises ("used by" is left out — it mirrors the others). So the bot can answer and link cards with the panel closed.
+**Inputs:** `content_from_viewer: true` (boolean) in `_meta.yaml`; the course's `*.html`. `.qmd`/`.md` files in the folder are still loaded, before the HTML text.
+**Success criteria:**
+- A folder with the flag needs no `.qmd`; without the flag an empty folder still stops startup (IID-CONTENT-INJECT).
+- A non-boolean value, or the flag in a course that shows no HTML, stops startup naming the folder.
+- Without the flag, HTML never enters the lecture content (decks are grounded by their `.qmd`, SID-CONTENT-RENDER); a deck shown without its same-stem `.qmd` is reported as a startup WARNING.
+**Key files:** `src/viewer_docs.py` (`ViewerSet.as_content`), `src/course_loader.py` (`_check_viewer_content`, `load_course_content`), `src/content_loader.py` (`allow_empty`), `content_timeseries/cards/`, `tests/content_view.py`
+**No-Goals:** Text of figures; choosing a subset of cards per course.
 
 
 ## Content
@@ -478,7 +489,10 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   (IID-PUBLIC-RATELIMIT). Link distributed via QR code in an intro class (2026-09). Content is
   a generic primer until the actual lecture material is dropped into `content_dcm/`.
 - `teachbot-timeseries` (login-protected Q&A, Basel): `config_timeseries.yaml`,
-  `content_timeseries/` (multi-course: `lecture/` Q&A + `assignment1/` helper, IID-ASSIGNMENT-HELP), login for `stud.unibas.ch`, model
+  `content_timeseries/` (multi-course since 2026-10-11: one Q&A course per chapter `utsa01/`–`utsa03/`
+  with each deck's `.qmd` + `.html` and the chapter script, later chapters with the earlier scripts as
+  `extra_content`; `cards/` = the knowledge cards only, IID-CONTENT-FROM-HTML; `assignment1/` helper,
+  IID-ASSIGNMENT-HELP; files copied by `scripts/sync_timeseries.py`), login for `stud.unibas.ch`, model
   `openai/gpt-6-luna` (since 2026-10-06; was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key + own `CHAINLIT_AUTH_SECRET`, own log
   Sheet ("Lectos Timeseries logs"). No session caps (authenticated). Set up 2026-09-15 with a
   placeholder content file until the lecture slides are added.
@@ -581,7 +595,7 @@ OpenRouter API key.
 **Status:** Implemented (2026-09-30)
 **Description:** A course subfolder that helps students with a coding exercise and a graded assignment
 without doing it for them. First instance: `content_timeseries/assignment1/` ("Assignment 1 & Exercise 1
-helper") in `teachbot-timeseries`, next to the lecture Q&A (`lecture/`). Content: task sheet, the Quarto
+helper") in `teachbot-timeseries`, next to the chapter Q&A courses (`utsa01/`–`utsa03/`). Content: task sheet, the Quarto
 template students fill in, coding exercise 1, the lecturer's reference solution, plus the lecture scripts
 via `extra_content`. Own `_system_prompt.md`: short concise explanations for questions; for solving, the
 tutor states it cannot run code or see output, gives **one** small code step at a time, asks the student

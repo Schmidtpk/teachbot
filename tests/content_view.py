@@ -1,17 +1,21 @@
 """
-IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-TEST-LLM-EVAL
+IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML,
+IID-TEST-LLM-EVAL
 Offline tests for the HTML viewer panel: indexing slide decks / card graphs / plain pages,
 the page context the bot gets, answer links, the window-message handler, the file route,
-and that a course WITHOUT HTML behaves exactly as before.
+HTML text as lecture content (`content_from_viewer`), and that a course WITHOUT HTML
+behaves exactly as before.
 
-No network, no LLM. Small HTML fixtures are written to a temp folder, so the test does not
-depend on the (gitignored) real decks; if those are present in content_timeseries/lecture/,
-they are indexed too as a sanity check.
+No network, no LLM. Small HTML fixtures are written to a temp folder. The app is imported
+with config_timeseries.yaml, whose card course needs the (gitignored) HTML copied in by
+scripts/sync_timeseries.py; the real files are then indexed too as a sanity check.
 
 Run:  .venv\\Scripts\\python tests/content_view.py
 """
 
 import asyncio
+import contextlib
+import io
 import os
 import re
 import sys
@@ -25,7 +29,9 @@ os.environ.setdefault("TEACHBOT_CONFIG", "config_timeseries.yaml")
 os.environ.setdefault("OPENROUTER_API_KEY", "test-key-not-used")
 
 import app  # noqa: E402
-from src.course_loader import build_system_prompt, build_viewer, discover_courses  # noqa: E402
+from src.course_loader import (  # noqa: E402
+    build_system_prompt, build_viewer, discover_courses, load_course_content,
+)
 from src.viewer_docs import (  # noqa: E402
     CARDGRAPH, GENERIC, REVEAL, ViewerSet, detect_kind, load_viewer_docs, read_doc,
 )
@@ -197,6 +203,8 @@ def main() -> None:
     check(0 < i_text < i_orient, "its full text comes before anything else")
     check("Position: 3 of 5" in ctx and 'section "The AR(1) process"' in ctx, "position and section given")
     check('Previous slide "The AR(1) process"' in ctx and "Next slide" in ctx, "previous and next slide")
+    check('Previous slide "The AR(1) process" (view:deck/the-ar1-process)\n' in ctx,
+          "a section-title neighbour gets no excerpt (it would only repeat its title)")
     check('card "AR(1) process" (view:cards/ar1-process)' in ctx, "related card with its link id")
     check("$$...$$" in ctx and "never \\(" in ctx, "math-delimiter reminder present")
     cctx = vs.page_context("cards", "ar1-process")
@@ -206,6 +214,10 @@ def main() -> None:
           '"Autoregressive processes: AR(1)"]', "one-line history marker")
     check(vs.tag("deck", "ar1-def") == "deck#ar1-def" and vs.tag("syllabus", "") == "syllabus",
           "log tag")
+    check(vs.button_word() == "Slides"
+          and ViewerSet([cards], "/x").button_word() == "Cards"
+          and ViewerSet([page], "/x").button_word() == "Pages",
+          "header button word follows the documents (Slides / Cards / Pages)")
     cat = vs.catalog()
     check("DOC deck" in cat and "ar1-def: Autoregressive processes: AR(1)" in cat
           and "white-noise: white noise (definition)" in cat, "catalogue lists linkable ids")
@@ -273,19 +285,84 @@ def main() -> None:
           and "VIEWER DOCUMENTS START" in app._with_viewer_catalog(base, vs, "qa"),
           "Q&A with a viewer → catalogue appended after the unchanged prompt")
 
-    # 8 — the real files, when present locally (gitignored)
-    lecture = ROOT / "content_timeseries" / "lecture"
-    real = sorted(lecture.glob("*.html"))
-    if real:
-        print("\ncase: real lecture files (local)")
-        rv = ViewerSet(load_viewer_docs(lecture, None, "lecture"), "/viewer/lecture")
-        for d in rv.docs.values():
+    # 8 — HTML text as the lecture content (IID-CONTENT-FROM-HTML)
+    print("\ncase: content_from_viewer")
+    root = tmp / "root"
+
+    def course_dir(name: str, meta: str, files: dict[str, str]) -> Path:
+        d = root / name
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "_meta.yaml").write_text(f'lecture_name: "{name}"\n{meta}', encoding="utf-8")
+        for fname, text in files.items():
+            (d / fname).write_text(text, encoding="utf-8")
+        return d
+
+    course_dir("cardsonly", "content_from_viewer: true\n", {"cards.html": CARDS})
+    course_dir("paired", "", {"deck.html": DECK, "deck.qmd": "## AR(1)\nqmd text"})
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        found = {c.course_id: c for c in discover_courses(root, {"llm": {}})}
+    check("WARNING" not in err.getvalue(), "no warning when every deck has its .qmd")
+    cc = found["cardsonly"]
+    check(cc.content_from_viewer and cc.viewer is not None, "flag read, viewer built")
+    content = load_course_content(cc)
+    check('#### Card "AR(1) process" (view:cards/ar1-process) — definition' in content,
+          "every card is in the lecture content, with its link id and type")
+    check("Summary: The process $y_t = \\phi y_{t-1} + e_t$." in content and "More detail." in content,
+          "summary and full text (incl. subfiles) are included")
+    check("Related card ids — builds on (key concepts): white-noise" in content
+          and "used by" not in content, "outgoing relations as ids; 'used by' left out")
+    check("LECTURE CONTENT START" in build_system_prompt(cc) and "white noise" in build_system_prompt(cc),
+          "the cards end up in the system prompt")
+    paired = found["paired"]
+    check(not paired.content_from_viewer and "qmd text" in load_course_content(paired)
+          and "Autoregressive" not in load_course_content(paired),
+          "without the flag the HTML stays out of the lecture content (the .qmd is it)")
+
+    course_dir("orphan", "", {"deck.html": DECK, "notes.md": "notes"})
+    err = io.StringIO()
+    with contextlib.redirect_stderr(err):
+        discover_courses(root, {"llm": {}})
+    check("'orphan' shows 'deck.html' but has no 'deck.qmd'" in err.getvalue(),
+          "a deck without its .qmd is reported at startup")
+    (root / "orphan" / "_meta.yaml").write_text('lecture_name: "o"\ncontent_from_viewer: yes please\n',
+                                                 encoding="utf-8")
+    check(exits(lambda: discover_courses(root, {"llm": {}})), "a non-boolean flag stops startup")
+    (root / "orphan" / "_meta.yaml").write_text('lecture_name: "o"\ncontent_from_viewer: true\nviewer: false\n',
+                                                 encoding="utf-8")
+    check(exits(lambda: discover_courses(root, {"llm": {}})), "the flag without any HTML stops startup")
+    import shutil
+    shutil.rmtree(root / "orphan")
+    course_dir("empty", "", {"deck.html": DECK})
+    with contextlib.redirect_stderr(io.StringIO()):
+        empty = next(c for c in discover_courses(root, {"llm": {}}) if c.course_id == "empty")
+    check(exits(lambda: load_course_content(empty)),
+          "no .qmd and no flag: an empty course still stops startup, as before")
+
+    # 9 — the time series deploy as configured (config_timeseries.yaml)
+    print("\ncase: time series courses")
+    by_id = {c.course_id: c for c in app.COURSES}
+    check([c.course_id for c in app.COURSES] == ["utsa01", "utsa02", "utsa03", "cards", "assignment1"],
+          f"one course per chapter, then cards, then the helper (got {list(by_id)})")
+    for cid in ("utsa01", "utsa02", "utsa03"):
+        c = by_id[cid]
+        decks = [d for d in (c.viewer.docs.values() if c.viewer else []) if d.kind == REVEAL]
+        check(bool(decks) and all((c.content_dir / f"{d.doc_id}.qmd").is_file() for d in decks)
+              and not c.content_from_viewer,
+              f"{cid}: decks shown, each with its .qmd as lecture content")
+    check([p.name for p in by_id["utsa03"].extra_content]
+          == ["script_01-utsa-intro.qmd", "script_02-utsa-fundamentals.qmd"],
+          "ch. 3 has the scripts of ch. 1 and 2 as background")
+    check(by_id["cards"].content_from_viewer and list(by_id["cards"].viewer.docs) == ["cards"],
+          "the card course shows only the cards and answers from them")
+
+    # 10 — the real files (gitignored, copied in by scripts/sync_timeseries.py)
+    print("\ncase: real lecture files (local)")
+    for c in app.COURSES:
+        for d in (c.viewer.docs.values() if c.viewer else []):
             check(len(d.order) > 0 and all(not re.search(r"data:image", d.locations[x].text)
                                            for x in d.order),
-                  f"{d.filename}: {d.kind}, {len(d.order)} locations, no base64 in text")
-        n = sum(1 for k in rv.related if rv.docs[k[0]].kind == REVEAL)
-        check(n > 0 or not any(d.kind == CARDGRAPH for d in rv.docs.values()),
-              f"slides linked to cards: {n}")
+                  f"{c.course_id}/{d.filename}: {d.kind}, {len(d.order)} locations, no base64 in text")
 
     failed = [lbl for ok_, lbl in RESULTS if not ok_]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")

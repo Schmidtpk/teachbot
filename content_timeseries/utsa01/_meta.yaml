@@ -1,0 +1,5 @@
+# IID-MULTI-COURSE: Q&A for chapter 1 (IID-QNA-CORE). Deck .qmd + .html and the script are
+# copied by scripts/sync_timeseries.py; uses root _system_prompt.md / _welcome.md.
+lecture_name: "Ch. 1 – Introduction"
+order: 1
+description: "Questions about **chapter 1**: slides and lecture script."

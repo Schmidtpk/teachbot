@@ -112,6 +112,8 @@ def build_sessions(rows: list[dict], student_domains: list[str], non_students: s
         email = next((t["user_email"] for t in turns if t["user_email"]), "")
         sessions.append({
             "session_id": sid,
+            # IID-MULTI-COURSE: which course (chapter, cards, assignment helper) the chat was in
+            "course": next((t["course"] for t in turns if t.get("course")), ""),
             "email": email,
             "name": name_from_email(email) if email else "anonymous",
             "is_student": email.lower() not in non_students
@@ -152,7 +154,8 @@ def write_agent_inputs(sessions: list[dict], week_dir: Path) -> dict:
         n_q = sum(t["role"] == "user" for t in s["turns"])
         who = f"{s['name']} ({s['email']})" + ("" if s["is_student"] else " — NON-STUDENT")
         models = sorted({t["model"].split("/")[-1] for t in s["turns"] if t["role"] == "assistant" and t["model"]})
-        t_lines += ["", f"## {s['label']} · {who} · {fmt_ts(s['start'])} · {n_q} questions · {', '.join(models)}", ""]
+        course = f" · course: {s['course']}" if s["course"] else ""
+        t_lines += ["", f"## {s['label']} · {who}{course} · {fmt_ts(s['start'])} · {n_q} questions · {', '.join(models)}", ""]
         prev_tutor = ""
         for t in s["turns"]:
             role = t["role"]
@@ -162,7 +165,9 @@ def write_agent_inputs(sessions: list[dict], week_dir: Path) -> dict:
                 flags.append({"id": fid, "session": s, "ts": t["timestamp"], "comment": t["content"], "flagged": flagged})
                 t_lines += [f"### [{fmt_ts(t['timestamp'], False)}] ⚑ FLAG {fid} — student comment:", t["content"] or "(no comment)", ""]
             elif role in ROLE_TAG:
-                t_lines += [f"### [{fmt_ts(t['timestamp'], False)}] {ROLE_TAG[role]}", t["content"], ""]
+                # IID-UI-CONTENT-CONTEXT: the slide/card the student had open when asking
+                opened = f" (viewer open at: {t['viewer']})" if role == "user" and t.get("viewer") else ""
+                t_lines += [f"### [{fmt_ts(t['timestamp'], False)}] {ROLE_TAG[role]}{opened}", t["content"], ""]
                 if role == "assistant":
                     prev_tutor = t["content"]
             # 'diagnosis' rows (learning-goals mode only) are internal and skipped
@@ -205,11 +210,13 @@ def write_agent_inputs(sessions: list[dict], week_dir: Path) -> dict:
         "median_question_chars": int(statistics.median(q_len)) if q_len else 0,
         "median_answer_chars": int(statistics.median(a_len)) if a_len else 0,
         "student_sessions_per_day": dict(sorted(Counter(s["start"][:10] for s in students).items())),
+        "student_sessions_per_course": dict(Counter(s["course"] or "(unknown)" for s in students).most_common()),
         "models": dict(Counter(t["model"] for t in all_turns if t["role"] == "assistant" and t["model"])),
         "sessions_per_student": {name_from_email(e): n for e, n in per_student.most_common()},
         "session_index": [
             {
-                "label": s["label"], "session_id": s["session_id"], "name": s["name"], "email": s["email"],
+                "label": s["label"], "session_id": s["session_id"], "course": s["course"],
+                "name": s["name"], "email": s["email"],
                 "is_student": s["is_student"], "start": s["start"], "end": s["end"],
                 "questions": sum(t["role"] == "user" for t in s["turns"]),
                 "flags": sum(t["role"] == "feedback" for t in s["turns"]),

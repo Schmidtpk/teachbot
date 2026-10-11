@@ -1,0 +1,717 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Ch. 3 – ARMA Models, Part 2 <br><br> HS 2026 · based on material by Christian Kleiber (University of Basel)"
+format:
+  clean-revealjs:
+    self-contained: true
+    css: [styles.css, legibility.css]
+    width: 1600
+    height: 900
+    scrollable: true
+    auto-stretch: false
+    include-after-body: autofit.html
+author:
+  - name: Patrick Schmidt
+    email: patrick.schmidt@awi.uni-heidelberg.de
+    affiliations: University of Heidelberg
+execute:
+  cache: true
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(fig.width = 12, fig.height = 6, fig.align = "center", dpi = 150)
+# larger fonts for every base R plot, without cluttering the code shown on the slides
+knitr::knit_hooks$set(par_ts = function(before, options, envir) {
+  if (before) par(mar = c(4.5, 4.5, 3, 1), cex.main = 1.6, cex.lab = 1.4, cex.axis = 1.3)
+})
+knitr::opts_chunk$set(par_ts = TRUE)
+```
+
+## Contents
+
+*Part 1:* the AR(1) process, from AR(1) to ARMA, linear processes, MA processes
+
+6. Autoregressive processes of order $p$
+7. Stationarity and causality
+8. Invertibility
+9. Mixed autoregressive moving average models
+10. Computing the ACF
+11. Numerical example
+12. Keywords
+13. Further reading
+
+# Autoregressive processes of order $p$
+
+## Autoregressive processes
+
+:::{.clean-box}
+**definition:** an [**autoregressive process of order $p$**]{.alert}, AR($p$) for short, is defined as
+$$y_t := \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + e_t$$
+with $\{e_t\} \sim WN(0, \sigma_e^2)$
+:::
+
+- this is a [**stochastic difference equation**]{.alert}; compact notation: $\phi(B)\, y_t = e_t$, with $\phi(B) = 1 - \phi_1 B - \dots - \phi_p B^p$ from the ARMA road map (ARMA with $q = 0$)
+
+:::: {.columns}
+
+::: {.column width="60%"}
+**remarks:**
+
+- $y_t$ is a weighted sum of $p$ previous values plus "innovation" $e_t$
+- for each $t$, $e_t$ is assumed to be independent of $y_{t-1}, y_{t-2}, \dots$
+- in macroeconomics, $e_t$ are often called "shocks"
+- pioneering work by Yule (1926)
+:::
+
+::: {.column width="40%"}
+**issues:**
+
+- when is an AR process stationary?
+- how to find the filter weights $\psi_i$?
+- how to find the ACF?
+:::
+
+::::
+
+# Stationarity and causality
+
+## Stationarity and causality
+
+**stationarity and causality:** when does $\psi(z) = 1/\phi(z)$ have a convergent power series on $|z| \leqslant 1$?
+
+**technical issue 1:** ('explosive' AR models and causality). **example:** $y_t = \phi\, y_{t-1} + e_t$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- AR(1) with $|\phi| < 1$ ('stable'). using [**backward substitution**]{.alert}, may be rewritten as
+$$y_t = \sum_{i=0}^{\infty} \phi^i\, e_{t-i}$$
+:::
+
+::: {.column width="50%"}
+- AR(1) with $|\phi| > 1$ ('explosive'). using [**forward substitution**]{.alert}, may be rewritten as
+$$y_t = -\sum_{i=1}^{\infty} \Big(\frac{1}{\phi}\Big)^i e_{t+i}$$
+:::
+
+::::
+
+- second approach is valid since now $|1/\phi| < 1$, hence $\sum |(1/\phi)^i| < \infty$. however, solution is peculiar since it is forward-looking (depends on the future). call forward-looking [**non-causal**]{.alert} and backward-looking [**causal**]{.alert}
+
+## Stationarity and causality
+
+:::{.clean-box}
+**definition:** a process $\{y_t\}$ is [**causal**]{.alert} wrt $\{e_t\}$ if an MA($\infty$) representation exists, i.e. if there exists a sequence of weights $\{\psi_i\}$, $\sum_{i=0}^\infty |\psi_i| < \infty$, with
+$$y_t = \sum_{i=0}^{\infty} \psi_i\, e_{t-i}, \qquad \psi_0 = 1$$
+:::
+
+- **example (cont'd):** AR(1) with $|\phi| < 1$ is stationary and causal. if $|\phi| > 1$, a non-causal but stationary solution exists. only if $|\phi| = 1$, no stationary solution exists ('unit root' case, can be tested ... later)
+- **technical surprise:** (causal counterparts) in the non-causal case, can switch to a different white noise sequence, for which the object is then causal (example: Neusser 2016, pp 32–33). so, in a sense not much is lost if we confine ourselves to [**stationary and causal**]{.alert} processes, sometimes also called [**stable**]{.alert}
+- **application:** in macroeconomic theory, non-causal objects correspond to forward-looking behavior ('rational expectations'). recent econometrics papers experiment with forecasts from non-causal models: Lanne and Saikkonen (J Time Series Econometrics 2011) consider inflation
+
+## Stationarity and causality
+
+**question:** when does stationary solution of AR($p$) equation exist? **we know:** for AR(1), $|\phi| < 1$ stationary and causal. rewrite as $|1/\phi| > 1$
+
+**AR($p$) model equation:** $\quad y_t = \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + e_t, \quad$ or $\quad \phi(B)\, y_t = e_t$
+
+- for several technical issues it is useful to view polynomials as polynomials in complex argument $z$
+
+:::{.clean-box}
+**definition:** the [**AR characteristic polynomial**]{.alert} is
+$$\phi(z) := 1 - \phi_1 z - \phi_2 z^2 - \dots - \phi_p z^p$$
+:::
+
+- AR characteristic equation: $\quad 1 - \phi_1 z - \phi_2 z^2 - \dots - \phi_p z^p = 0$
+- **recall:** $p$th order equation always has $p$ roots. not necessarily distinct, but possibly complex (hence write $z$, not $x$)
+
+## Stationarity and causality
+
+:::{.clean-box}
+**property:** (stationarity and causality condition) an AR($p$) process is stationary and causal if and only if all roots of the AR characteristic polynomial exceed 1 in absolute value. equivalently, if outside the unit circle in complex plane. formally:
+$$\{z : \phi(z) = 0\} \subseteq \{z : |z| > 1\}$$
+:::
+
+**necessary conditions** for stability are:
+$$\phi_1 + \phi_2 + \dots + \phi_p < 1, \qquad |\phi_p| < 1$$
+
+- **again:** introductory texts often state that AR($p$) is stationary *if and only if* all roots are outside the unit circle. not quite correct. stationarity condition from introductory textbooks really refers to [**stationary and causal**]{.alert} processes
+
+::: {.notes}
+- the power series of $1/\phi(z)$ converges on the closed unit disc exactly when $\phi$ has no root there; roots inside the circle give the forward-looking solution
+:::
+
+## Stationarity and causality
+
+**example:** AR(2) $\quad y_t = \phi_1 y_{t-1} + \phi_2 y_{t-2} + e_t$
+
+- AR(2) process is stationary and causal if and only if both roots $z_1, z_2$ of the AR characteristic equation $\phi(z) = 0$ exceed 1 in absolute value
+
+:::: {.columns}
+
+::: {.column width="45%"}
+- characteristic equation is $\phi(z) = 1 - \phi_1 z - \phi_2 z^2 = 0$. roots are
+$$z_{1/2} = \frac{\phi_1 \pm \sqrt{\phi_1^2 + 4 \phi_2}}{-2 \phi_2}$$
+:::
+
+::: {.column width="55%"}
+- hence we can write
+$$
+\begin{aligned}
+\phi(z) &= \Big(1 - \frac{z}{z_1}\Big)\Big(1 - \frac{z}{z_2}\Big) \quad \text{and} \\
+\Big(1 - \frac{1}{z_1} B\Big)&\Big(1 - \frac{1}{z_2} B\Big)\, y_t = e_t
+\end{aligned}
+$$
+:::
+
+::::
+
+- it follows that $\phi_1 = (1/z_1 + 1/z_2)$ and $\phi_2 = -1/(z_1 z_2)$. combining this with $|z_1| > 1$ and $|z_2| > 1$ one can derive the following equivalent (and more explicit) condition for stationarity and causality:
+$$\phi_1 + \phi_2 < 1, \qquad \phi_2 - \phi_1 < 1, \qquad |\phi_2| < 1$$
+
+## Stationarity and causality
+
+the stationarity region of the AR(2) process:
+
+```{r ar2-triangle-code}
+#| eval: false
+plot(NA, xlim = c(-2, 2), ylim = c(-1, 1), xlab = expression(phi[1]), ylab = expression(phi[2]))
+polygon(c(-2, 2, 0), c(-1, -1, 1), col = "gray85")
+phi1 <- seq(-2, 2, by = 0.01)
+polygon(c(phi1, 2, -2), c(-phi1^2 / 4, -1, -1), col = "gray60")
+text(0, 0.35, "real roots"); text(0, -0.55, "complex roots")
+text(1.3, 0.6, expression(phi[1]^2 + 4 * phi[2] == 0)); arrows(1.3, 0.5, 0.8, -0.14)
+abline(h = 0, v = 0, lty = 3)
+```
+
+## Stationarity and causality
+
+```{r ar2-triangle}
+#| echo: false
+#| ref.label: ar2-triangle-code
+#| fig-width: 9
+#| fig-height: 5.4
+#| out-width: "72%"
+```
+
+<!-- figure: the AR(2) stationarity triangle in the (phi_1, phi_2) plane, x axis -2 to 2, y axis -1 to 1, dotted axes through the origin. A light grey triangle with vertices (-2, -1), (2, -1) and (0, 1) marks the stationary and causal region; its lower part below the parabola phi_2 = -phi_1^2 / 4 is shaded darker and labelled 'complex roots', the upper part is labelled 'real roots'. An arrow from the label 'phi_1^2 + 4 phi_2 = 0' at the upper right points to the parabola. -->
+
+## Stationarity and causality: the eigenvalue view
+
+- **modern alternative to the roots:** write the AR($p$) as a first-order system for the state $s_t := (y_t, y_{t-1}, \dots, y_{t-p+1})^\top$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+:::{.clean-box}
+**definition:** the [**companion matrix**]{.alert} of the AR($p$) process is
+$$F := \begin{pmatrix} \phi_1 & \phi_2 & \cdots & \phi_{p-1} & \phi_p \\ 1 & 0 & \cdots & 0 & 0 \\ \vdots & & \ddots & & \vdots \\ 0 & 0 & \cdots & 1 & 0 \end{pmatrix}$$
+so that $\quad s_t = F\, s_{t-1} + (e_t, 0, \dots, 0)^\top$
+:::
+:::
+
+::: {.column width="50%"}
+- the eigenvalues $\lambda_i$ of $F$ are the reciprocals of the roots $z_i$ of $\phi(z)$: $\lambda_i = 1/z_i$
+- stationary and causal $\Leftrightarrow$ all roots outside the unit circle $\Leftrightarrow$ all eigenvalues **inside** the unit circle, $|\lambda_i| < 1$
+- same condition as for the AR(1) ($|\phi| < 1$), now for the matrix $F$: iterating the system, $F^k \to 0$
+- this is how the condition is stated for vector autoregressions (Hamilton 1994)
+:::
+
+::::
+
+## Stationarity and causality: the eigenvalue view
+
+**example:** AR(2) with $\phi_1 = 1.5$, $\phi_2 = -0.75$. `polyroot()` gives the roots of $\phi(z)$, `eigen()` the eigenvalues of $F$
+
+```{r ar2-eigen}
+phi <- c(1.5, -0.75)
+z <- polyroot(c(1, -phi))      # roots of 1 - 1.5 z + 0.75 z^2
+z; Mod(z)                      # complex pair, outside the unit circle
+F <- rbind(phi, c(1, 0))
+lambda <- eigen(F)$values
+lambda; Mod(lambda)            # the reciprocals, inside the unit circle
+```
+
+## Stationarity and causality: an ACF zoo
+
+how the ACF varies across the stationarity triangle (`ARMAacf()` computes it):
+
+```{r ar2-zoo-code}
+#| eval: false
+par(mfrow = c(2, 2))
+for (phi2 in c(0.4, -0.8)) for (phi1 in c(-0.5, 0.5)) {
+  plot(0:15, ARMAacf(ar = c(phi1, phi2), lag.max = 15), type = "h", ylim = c(-1, 1),
+       xlab = "Lag", ylab = expression(rho(k)),
+       main = bquote(phi[1] == .(phi1) ~ "," ~ phi[2] == .(phi2)))
+  abline(h = 0)
+}
+```
+
+## Stationarity and causality: an ACF zoo
+
+```{r ar2-zoo}
+#| echo: false
+#| ref.label: ar2-zoo-code
+#| fig-width: 10
+#| fig-height: 5.6
+#| out-width: "78%"
+```
+
+<!-- figure: 2 by 2 grid of theoretical AR(2) ACFs as vertical bars at lags 0 to 15, y axis -1 to 1 in every panel, each panel titled with its coefficients. Columns: phi_1 = -0.5 (left), 0.5 (right); rows: phi_2 = 0.4 (top), -0.8 (bottom). Top row (real roots): slowly decaying ACFs, alternating in sign for phi_1 = -0.5 (−0.83 at lag 1, +0.82 at lag 2, ...), strictly positive and slowly decaying for phi_1 = 0.5. Bottom row (complex roots): pronounced damped sine waves, starting negative for phi_1 = -0.5 (−0.28 at lag 1, −0.66 at lag 2, then back up) and positive for phi_1 = 0.5 (+0.28, −0.66, −0.55, ...), period about 4 to 5 lags. -->
+
+::: {.notes}
+- real roots: sums of exponentials; complex roots: damped sine waves
+- the top row sits above the parabola of the triangle slide, the bottom row below
+:::
+
+# Invertibility
+
+## Invertibility
+
+**invertibility:** when does $1/\psi(z) = 1/\theta(z)$ have a convergent power series on $|z| \leqslant 1$?
+
+**technical issue 2:** (MA models that are not unique)
+
+- **problem:** for MA(1) process, ACF for coefficient $\theta$ is the same as for $1/\theta$. try $\theta = 2$ and $\theta = 1/2$ for an example. similar issues in higher-order MA($q$) processes
+- **implications:** models are not uniquely identified from ACF. note that we can only observe $y_t$, not $e_t$. need to choose only one of the equivalent models – but which one?
+
+- **solution** is related to another (seemingly unrelated) question
+- **observation:** AR($p$) process can be thought of as an MA($\infty$) process (by means of the general linear process representation)
+- **question:** can MA($q$) processes be written as AR($\infty$) processes ...?
+
+## Invertibility
+
+**example:** consider MA(1) process $y_t = e_t + \theta e_{t-1}$. if $|\theta| < 1$, an infinite recursive substitution leads to
+$$
+\begin{aligned}
+e_t &= y_t - \theta e_{t-1} = y_t - \theta(y_{t-1} - \theta e_{t-2}) = y_t - \theta y_{t-1} + \theta^2 (y_{t-2} - \theta e_{t-3}) \\
+&= y_t - \theta y_{t-1} + \theta^2 y_{t-2} - \theta^3 y_{t-3} + \dots = \sum_{j=0}^{\infty} \pi_j\, y_{t-j}, \qquad \text{with } \pi_j = (-\theta)^j
+\end{aligned}
+$$
+
+:::{.clean-box}
+**definition:** an MA process is called [**invertible**]{.alert} if an AR($\infty$) representation
+$$e_t = \sum_{j=0}^{\infty} \pi_j\, y_{t-j}$$
+can be found. we set $\pi_0 = 1$
+:::
+
+- **implication:** if $|\theta| < 1$ the MA(1) process is invertible
+
+## Invertibility
+
+:::{.clean-box}
+**definition:** for MA($q$) and ARMA($p$, $q$) processes, the [**MA characteristic polynomial**]{.alert} is
+$$\theta(z) := 1 + \theta_1 z + \theta_2 z^2 + \dots + \theta_q z^q$$
+:::
+
+- the corresponding MA characteristic equation is $\quad 1 + \theta_1 z + \theta_2 z^2 + \dots + \theta_q z^q = 0$
+
+:::{.clean-box}
+**property:** (invertibility condition) the MA($q$) model is invertible if and only if all roots of the MA characteristic equation exceed 1 in absolute value
+:::
+
+- **remark:** it may be shown that there is only one set of parameter values that yield an invertible MA process with a given ACF
+- **implication:** restrict attention to invertible versions when working with ARMA($p$, $q$) processes
+
+# Mixed autoregressive moving average models
+
+## Mixed autoregressive moving average models
+
+**motivation:** working with pure AR or MA processes may require many parameters in some applications (i.e., large $p$ or $q$). try to save parameters by 'combining' AR and MA processes in a single model
+
+:::{.clean-box}
+**definition:** an [**autoregressive moving average process of orders $p$ and $q$**]{.alert}, ARMA($p$, $q$) for short, is defined as
+$$y_t := \phi_1 y_{t-1} + \dots + \phi_p y_{t-p} + e_t + \theta_1 e_{t-1} + \dots + \theta_q e_{t-q}$$
+where $\{e_t\} \sim WN(0, \sigma_e^2)$ and $\phi_p \neq 0 \neq \theta_q$
+:::
+
+**issues:**
+
+- stationarity?
+- MA($\infty$) representation?
+- AR($\infty$) representation?
+- ACF?
+
+## Mixed autoregressive moving average models
+
+**no common factors:** is the fraction $\theta(z)/\phi(z)$ in lowest terms?
+
+**technical issue 3:** (parameter redundancy)
+
+**example:** consider ARMA(1,1) equation $\quad (1 - 0.5 B)\, y_t = (1 - 0.5 B)\, e_t$. applying formally the operator $(1 - 0.5 B)^{-1}$,
+$$y_t = (1 - 0.5 B)^{-1} (1 - 0.5 B)\, y_t = (1 - 0.5 B)^{-1} (1 - 0.5 B)\, e_t = e_t$$
+
+:::: {.columns}
+
+::: {.column width="60%"}
+- hence process is in fact white noise. phenomenon also called [**common factors**]{.alert}
+- need to assume/ensure that there are no common factors in AR and MA characteristic polynomials. otherwise the model actually has orders lower than $p$ and $q$
+- general condition for ARMA(1, 1) is $\phi \neq -\theta$ (why?)
+:::
+
+::: {.column width="40%"}
+**implication:** three technical issues suggest that we prefer ARMA models
+
+- without common factors
+- that are stationary and causal
+- that are invertible
+:::
+
+::::
+
+## Mixed autoregressive moving average models
+
+stationarity, causality and invertibility conditions for ARMA models follow directly from the AR and MA versions given earlier. consider $\phi(B)\, y_t = \theta(B)\, e_t$ without common factors
+
+:::: {.columns}
+
+::: {.column width="50%"}
+:::{.clean-box}
+**property:** (stationarity and causality) the ARMA process is stationary and causal wrt $\{e_t\}$ if and only if $\phi(z) \neq 0$ for all $|z| \leqslant 1$. the coefficients of the MA($\infty$) representation can be determined by solving
+$$\psi(z) = \frac{\theta(z)}{\phi(z)}$$
+:::
+:::
+
+::: {.column width="50%"}
+:::{.clean-box}
+**property:** (invertibility) the ARMA process is invertible if and only if $\theta(z) \neq 0$ for all $|z| \leqslant 1$. the coefficients of the AR($\infty$) representation can be determined by solving
+$$\pi(z) = \frac{\phi(z)}{\theta(z)}$$
+:::
+:::
+
+::::
+
+- **remark:** note the duality in stationarity (+ causality) vs invertibility
+- the $\psi_j$ are the impulse responses from Part 1, see below
+
+## Mixed autoregressive moving average models
+
+**MA($\infty$) representation:** determine filter weights from $\psi(z) = \theta(z)/\phi(z)$. rearranging gives
+$$
+\begin{aligned}
+\phi(z)\, \psi(z) &= \theta(z) \\
+(1 - \phi_1 z - \dots - \phi_p z^p)(\psi_0 + \psi_1 z + \psi_2 z^2 + \dots) &= (1 + \theta_1 z + \dots + \theta_q z^q)
+\end{aligned}
+$$
+
+- now match coefficients – the [**method of undetermined coefficients**]{.alert}
+
+**example:** AR(2). coefficients $\psi_j$ can be found from the recursion
+$$\psi_j - \phi_1 \psi_{j-1} - \phi_2 \psi_{j-2} = 0 \qquad (j \geqslant 2)$$
+and the starting values
+$$\psi_0 = 1, \qquad \psi_1 = \phi_1 \quad (\text{from } \psi_1 - \phi_1 \psi_0 = 0)$$
+
+**AR($\infty$) representation:** analogous
+
+## Mixed autoregressive moving average models
+
+:::{.clean-box}
+**definition:** the mapping $j \mapsto \psi_j$ for $j = 0, 1, 2, \dots$ is often called the [**impulse response function**]{.alert}, especially in macroeconomics
+:::
+
+- recall: $\psi_j$ is the effect of a shock $e_{t-j}$ on $y_t$, i.e. of a unit shock after $j$ periods. in R: `ARMAtoMA()`
+
+```{r irf-code}
+#| eval: false
+par(mfrow = c(1, 2))
+plot(0:20, c(1, ARMAtoMA(ar = 0.9, lag.max = 20)), type = "h", ylim = c(-0.5, 1.5),
+     xlab = "j", ylab = expression(psi[j]), main = "AR(1): phi = 0.9")
+abline(h = 0)
+plot(0:20, c(1, ARMAtoMA(ar = c(1.5, -0.75), lag.max = 20)), type = "h", ylim = c(-0.5, 1.5),
+     xlab = "j", ylab = expression(psi[j]), main = "AR(2): phi1 = 1.5, phi2 = -0.75")
+abline(h = 0)
+```
+
+## Mixed autoregressive moving average models
+
+```{r irf}
+#| echo: false
+#| ref.label: irf-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels of impulse response weights psi_j as vertical bars at j = 0 to 20, y axis -0.5 to 1.5. left, AR(1) with phi = 0.9: geometric decay 1, 0.9, 0.81, ... to about 0.12 at j = 20, all positive. right, AR(2) with phi_1 = 1.5, phi_2 = -0.75 (complex roots): 1, 1.5, 1.5, 1.125, 0.56, then a damped oscillation that turns negative around j = 6, bottoms near -0.4 around j = 8 to 9, returns positive around j = 12 and is close to zero by j = 20. -->
+
+::: {.notes}
+- complex roots give an oscillating response: the shock is overshot and then corrected
+- the ACF inherits this shape
+:::
+
+# Computing the ACF
+
+## Computing the ACF
+
+**motivation:** ACF can be obtained from MA($\infty$) representation. nice for MA processes, clumsy for AR processes. other options?
+
+**Yule–Walker equations:** (generalization of method used for AR(1)) for an AR($p$), stationary with zero mean, recursion holds for $k \geqslant 1$:
+$$\rho(k) = \phi_1\, \rho(k-1) + \phi_2\, \rho(k-2) + \dots + \phi_p\, \rho(k-p)$$
+
+for $k = 1, \dots, p$ and using $\rho(0) = 1$ and $\rho(-k) = \rho(k)$, this yields
+$$
+\begin{aligned}
+\rho(1) &= \phi_1 + \phi_2\, \rho(1) + \phi_3\, \rho(2) + \dots + \phi_p\, \rho(p-1) \\
+\rho(2) &= \phi_1\, \rho(1) + \phi_2 + \phi_3\, \rho(1) + \dots + \phi_p\, \rho(p-2) \\
+&\ \ \vdots \\
+\rho(p) &= \phi_1\, \rho(p-1) + \phi_2\, \rho(p-2) + \phi_3\, \rho(p-3) + \dots + \phi_p
+\end{aligned}
+$$
+
+- $p$ linear equations in $p$ unknowns, solve for $\rho(1), \dots, \rho(p)$. then $\rho(k)$ for $k > p$ recursively
+
+## Computing the ACF
+
+**Yule–Walker equations:** (cont'd) if needed, the variance $\gamma(0)$ can be obtained using $\mathrm{Cov}(y_t, e_t) = \sigma_e^2$ and $\rho(k) = \gamma(k)/\gamma(0)$:
+$$
+\begin{aligned}
+\gamma(0) &= \mathrm{Cov}(y_t, y_t) = \mathrm{Cov}(y_t,\, \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + e_t) \\
+&= \phi_1 \gamma(1) + \phi_2 \gamma(2) + \dots + \phi_p \gamma(p) + \sigma_e^2 = \frac{\sigma_e^2}{1 - \phi_1 \rho(1) - \phi_2 \rho(2) - \dots - \phi_p \rho(p)}
+\end{aligned}
+$$
+
+**remarks:**
+
+- $\rho(k)$ can be shown to be linear combination of exponentially decaying terms (corresponding to real roots) and damped sine waves (corresponding to complex roots). method: general techniques for (linear) [**difference equations**]{.alert}
+- Yule–Walker equations also yield an estimator for pure AR models: replace $\rho(j)$ by $\hat\rho(j)$, then solve for $\phi$s. an analogy principle $\to$ method of moments (MM). more later!
+
+## Computing the ACF
+
+**example:** AR(2). Yule–Walker equations for $\gamma(k)$ and $\rho(k)$ are
+$$\gamma(k) = \phi_1 \gamma(k-1) + \phi_2 \gamma(k-2), \qquad \rho(k) = \phi_1 \rho(k-1) + \phi_2 \rho(k-2)$$
+
+using $\rho(0) = 1$ and $\rho(-k) = \rho(k)$, recursion can be initialized, giving
+$$
+\begin{aligned}
+\rho(1) &= \phi_1 + \phi_2\, \rho(1) = \frac{\phi_1}{1 - \phi_2} \\
+\rho(2) &= \phi_1 \rho(1) + \phi_2 = \frac{\phi_1^2 + \phi_2 (1 - \phi_2)}{1 - \phi_2}
+\end{aligned}
+$$
+
+**remarks:**
+
+- ACF can assume wide variety of shapes
+- magnitude of $\rho(k)$ decays exponentially fast in lag $k$
+- in R: `ARMAacf()` for numerical computation
+
+## Computing the ACF: AR(2) with real roots
+
+$\phi = (0.5, 0.25)$ and $\phi = (1, -0.25)$:
+
+```{r ar2-real-code}
+#| eval: false
+set.seed(0)
+par(mfrow = c(2, 2))
+for (phi in list(c(0.5, 0.25), c(1, -0.25))) {
+  y <- arima.sim(model = list(ar = phi), n = 120)
+  plot(y, ylim = c(-5, 5), main = paste0("AR(2): ", phi[1], ", ", phi[2]))
+  abline(h = 0, col = "lightgray")
+  plot(0:12, ARMAacf(ar = phi, lag.max = 12), type = "h", ylim = c(-1, 1),
+       xlab = "Lag", ylab = expression(rho(k)), main = "ACF")
+  abline(h = 0)
+}
+```
+
+## Computing the ACF: AR(2) with real roots
+
+```{r ar2-real}
+#| echo: false
+#| ref.label: ar2-real-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: 2 by 2 grid, each row one simulated AR(2) series (seed 0, 120 observations, y axis -5 to 5) on the left and its theoretical ACF (bars at lags 0 to 12, y axis -1 to 1) on the right. Top row, phi = (0.5, 0.25): smooth persistent series wandering within about -4 to 3; ACF decays slowly and monotonically, 1, 0.67, 0.58, 0.46, ... to about 0.1 at lag 12. Bottom row, phi = (1, -0.25): similarly persistent series; ACF decays monotonically but faster, 1, 0.8, 0.55, 0.35, ... near 0 by lag 10. -->
+
+## Computing the ACF: AR(2) with complex roots
+
+$\phi = (1.5, -0.75)$ and $\phi = (1, -0.6)$:
+
+```{r ar2-complex-code}
+#| eval: false
+set.seed(0)
+par(mfrow = c(2, 2))
+for (phi in list(c(1.5, -0.75), c(1, -0.6))) {
+  y <- arima.sim(model = list(ar = phi), n = 120)
+  plot(y, ylim = c(-5, 5), main = paste0("AR(2): ", phi[1], ", ", phi[2]))
+  abline(h = 0, col = "lightgray")
+  plot(0:12, ARMAacf(ar = phi, lag.max = 12), type = "h", ylim = c(-1, 1),
+       xlab = "Lag", ylab = expression(rho(k)), main = "ACF")
+  abline(h = 0)
+}
+```
+
+## Computing the ACF: AR(2) with complex roots
+
+```{r ar2-complex}
+#| echo: false
+#| ref.label: ar2-complex-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: 2 by 2 grid as before. Top row, phi = (1.5, -0.75): the series shows pronounced quasi-periodic swings with a period of roughly 10 to 12 observations and amplitude up to about ±5; the ACF is a damped sine wave, 1, 0.86, 0.54, 0.16, then negative down to about -0.4 around lags 6 to 7, back towards zero and slightly positive by lag 11 to 12. Bottom row, phi = (1, -0.6): shorter, less regular cycles with amplitude about ±4; ACF 1, 0.63, 0.03, then negative to about -0.4 at lags 3 to 4, back to small positive values around lags 7 to 8 and near zero afterwards. -->
+
+## Computing the ACF
+
+**ACF for general ARMA($p$, $q$):** first note that the MA($\infty$) representation implies ($k \geqslant 0$)
+$$\mathrm{Cov}(y_t, e_{t-k}) = \mathrm{Cov}\Big(\sum_{j=0}^\infty \psi_j\, e_{t-j},\, e_{t-k}\Big) = \psi_k\, \sigma_e^2$$
+
+this gives
+$$
+\begin{aligned}
+\gamma(k) &= \mathrm{Cov}(y_t, y_{t-k}) = \mathrm{Cov}\Big[\Big(\sum_{j=1}^p \phi_j\, y_{t-j} + \sum_{j=0}^q \theta_j\, e_{t-j}\Big),\, y_{t-k}\Big] \\
+&= \sum_{j=1}^p \phi_j\, \gamma(k - j) + \sigma_e^2 \sum_{j=k}^q \theta_j\, \psi_{j-k}
+\end{aligned}
+$$
+
+- here $\theta_0 = 1$. the second sum vanishes for $k > q$
+- **interpretation:** basically Yule–Walker with correction term for MA part!
+
+## Computing the ACF
+
+**example:** ARMA(1, 1) with $\phi_1 = \phi$ and $\theta_1 = \theta$, $\quad y_t = \phi\, y_{t-1} + e_t + \theta\, e_{t-1}$
+$$
+\begin{aligned}
+\mathrm{Cov}(y_t, e_t) &= \mathrm{Cov}(\phi\, y_{t-1} + e_t + \theta\, e_{t-1},\, e_t) = \sigma_e^2 \\
+\mathrm{Cov}(y_t, e_{t-1}) &= \mathrm{Cov}(\phi\, y_{t-1} + e_t + \theta\, e_{t-1},\, e_{t-1}) = (\phi + \theta)\, \sigma_e^2
+\end{aligned}
+$$
+
+:::: {.columns}
+
+::: {.column width="50%"}
+set up Yule–Walker type equations:
+$$
+\begin{aligned}
+\gamma(0) &= \phi\, \gamma(1) + [1 + \theta(\phi + \theta)]\, \sigma_e^2 \\
+\gamma(1) &= \phi\, \gamma(0) + \theta\, \sigma_e^2 \\
+\gamma(k) &= \phi\, \gamma(k-1) \quad (k \geqslant 2)
+\end{aligned}
+$$
+:::
+
+::: {.column width="50%"}
+solving the first two equations gives
+$$\gamma(0) = \frac{1 + 2\phi\theta + \theta^2}{1 - \phi^2}\, \sigma_e^2$$
+solving the recursion then yields for $k \geqslant 1$:
+$$\rho(k) = \frac{(1 + \phi\theta)(\phi + \theta)}{1 + 2\phi\theta + \theta^2}\, \phi^{k-1}$$
+:::
+
+::::
+
+- note that for $\phi = -\theta$ get ACF of white noise ($\to$ parameter redundancy!)
+
+## Computing the ACF
+
+**computational aspects:**
+
+- recursion for computing ACF:
+    1. compute $\psi$s from $\phi$s and $\theta$s
+    2. solve linear equations for $\gamma(0), \gamma(1), \dots, \gamma(p)$
+    3. for $k > p$ use recursion for $\gamma(k)$
+    4. obtain ACF as $\rho(k) = \gamma(k)/\gamma(0)$
+
+- R functions for ARMA computations:
+    - preceding algorithm is basis for `ARMAacf()`
+    - filter weights $\psi_j$ can be computed via `ARMAtoMA()`. note that this is step 1 in the ACF recursion
+
+# Numerical example
+
+## Numerical example
+
+**example:** ARMA(2,2) (seemingly)
+$$y_t = y_{t-1} - \frac{2}{9}\, y_{t-2} + e_t - \frac{2}{3}\, e_{t-1} + \frac{1}{9}\, e_{t-2}$$
+
+(1) roots are $z_{1,2} = 3/2, 3$ for AR and $z_{1,2} = 3$ (twice) for MA. hence have common factor. reduce to ARMA(1,1) with $\quad \big(1 - \frac{2}{3} B\big)\, y_t = \big(1 - \frac{1}{3} B\big)\, e_t$
+
+(2) MA($\infty$) representation is
+$$y_t = \frac{(1 - \frac{1}{3} B)}{(1 - \frac{2}{3} B)}\, e_t = \Big(1 - \frac{1}{3} B\Big) \sum_{j=0}^\infty \Big(\frac{2}{3}\Big)^j B^j\, e_t =: \sum_{j=0}^\infty \psi_j\, e_{t-j}$$
+collecting terms yields $\psi_0 = 1$ and $\psi_j = \big(\frac{2}{3} - \frac{1}{3}\big)\big(\frac{2}{3}\big)^{j-1} = \frac{1}{3}\big(\frac{2}{3}\big)^{j-1}$
+
+## Numerical example
+
+**example:** (cont'd)
+
+(3) AR($\infty$) representation is
+$$\sum_{j=0}^\infty \pi_j\, y_{t-j} =: \Big(1 - \frac{2}{3} B\Big) \sum_{j=0}^\infty \Big(\frac{1}{3}\Big)^j B^j\, y_t = \frac{(1 - \frac{2}{3} B)}{(1 - \frac{1}{3} B)}\, y_t = e_t$$
+collecting terms yields $\pi_0 = 1$ and $\pi_j = \big(\frac{1}{3} - \frac{2}{3}\big)\big(\frac{1}{3}\big)^{j-1} = -\big(\frac{1}{3}\big)^j$
+
+(4) substituting from above, ACF is
+$$\rho(k) = \frac{(1 - \frac{2}{3}\frac{1}{3})(\frac{2}{3} - \frac{1}{3})}{1 - 2\,\frac{2}{3}\frac{1}{3} + (\frac{1}{3})^2}\, \Big(\frac{2}{3}\Big)^{k-1} = \frac{7}{18}\, \Big(\frac{2}{3}\Big)^{k-1}$$
+
+- same overall shape as ACF of AR(1) with $\phi = \frac{2}{3}$, but extra damping factor due to $\theta$
+
+## Numerical example
+
+**comparison** of AR(1) and ARMA(1,1):
+
+```{r arma11-cmp-code}
+#| eval: false
+par(mfrow = c(1, 2))
+plot(0:12, ARMAacf(ar = 2/3, lag.max = 12), type = "h", ylim = c(0, 1),
+     xlab = "Lag", ylab = expression(rho(k)), main = "AR(1): phi = 2/3")
+plot(0:12, ARMAacf(ar = 2/3, ma = -1/3, lag.max = 12), type = "h", ylim = c(0, 1),
+     xlab = "Lag", ylab = expression(rho(k)), main = "ARMA(1,1): phi = 2/3, theta = -1/3")
+```
+
+## Numerical example
+
+```{r arma11-cmp}
+#| echo: false
+#| ref.label: arma11-cmp-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels of theoretical ACFs as vertical bars at lags 0 to 12, y axis 0 to 1. left, AR(1) with phi = 2/3: geometric decay 1, 0.67, 0.44, 0.30, 0.20, ... close to 0 by lag 10. right, ARMA(1,1) with phi = 2/3, theta = -1/3: 1 at lag 0, then a drop to about 0.39 at lag 1 and the same geometric decay with factor 2/3 afterwards (0.26, 0.17, ...). Both decay at the same rate, the ARMA one starts from a lower level at lag 1. -->
+
+- **conclusion:** hard to distinguish from the ACFs alone!
+
+# Keywords
+
+## Keywords
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- AR process
+- causality
+- invertibility
+- ARMA process
+- common factors / parameter redundancy
+- Yule–Walker equations
+:::
+
+::: {.column width="50%"}
+- MA($\infty$) representation
+- AR($\infty$) representation
+- rational filter
+- Wold decomposition
+- companion matrix
+- impulse response function
+:::
+
+::::
+
+# Further reading
+
+## Further reading
+
+try (some of)
+
+- Brockwell and Davis (2016), Ch. 2.3, Ch. 3.1–3.2, Ch. 6.1, Ch. 6.5
+- Chan (2010), Ch. 3
+- Cryer and Chan (2008), Ch. 4, Ch. 5 and Ch. 10.1–10.3
+- Franses, van Dijk, Opschoor (2014), Ch. 3, 4
+- Neusser and Wagner (2022), Ch. 2
+- Neusser (2016), Ch. 2
+- Ruppert, Matteson (2015), Ch. 12.1–12.8
+- Hamilton (1994), Ch. 1 and Ch. 3 (companion matrix, difference equations)
+

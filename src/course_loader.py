@@ -23,6 +23,10 @@ allowlist in IID-AUTH-BASIC). Absent → visible to everyone who can log in.
 
 Optional `viewer` in _meta.yaml (IID-UI-CONTENT-VIEW): which `*.html` files of the folder
 are shown in the viewer panel next to the chat (default: all; `false`: none).
+
+Optional `content_from_viewer: true` (IID-CONTENT-FROM-HTML): the text of those HTML files
+is the course's lecture content (e.g. a course holding only the card graph); the folder then
+needs no .qmd/.md files.
 """
 
 import sys
@@ -34,7 +38,7 @@ from typing import Any
 
 from src.auth import auth_enabled, is_email_allowed
 from src.content_loader import load_content, load_files
-from src.viewer_docs import ViewerSet, load_viewer_docs
+from src.viewer_docs import REVEAL, ViewerSet, load_viewer_docs
 
 # IID-UI-CONTENT-VIEW: URL path segment for the root content folder in single-course mode.
 # Course folders never start with "_" (discovery skips them), so this cannot collide.
@@ -83,6 +87,7 @@ class CourseConfig:
     extra_content: list[Path] = field(default_factory=list)  # IID-MULTI-COURSE: shared files injected before folder content
     access: dict | None = None  # IID-COURSE-ACCESS: {allowed_domains, allowed_emails} or None (= everyone)
     viewer: ViewerSet | None = None  # IID-UI-CONTENT-VIEW: HTML documents shown next to the chat (None = none)
+    content_from_viewer: bool = False  # IID-CONTENT-FROM-HTML: the HTML text is the lecture content
 
     def is_accessible(self, user_email: str | None) -> bool:
         """IID-COURSE-ACCESS: True iff the logged-in user may see this course.
@@ -246,6 +251,31 @@ def _load_learning_goals(folder: Path, mode: str) -> list[dict]:
     return goals
 
 
+def _check_viewer_content(viewer: ViewerSet | None, folder: Path, from_viewer: Any) -> bool:
+    """IID-CONTENT-FROM-HTML, SID-CONTENT-RENDER: validate `content_from_viewer` and warn
+    about decks shown without their source.
+
+    A deck's `.qmd` (same file stem) is what the bot reads as lecture content; the HTML
+    only adds the open slide. A deck without it means the bot knows the deck only one
+    slide at a time — almost always a forgotten copy, so it is reported at startup.
+    """
+    if not isinstance(from_viewer, bool):
+        sys.exit(f"[Lectos] ERROR: '_meta.yaml' in '{folder.name}' field 'content_from_viewer' "
+                 f"must be true or false (got {from_viewer!r}).")
+    if from_viewer and viewer is None:
+        sys.exit(f"[Lectos] ERROR: '_meta.yaml' in '{folder.name}' sets content_from_viewer, "
+                 f"but the course shows no HTML files (they are gitignored: copy them into the "
+                 f"folder, for the time series course with scripts/sync_timeseries.py).")
+    if viewer is not None and not from_viewer:
+        for d in viewer.docs.values():
+            if d.kind == REVEAL and not (folder / f"{d.doc_id}.qmd").exists():
+                print(f"[Lectos] WARNING: course '{folder.name}' shows '{d.filename}' but has no "
+                      f"'{d.doc_id}.qmd' — the bot sees that deck only one open slide at a "
+                      f"time. Copy the .qmd with the .html (SID-CONTENT-RENDER).",
+                      file=sys.stderr)
+    return from_viewer
+
+
 def parse_model_choices(raw: object, where: str) -> list[dict]:
     """IID-STUDENT-MODEL-CHOICE, IID-LLM-THINKING: validate a `student_model_choices` list.
 
@@ -404,6 +434,13 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
                 )
             extra_content.append(p)
 
+        # IID-UI-CONTENT-VIEW: optional `viewer` key; default = every *.html in the folder
+        viewer = build_viewer(folder, meta.get("viewer"), folder.name,
+                              f"'_meta.yaml' of course '{folder.name}'")
+        # IID-CONTENT-FROM-HTML: optional — HTML text as the course's lecture content
+        content_from_viewer = _check_viewer_content(
+            viewer, folder, meta.get("content_from_viewer", False))
+
         courses.append(CourseConfig(
             course_id=folder.name,
             lecture_name=meta["lecture_name"],
@@ -421,9 +458,8 @@ def discover_courses(root: Path, base_cfg: dict[str, Any]) -> list[CourseConfig]
             learning_goals=learning_goals,
             extra_content=extra_content,
             access=access,
-            # IID-UI-CONTENT-VIEW: optional `viewer` key; default = every *.html in the folder
-            viewer=build_viewer(folder, meta.get("viewer"), folder.name,
-                                f"'_meta.yaml' of course '{folder.name}'"),
+            viewer=viewer,
+            content_from_viewer=content_from_viewer,
         ))
 
     # Sort by order field (from _meta.yaml) then lecture_name for deterministic profile ordering
@@ -450,7 +486,11 @@ def load_course_content(course: CourseConfig) -> str:
     IID-LEARN-DIAGNOSE, `agent/session_churn_fix_handoff.md`) can load and clean the files
     once and reuse the string, instead of re-reading and re-cleaning them per use.
     """
-    content = load_content(course.content_dir)
+    content = load_content(course.content_dir, allow_empty=course.content_from_viewer)
+    # IID-CONTENT-FROM-HTML: the text of the course's HTML files (slides, cards, pages)
+    if course.content_from_viewer and course.viewer is not None:
+        html_text = course.viewer.as_content()
+        content = f"{content}\n\n---\n\n{html_text}" if content else html_text
     # IID-MULTI-COURSE: extra_content files (e.g. shared intro/syllabus) come first
     if course.extra_content:
         content = f"{load_files(course.extra_content)}\n\n---\n\n{content}"

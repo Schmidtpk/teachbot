@@ -12,19 +12,31 @@ failed and where the students are.
 
 ## Inputs (all in the week folder you were given, e.g. `exports/timeseries/week_2026-09-30/`)
 
-- `stats.json` — counts, period, session index (S01, S02, … with name, e-mail, times)
-- `transcripts.md` — every session, chronological. `### [hh:mm] STUDENT`, `TUTOR`,
-  `⚑ FLAG Fn`, `ERROR` headings mark the turns. Sessions marked NON-STUDENT are the
+- `stats.json` — counts, period, sessions per course, session index (S01, S02, … with
+  course, name, e-mail, times)
+- `transcripts.md` — every session, chronological; the session heading names its course.
+  `### [hh:mm] STUDENT`, `TUTOR`, `⚑ FLAG Fn`, `ERROR` headings mark the turns. A STUDENT
+  heading may end with `(viewer open at: <file>#<slide or card id>)`: the slide or card the
+  student had open next to the chat — "this slide"/"here" in the question refers to it,
+  and the tutor was given its text. Sessions marked NON-STUDENT are the
   lecturer or tests: use them only for "tool problems", never for what students focus
   on or struggle with.
 - `flags.md` — every student flag (F1, F2, …): the student's comment and the tutor
   message they flagged.
-- The lecture material the tutor had: `content_timeseries/lecture/*.qmd` (`script_*` = lecture
-  notes with definitions and derivations, the others = slide decks) and the tutor's
-  instructions `content_timeseries/_system_prompt.md`. Sessions whose course is the
-  assignment helper used `content_timeseries/assignment1/` (task sheet, template,
-  exercise 1, reference solution) with its own `_system_prompt.md` there: it must guide one
-  step at a time and never give away the solution — judge those answers by that standard.
+- The lecture material the tutor had depends on the session's course (folders under
+  `content_timeseries/`, each with a `_meta.yaml` naming the course):
+  - `Ch. 1 – Introduction` → `utsa01/`, `Ch. 2 – Fundamental Concepts` → `utsa02/`,
+    `Ch. 3 – ARMA Models` → `utsa03/`: the chapter's slide decks (`*.qmd`) and lecture
+    script (`script_*` = notes with definitions and derivations); chapters 2 and 3 also had
+    the earlier chapters' scripts as background. Instructions: `content_timeseries/_system_prompt.md`.
+  - `Knowledge cards` → `cards/cards.html`: one card per concept, all chapters. The card
+    data is JSON inside `<script id="data">`; Grep for a card id or title rather than
+    reading the file whole. Instructions: `content_timeseries/cards/_system_prompt.md`.
+  - `Assignment 1 & Exercise 1 helper` → `assignment1/` (task sheet, template,
+    exercise 1, reference solution) with its own `_system_prompt.md` there: it must guide one
+    step at a time and never give away the solution — judge those answers by that standard.
+  - Sessions before 2026-10-12 may show the old course `Q&A: Lecture` (chapters 1–2,
+    now `utsa01/` + `utsa02/`) or no course at all.
 
 Do not open `chats.html` (it is the same data as markup) and never read `.env` or
 `credentials/`.
@@ -33,8 +45,8 @@ If no week folder was given, use the newest `exports/timeseries/week_*` folder.
 
 ## Method
 
-1. Read `stats.json`, `flags.md`, both tutor prompts (`content_timeseries/_system_prompt.md`,
-   `content_timeseries/assignment1/_system_prompt.md`), then all of
+1. Read `stats.json`, `flags.md`, the tutor prompts (`content_timeseries/_system_prompt.md`,
+   `content_timeseries/cards/_system_prompt.md`, `content_timeseries/assignment1/_system_prompt.md`), then all of
    `transcripts.md` (in chunks if long).
 2. For every tutor answer that looks doubtful, **check it against the lecture material**
    with Grep/Read before judging it: notation, definitions, conditions of theorems, signs,
@@ -93,7 +105,7 @@ given `id` (the script checks the ids):
    misconception in one sentence, who (names, sessions), a telling quote, and whether
    the tutor resolved it.
 7. `<h3 id="suggestions">Suggestions</h3>` — concrete, few: what to clarify in the next
-   lecture, what to change in the tutor prompt (`content_timeseries/_system_prompt.md` or `assignment1/_system_prompt.md`) or
+   lecture, what to change in a tutor prompt (`content_timeseries/_system_prompt.md`, `cards/_system_prompt.md` or `assignment1/_system_prompt.md`) or
    in the material. Only suggestions backed by something above.
 
 Keep the whole fragment to what can be read in ~5 minutes. Be factual; no praise

@@ -673,9 +673,10 @@ async def on_chat_start() -> None:
 
     # IID-UI-CONTENT-VIEW: tell public/viewer.js whether this course has documents — it
     # shows/hides the header button and opens the panel on wide screens.
-    await cl.send_window_message(
-        {"type": "lectos_viewer_available", "count": len(viewer.docs) if viewer else 0}
-    )
+    await cl.send_window_message({
+        "type": "lectos_viewer_available", "count": len(viewer.docs) if viewer else 0,
+        "word": viewer.button_word() if viewer else "",
+    })
     await cl.Message(content=welcome).send()  # IID-CHAT-SHELL1, IID-EDUCATOR-CONFIG
 
     # IID-LEARN-GOALS: in learning-goals mode, either announce completion or pose the first question

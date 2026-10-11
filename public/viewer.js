@@ -13,6 +13,7 @@
   var ORIGIN = window.location.origin;
   var PREF_KEY = "lectos_viewer_pref"; // "closed" once the student closes it via the button
   var available = 0;
+  var word = "Slides"; // what the course shows: Slides / Cards / Pages (server-chosen)
 
   function post(msg) { window.postMessage(msg, ORIGIN); }
   function isOpen() { return !!document.getElementById("lectos-viewer"); }
@@ -21,8 +22,8 @@
   function setPref(v) { try { localStorage.setItem(PREF_KEY, v); } catch (e) { /* private mode */ } }
 
   function label() {
-    if (isOpen()) return narrow() ? "💬 Chat" : "📖 Hide slides";
-    return "📖 Slides";
+    if (isOpen()) return narrow() ? "💬 Chat" : "📖 Hide " + word.toLowerCase();
+    return "📖 " + word;
   }
 
   // Keep the button in Chainlit's header, which React re-renders at will.
@@ -58,6 +59,7 @@
   window.addEventListener("message", function (e) {
     if (e.source !== window || !e.data || e.data.type !== "lectos_viewer_available") return;
     available = Number(e.data.count) || 0;
+    if (typeof e.data.word === "string" && /^[A-Za-z]{1,20}$/.test(e.data.word)) word = e.data.word;
     ensureButton();
     if (available && !narrow() && getPref() !== "closed" && !isOpen()) post({ type: "lectos_viewer_open" });
   });

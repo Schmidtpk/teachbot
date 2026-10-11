@@ -66,11 +66,16 @@ Plan/documentation should be intention-first:
 - `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
   Analysis" (domain `stud.unibas.ch`, model `openai/gpt-6-luna` since 2026-10-06
   (was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key,
-  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has two courses
-  (IID-MULTI-COURSE): `lecture/` (slides + script Q&A) and `assignment1/` (Assignment 1 &
-  Exercise 1 helper, IID-ASSIGNMENT-HELP). Source files come from
+  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has five courses
+  (IID-MULTI-COURSE, since 2026-10-11): `utsa01/`, `utsa02/`, `utsa03/` — Q&A per chapter, each
+  deck as `.qmd` + `.html` plus the chapter script; ch. 2 and 3 get the earlier scripts via
+  `extra_content` — then `cards/` (only the knowledge cards, `content_from_viewer: true`,
+  IID-CONTENT-FROM-HTML) and `assignment1/` (Assignment 1 & Exercise 1 helper,
+  IID-ASSIGNMENT-HELP). Source files come from
   `junctions/lecture_timeseries/` (gitignored junction to `Dropbox/teaching/lecture_timeseries`)
-  and are copied in. **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
+  and `../graph/site/index.html`; **copy them with `python scripts/sync_timeseries.py`**
+  (`--check` only reports), which keeps each deck's `.qmd` and `.html` together. The
+  course list is in the script's `COURSES` dict (add a ch. 4 there + a `utsa04/_meta.yaml`). **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
   service with `railway up --service teachbot-timeseries --no-gitignore --detach`, which
   uses `.railwayignore` (= `.gitignore` minus the solution rule; keep both in sync).
   **Thinking is off by default here** (`llm.reasoning: false`, IID-LLM-THINKING) because
@@ -284,7 +289,7 @@ the turn. Both calls use the course model.
   `content/<course>/_diagnose_prompt.md` (same subfolder→root fallback as `_system_prompt.md`).
 - The plain Q&A path (IID-QNA-CORE) is untouched — only `mode: learning_goals` courses use this loop.
 
-## Viewer panel: HTML next to the chat (IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK)
+## Viewer panel: HTML next to the chat (IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML)
 
 `*.html` files in a course folder (Quarto reveal.js decks, the `../graph` card viewer as
 `cards.html`, any page) are shown in a panel next to the chat: Chainlit's side view on
@@ -298,11 +303,16 @@ No HTML → nothing changes (tested in `tests/content_view.py`).
 - **Links:** the system prompt lists every slide/card id; the bot writes
   `[text](view:DOC/LOC)`, rewritten after streaming to `/viewer/<course>/<file>#…`.
 - **Logs:** `viewer` field / last Sheet column = page open when the student asked.
-- **Files are gitignored** (`content_timeseries/**/*.html`, a deck is ~7 MB): copy them from
-  `junctions/lecture_timeseries/slides/*.html` and `../graph/site/index.html` (→ `cards.html`)
-  into `content_timeseries/lecture/`, then deploy with
+- **Files are gitignored** (`content_timeseries/**/*.html`, a deck is ~7 MB): copy them with
+  `python scripts/sync_timeseries.py`, then deploy with
   `railway up --service teachbot-timeseries --no-gitignore --detach` (`.railwayignore` does not
-  exclude them). Re-copy + redeploy after re-rendering slides or rebuilding the graph.
+  exclude them). Re-sync + redeploy after re-rendering slides or rebuilding the graph. Without
+  the copied HTML, `config_timeseries.yaml` does not start (the `cards` course has nothing to load).
+- **HTML-only courses** (IID-CONTENT-FROM-HTML): `content_from_viewer: true` in `_meta.yaml` makes
+  the HTML text the lecture content (`ViewerSet.as_content`); otherwise HTML never enters it and
+  a deck needs its same-stem `.qmd` next to it (startup WARNING if missing, SID-CONTENT-RENDER).
+- **Header button word** follows the documents (Slides / Cards / Pages). `public/viewer.js` is
+  cached by browsers: bump `?v=` in `.chainlit/config.toml` (`custom_js`) whenever it changes.
 - **Relies on Chainlit 2.11 internals** (canvas side view, `set_sidebar_elements`, window-message
   forwarding) — `tests/content_view.py` fails loudly if a Chainlit upgrade changes them.
 - **Local testing:** run only ONE local instance — a second one that fails to bind the port
@@ -328,7 +338,8 @@ No HTML → nothing changes (tested in `tests/content_view.py`).
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
 | `src/llm_client.py` | SID-LLM-PROVIDER, IID-STREAM-RESILIENCE, IID-LLM-THINKING | OpenRouter async client. `stream_events` yields `(reasoning\|content, text)`; `stream_response` is its content-only view. `_reasoning_kwargs` turns `llm.reasoning` into OpenRouter's `extra_body` |
 | `scripts/check_reasoning_support.py` | IID-LLM-THINKING | Checks whether a model's providers declare `reasoning` **and** whether a live request honours it. Run before configuring any model with a thinking option |
-| `src/viewer_docs.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK | Indexes course HTML (reveal decks, card graph, any page) into slides/cards/pages; builds the per-turn page context, the link catalogue, rewrites `view:` links |
+| `src/viewer_docs.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML | Indexes course HTML (reveal decks, card graph, any page) into slides/cards/pages; builds the per-turn page context, the link catalogue, the HTML-as-lecture-content text; rewrites `view:` links |
+| `scripts/sync_timeseries.py` | IID-MULTI-COURSE, IID-CONTENT-FROM-HTML, SID-CONTENT-RENDER | Copies the time series decks (`.qmd` + `.html` together), chapter scripts and `cards.html` into `content_timeseries/<course>/`; `--check` reports only |
 | `public/elements/HtmlViewer.jsx` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT | Viewer panel (Chainlit custom element): document picker + iframe; reports the open slide/card |
 | `public/viewer.js` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-MARK | Chainlit `custom_js`: header button, auto-open on desktop, answer links open in the panel |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
@@ -385,6 +396,9 @@ struggled with, suggestions — plus all flags verbatim and `chats.html` attache
   `claude -p` (Opus) follows `.claude/skills/weekly-report/SKILL.md` and writes `report_body.html`
   (read-only on the repo, may write only into the week folder, no shell, `.env`/`credentials/` denied)
   → Gmail SMTP. If the agent fails, the mail still goes out with stats + flags, subject "[analysis failed]".
+- Each session in `transcripts.md`/`stats.json` names its **course** (chapter, cards, helper), and a
+  student turn shows the slide/card that was open (`viewer` column). SKILL.md maps course names to
+  `content_timeseries/` folders — update it when courses are added or renamed.
 - **Once per ISO week**, resumable: `exports/timeseries/state.json` records the stage
   (archived/prepared/analysed/sent); a crashed run continues without downloading again.
 - **Secrets** in `.env`: `GMAIL_USER` (sending account, a separate Gmail), `GMAIL_APP_PASSWORD`
@@ -450,7 +464,7 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/cases/learn_part1_goals.yaml` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Goal cases for "Practice: Part I": per-goal `question_rubric` + student personas with `feedback_rubric` |
 | `tests/stream_resilience.py` | IID-STREAM-RESILIENCE | Offline: retry, history rewind, stream cleanup, reasoning-as-liveness, Thinking step |
 | `tests/model_choices.py` | IID-LLM-THINKING, IID-STUDENT-MODEL-CHOICE | Offline: `reasoning` translation, choice validation, chooser behaviour, all configs import |
-| `tests/content_view.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK | Offline: HTML indexing, page context, links, window messages, route order, Chainlit internals, no-HTML courses unchanged |
+| `tests/content_view.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML | Offline: HTML indexing, page context, links, window messages, route order, Chainlit internals, `content_from_viewer`, the time series course layout, no-HTML courses unchanged (needs the synced HTML) |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
 | `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |
 | `tests/cases/behavior.yaml` | IID-TEST-LLM-EVAL | Behavior/hallucination guard test cases |

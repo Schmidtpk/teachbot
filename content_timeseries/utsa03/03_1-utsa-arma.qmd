@@ -1,0 +1,671 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Ch. 3 – ARMA Models, Part 1 <br><br> HS 2026 · based on material by Christian Kleiber (University of Basel)"
+format:
+  clean-revealjs:
+    self-contained: true
+    css: [styles.css, legibility.css]
+    width: 1600
+    height: 900
+    scrollable: true
+    auto-stretch: false
+    include-after-body: autofit.html
+author:
+  - name: Patrick Schmidt
+    email: patrick.schmidt@awi.uni-heidelberg.de
+    affiliations: University of Heidelberg
+execute:
+  cache: true
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(fig.width = 12, fig.height = 6, fig.align = "center", dpi = 150)
+# larger fonts for every base R plot, without cluttering the code shown on the slides
+knitr::knit_hooks$set(par_ts = function(before, options, envir) {
+  if (before) par(mar = c(4.5, 4.5, 3, 1), cex.main = 1.6, cex.lab = 1.4, cex.axis = 1.3)
+})
+knitr::opts_chunk$set(par_ts = TRUE)
+```
+
+## Contents
+
+1. Introduction: where we are
+2. The AR(1) process
+3. From AR(1) to ARMA
+4. Linear processes
+5. Moving average processes
+
+*Part 2:* AR($p$), stationarity and causality, invertibility, ARMA, computing the ACF
+
+# Introduction
+
+## Where we are
+
+**from Ch. 1:** the AR(1) equation $\quad y_t = \phi\, y_{t-1} + e_t, \quad$ i.e. $\quad (1 - \phi B)\, y_t = e_t, \quad$ and two of the questions asked there:
+
+1. when is this process 'stable'?
+2. how to extract properties (e.g., dependence structure) from the defining equation?
+
+**from Ch. 2:** two worked examples
+
+- the MA(1), $\; y_t = e_t + \theta e_{t-1} = (1 + \theta B)\, e_t$: stationary for every $\theta$, ACF cuts off after lag 1
+- the random walk, the AR(1) with $\phi = 1$: not stationary
+
+**this chapter:** answers questions 1 and 2 for a whole model class. we start from the AR(1) and generalise.
+
+# The AR(1) process
+
+## Autoregressive processes: AR(1)
+
+**the AR(1) process** (Ch. 1): $\quad y_t = \phi\, y_{t-1} + e_t, \qquad \{e_t\} \sim WN(0, \sigma_e^2)$
+
+**basic properties:** assuming stationarity and $\mathrm{Cov}(e_t, y_{t-k}) = 0$ for $k \geqslant 1$ (today's shock is uncorrelated with the past),
+$$
+\begin{aligned}
+\mathrm{Var}(y_t) &= \mathrm{Var}(\phi\, y_{t-1} + e_t) = \phi^2 \mathrm{Var}(y_{t-1}) + \mathrm{Var}(e_t) + 2\, \mathrm{Cov}(\phi\, y_{t-1}, e_t) \\
+&= \phi^2 \mathrm{Var}(y_t) + \sigma_e^2 = \frac{\sigma_e^2}{1 - \phi^2}
+\end{aligned}
+$$
+
+this implies $\phi^2 < 1$, or equivalently $|\phi| < 1$. furthermore
+$$
+\begin{aligned}
+\mathrm{Cov}(y_t, y_{t-k}) &= \mathrm{Cov}(\phi\, y_{t-1} + e_t,\, y_{t-k}) = \phi\, \mathrm{Cov}(y_{t-1}, y_{t-k}) + \mathrm{Cov}(e_t, y_{t-k}) \\
+&= \phi\, \mathrm{Cov}(y_t, y_{t-k+1})
+\end{aligned}
+$$
+
+- note that this is a recursion for the ACVF
+
+## Autoregressive processes: AR(1)
+
+**ACVF and ACF** ($k \geqslant 0$):
+$$\gamma(k) = \phi\, \gamma(k-1) = \phi^k \gamma(0) = \phi^k\, \frac{\sigma_e^2}{1 - \phi^2}, \qquad \rho(k) = \phi^k$$
+
+**illustrations:**
+
+- simulated AR(1) processes with standard normal white noise
+- employ $\phi = 0.9, 0.4, -0.8$
+- in R: `arima.sim()`
+
+```{r ar1-sim-demo}
+#| eval: false
+set.seed(0)
+arima.sim(model = list(ar = 0.9), n = 120)
+```
+
+- display simulated series, theoretical ACF, scatterplots of $y_t$ against $y_{t-1}, y_{t-2}, \dots$, sometimes called [**lag plots**]{.alert}
+
+## Autoregressive processes: AR(1), $\phi = 0.9$
+
+```{r ar1-09-code}
+#| eval: false
+set.seed(0)
+y <- arima.sim(model = list(ar = 0.9), n = 120)
+par(mfrow = c(1, 2))
+plot(y, ylim = c(-5, 5)); abline(h = 0, col = "lightgray")
+plot(0:12, ARMAacf(ar = 0.9, lag.max = 12), type = "h", ylim = c(-1, 1),
+     xlab = "Lag", ylab = expression(rho(k)))
+abline(h = 0); legend("topright", legend = expression(phi == 0.9), bty = "n")
+```
+
+## Autoregressive processes: AR(1), $\phi = 0.9$
+
+```{r ar1-09}
+#| echo: false
+#| ref.label: ar1-09-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels. left: line plot of a simulated AR(1) series with phi = 0.9 (seed 0, 120 observations), x axis Time 0 to 120, y axis -5 to 5, light grey line at 0; smooth, slowly wandering series with long excursions away from zero, range about -5 to 4, the zero line is crossed only a few times. right: theoretical ACF as vertical bars at lags 0 to 12, y axis -1 to 1: geometric decay 1, 0.9, 0.81, ... down to about 0.28 at lag 12; legend 'phi = 0.9'. -->
+
+## Autoregressive processes: AR(1), $\phi = 0.9$
+
+lag plots: $y_t$ against $y_{t-1}, \dots, y_{t-4}$
+
+```{r ar1-09-lag-code}
+#| eval: false
+set.seed(0)
+y <- arima.sim(model = list(ar = 0.9), n = 120)
+par(mfrow = c(2, 2))
+for (k in 1:4) plot(y[-(1:k)], y[1:(120 - k)], xlab = expression(y[t]), ylab = bquote(y[t - .(k)]))
+```
+
+## Autoregressive processes: AR(1), $\phi = 0.9$
+
+```{r ar1-09-lag}
+#| echo: false
+#| ref.label: ar1-09-lag-code
+#| fig-width: 8
+#| fig-height: 5.6
+#| out-width: "65%"
+```
+
+<!-- figure: four scatterplots in a 2 by 2 grid of the simulated AR(1) series with phi = 0.9, axes about -5 to 4: y_t against y_{t-1} (top left) is a tight positively sloped cloud, against y_{t-2} (top right) still clearly positive but wider, against y_{t-3} (bottom left) and y_{t-4} (bottom right) progressively looser but still positively tilted clouds. -->
+
+## Autoregressive processes: AR(1), $\phi = 0.4$
+
+```{r ar1-04-code}
+#| eval: false
+set.seed(0)
+y <- arima.sim(model = list(ar = 0.4), n = 120)
+par(mfrow = c(1, 2))
+plot(y, ylim = c(-5, 5)); abline(h = 0, col = "lightgray")
+plot(0:12, ARMAacf(ar = 0.4, lag.max = 12), type = "h", ylim = c(-1, 1),
+     xlab = "Lag", ylab = expression(rho(k)))
+abline(h = 0); legend("topright", legend = expression(phi == 0.4), bty = "n")
+```
+
+## Autoregressive processes: AR(1), $\phi = 0.4$
+
+```{r ar1-04}
+#| echo: false
+#| ref.label: ar1-04-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels. left: line plot of a simulated AR(1) series with phi = 0.4 (seed 0, 120 observations), x axis Time 0 to 120, y axis -5 to 5; fluctuates around zero with range about -3 to 3, crosses zero often, only mild persistence. right: theoretical ACF bars at lags 0 to 12: 1, 0.4, 0.16, 0.064, then essentially 0; legend 'phi = 0.4'. -->
+
+## Autoregressive processes: AR(1), $\phi = -0.8$
+
+```{r ar1-m08-code}
+#| eval: false
+set.seed(0)
+y <- arima.sim(model = list(ar = -0.8), n = 120)
+par(mfrow = c(1, 2))
+plot(y, ylim = c(-5, 5)); abline(h = 0, col = "lightgray")
+plot(0:12, ARMAacf(ar = -0.8, lag.max = 12), type = "h", ylim = c(-1, 1),
+     xlab = "Lag", ylab = expression(rho(k)))
+abline(h = 0); legend("topright", legend = expression(phi == -0.8), bty = "n")
+```
+
+## Autoregressive processes: AR(1), $\phi = -0.8$
+
+```{r ar1-m08}
+#| echo: false
+#| ref.label: ar1-m08-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels. left: line plot of a simulated AR(1) series with phi = -0.8 (seed 0, 120 observations), x axis Time 0 to 120, y axis -5 to 5; very jagged series that changes sign almost every period, range about -4 to 4. right: theoretical ACF bars at lags 0 to 12 alternating in sign with geometric decay: 1, -0.8, 0.64, -0.51, 0.41, ... ; legend 'phi = -0.8'. -->
+
+## Autoregressive processes: AR(1)
+
+**remarks:**
+
+- ACF decays exponentially
+- ACF switches signs for negative $\phi$
+- large positive $\phi$ leads to 'smooth' series, theoretical mean of zero is rarely crossed
+- large negative $\phi$ leads to 'jagged' series, theoretical mean of zero is often crossed
+
+## Autoregressive processes: AR(1)
+
+**alternative representation:** recursively substituting,
+$$
+\begin{aligned}
+y_t &= \phi\, y_{t-1} + e_t = \phi(\phi\, y_{t-2} + e_{t-1}) + e_t = e_t + \phi\, e_{t-1} + \phi^2 y_{t-2} \\
+&= e_t + \phi\, e_{t-1} + \phi^2 e_{t-2} + \dots + \phi^{k-1} e_{t-k+1} + \phi^k y_{t-k} \\
+&= e_t + \phi\, e_{t-1} + \phi^2 e_{t-2} + \phi^3 e_{t-3} + \dots = \sum_{i=0}^{\infty} \phi^i B^i\, e_t = (1 - \phi B)^{-1} e_t \qquad (|\phi| < 1)
+\end{aligned}
+$$
+
+- last line: geometric series $(1 - \phi z)^{-1} = \sum_{i=0}^{\infty} \phi^i z^i$ for $|\phi z| < 1$; for $|\phi| < 1$ this motivates the inverse operator $(1 - \phi B)^{-1} := \sum_{i=0}^{\infty} \phi^i B^i$
+
+- if $|\phi| < 1$, AR(1) process is a weighted sum of past shocks with weights $\psi_i = \phi^i$ (a 'linear process', see *Linear processes* below). above representation is called the [**MA($\infty$) representation**]{.alert} of an AR(1) process. it can also be used to derive the ACVF
+- for $\phi = 1$, process is random walk (already shown to be nonstationary)
+- AR(1) process is stationary if $|\phi| < 1$.
+
+# From AR(1) to ARMA
+
+## ARMA road map
+
+- the two known models differ only in which side of the equation carries the lag polynomial:
+$$\text{AR(1):}\quad (1 - \phi B)\, y_t = e_t, \qquad\qquad \text{MA(1):}\quad y_t = (1 + \theta B)\, e_t$$
+
+- [**ARMA($p,q$)**]{.alert} (autoregressive moving average): allow lag polynomials of orders $p$ and $q$ on both sides,
+$\phi(B) := 1 - \phi_1 B - \dots - \phi_p B^p, \quad \theta(B) := 1 + \theta_1 B + \dots + \theta_q B^q$
+$$\phi(B)\, y_t = \theta(B)\, e_t$$
+AR(1): $p = 1$, $q = 0$, $\phi_1 = \phi$; MA(1): $p = 0$, $q = 1$, $\theta_1 = \theta$
+
+- $\{y_t\}$ denotes the *observed* process, $\{e_t\}$ an *unobserved* (weak) white noise process, $\{e_t\} \sim WN(0, \sigma_e^2)$
+
+---
+
+- ARMA($p,q$): $\quad \phi(B)\, y_t = \theta(B)\, e_t$
+
+- can formally write 
+$$
+\begin{aligned}
+y_t &= \frac{\theta(B)}{\phi(B)}\, e_t = \psi(B)\, e_t & &\text{MA representation} \\
+\pi(B)\, y_t &= \frac{\phi(B)}{\theta(B)}\, y_t = e_t & &\text{AR representation}
+\end{aligned}
+$$
+where $\psi(B) := \theta(B)/\phi(B)$ and $\pi(B) := \phi(B)/\theta(B)$; both are power series in $B$, $\psi(B) = \sum_{j \geq 0} \psi_j B^j$ and $\pi(B) = \sum_{j \geq 0} \pi_j B^j$ (when they exist).
+
+- consider pure MAs ($p = 0$), pure ARs ($q = 0$), and mixed models
+
+---
+
+**the AR(1) showed:** solving the equation = inverting $(1 - \phi B)$, possible as a power series in $B$ iff $|\phi| < 1$; then $\psi_j = \phi^j$ and the ACF follows
+
+:::{.clean-box}
+**in general:** every ARMA model is white noise passed through the [**rational filter**]{.alert}, a ratio of two lag polynomials,
+$$\psi(B) = \frac{\theta(B)}{\phi(B)}, \qquad \text{so that} \qquad y_t = \psi(B)\, e_t = \sum_{j \geq 0} \psi_j\, e_{t-j},$$
+a weighted sum of white noise
+:::
+
+- the weights $\psi_j$ are the "impulse responses": the effect of a shock $e_{t-j}$ on $y_t$
+
+- parameters: 
+  - MA: finitely many $\psi_j$ ($\psi_j = \theta_j$)
+  - AR: infinitely many $\psi_j$ from $p$ parameters $\phi_j$
+  - ARMA: infinitely many $\psi_j$ from $p + q$ parameters
+
+
+# Linear processes
+
+## Linear processes
+
+:::{.clean-box}
+**definition:** a stochastic process $\{y_t\}$ is called a [**linear process**]{.alert} if
+$$y_t := \sum_{j=-\infty}^{\infty} \psi_j\, e_{t-j}$$
+with $\{e_t\} \sim WN(0, \sigma_e^2)$ and $\sum_{j=-\infty}^{\infty} |\psi_j| < \infty$
+:::
+
+- in operator notation $y_t = \psi(B)\, e_t$ with $\psi(B) := \sum_{j=-\infty}^{\infty} \psi_j B^j$; call $\psi(B)$ a [**linear filter**]{.alert} and the $\psi_j$ the [**filter weights**]{.alert}
+- $\sum_j |\psi_j| < \infty$ defines processes with [**short memory**]{.alert}; stationary processes with [**long memory**]{.alert} violate it (more later ... maybe)
+- infinite sum needs justification: [**convergence in mean square**]{.alert} (Brockwell and Davis 2016, App. C)
+- can add mean $\mu \neq 0$: $E(y_t) = \mu$, $\gamma(k)$ unchanged. $\mu = 0$ for theory, $\mu \neq 0$ later for empirical work
+
+## Linear processes
+
+:::{.clean-box}
+**theorem (ACVF of a linearly transformed process):** suppose (weakly) stationary $\{y_t\}$ with mean 0 has ACVF $\gamma_y$. if $\sum_{j=-\infty}^\infty |\psi_j| < \infty$, then $x_t = \psi(B)\, y_t$ is also (weakly) stationary with mean 0 and ACVF
+$$\gamma_x(h) = \sum_{j=-\infty}^{\infty} \sum_{k=-\infty}^{\infty} \psi_j\, \psi_k\, \gamma_y(h + k - j), \qquad h \in \mathbb Z$$
+:::
+
+**sketch of proof:** (interchange of covariances and series can be justified)
+$$
+\begin{aligned}
+\gamma_x(h) &= \mathrm{Cov}(x_t, x_{t-h}) = \mathrm{Cov}\Big( \sum_j \psi_j\, y_{t-j}, \sum_k \psi_k\, y_{t-h-k} \Big) \\
+&= \sum_j \sum_k \psi_j \psi_k\, \mathrm{Cov}(y_{t-j}, y_{t-h-k}) = \sum_j \sum_k \psi_j \psi_k\, \gamma_y(h + k - j)
+\end{aligned}
+$$
+
+- interpretation: can compute new ACVF from old ACVF and filter weights
+
+## Linear processes
+
+**example:** (ACVFs of some linear processes)
+
+:::: {.columns}
+
+::: {.column width="50%"}
+(a) if $\{e_t\} \sim WN(0, \sigma_e^2)$, then $y_t = \psi(B)\, e_t$ is a linear process (why exactly?), with
+$$\gamma_y(h) = \sigma_e^2 \sum_{j=-\infty}^{\infty} \psi_j\, \psi_{j+h}$$
+hence $\quad (\gamma_y(0) =)\ \mathrm{Var}(y_t) = \sigma_e^2 \sum_{j=-\infty}^{\infty} \psi_j^2$
+:::
+
+::: {.column width="50%"}
+(b) **special case MA($q$):** $y_t = e_t + \theta_1 e_{t-1} + \dots + \theta_q e_{t-q}$, i.e. $\psi_j = \theta_j$ for $0 \leqslant j \leqslant q$ ($\theta_0 := 1$), $\psi_j = 0$ otherwise. so for $|h| \leqslant q$
+$$\gamma_y(h) = \sigma_e^2 \sum_{j=0}^{q - |h|} \theta_j\, \theta_{j + |h|}$$
+and $\gamma_y(h) = 0$ elsewhere
+
+$q = 1$ recovers the MA(1) ACF from Ch. 2
+:::
+
+::::
+
+## Linear processes
+
+:::{.clean-box}
+**definition:** a stochastic process $\{y_t\}$ is called an [**MA($\infty$) process**]{.alert} if
+$$y_t := \sum_{j=0}^{\infty} \psi_j\, e_{t-j}$$
+with $\{e_t\} \sim WN(0, \sigma_e^2)$, $\psi_0 = 1$ and $\sum_{j=0}^{\infty} |\psi_j| < \infty$
+:::
+
+:::: {.columns}
+
+::: {.column width="45%"}
+**examples:**
+
+(a) an MA($q$) process is an MA($\infty$) process with $\psi_j = 0$, $j \geqslant q + 1$
+(b) a stationary AR(1) process is an MA($\infty$) process with $\psi_j = \phi^j$ 
+:::
+
+::: {.column width="55%"}
+**next steps:**
+
+- 'simple' but flexible models for linear processes – need to parameterize $\{\psi_j\}$. for ARMA models, the $\psi_j$ depend only on a few parameters
+- then, how to compute filter weights for these objects ... and what are they needed for?
+:::
+
+::::
+
+## Why linear processes?
+
+:::{.clean-box}
+**theorem (Wold decomposition):** every zero-mean weakly stationary process $\{y_t\}$ can be written as
+$$y_t = \sum_{j=0}^{\infty} \psi_j\, e_{t-j} + v_t, \qquad \psi_0 = 1, \quad \sum_{j=0}^\infty \psi_j^2 < \infty,$$
+with $\{e_t\} \sim WN(0, \sigma_e^2)$ and $\{v_t\}$ deterministic (perfectly predictable from its own past)
+:::
+
+- up to a deterministic part, every stationary process is a weighted sum of past white noise: a [**linear process**]{.alert} (just defined). this is why we study them
+- in a sense, weakly stationary processes (subject to some constraints) can be approximated arbitrarily well by ARMA models
+- infinitely many weights $\psi_j$, but ARMA generates them from $p + q$ parameters via $\psi(B) = \theta(B)/\phi(B)$
+- proof not given here (Brockwell and Davis 2016, Sec. 2.6)
+
+# Moving average processes
+
+## Moving average processes
+
+:::{.clean-box}
+**definition:** a [**moving average process of order $q$**]{.alert}, MA($q$) for short, is defined as
+$$y_t := e_t + \theta_1 e_{t-1} + \theta_2 e_{t-2} + \dots + \theta_q e_{t-q}$$
+with $\{e_t\} \sim WN(0, \sigma_e^2)$
+:::
+
+- in operator notation: $y_t = \theta(B)\, e_t$ with $\theta(B) := 1 + \theta_1 B + \dots + \theta_q B^q$; convention $\theta_0 := 1$
+
+**remarks:**
+
+- special case of linear process with finite number of non-zero weights
+- pioneering work by Slutsky (1927) and Wold (1938)
+- **warning:** signs of parameters vary across the literature (sometimes '$-$' instead of '$+$', e.g. Cryer and Chan 2008). also not unified across software packages. **always check the documentation!** for example, R employs '$+$'
+
+## Moving average processes: MA($q$)
+
+**properties of MA($q$)** $\quad y_t = e_t + \theta_1 e_{t-1} + \dots + \theta_q e_{t-q}$
+
+- variance of $y_t$: $\quad \gamma(0) = (1 + \theta_1^2 + \theta_2^2 + \dots + \theta_q^2)\, \sigma_e^2 = \sigma_e^2 \sum_{i=0}^q \theta_i^2$
+
+- autocorrelation for $k = 1, \dots, q$ follows from expression for linear process:
+$$\rho(k) = \frac{\theta_k + \theta_1 \theta_{k+1} + \theta_2 \theta_{k+2} + \dots + \theta_{q-k} \theta_q}{1 + \theta_1^2 + \theta_2^2 + \dots + \theta_q^2} = \frac{\sum_{i=0}^{q-k} \theta_i \theta_{i+k}}{\sum_{i=0}^q \theta_i^2}$$
+
+- autocorrelation for $k > q$: $\rho(k) = 0$, as $\theta_k = 0$ for $k > q$
+
+**remarks:**
+
+- in practice, one can recognize MA processes from their ACF: a process whose ACF cuts off after lag $q$ ($\rho(k) = 0$ for all $k > q$) is an MA process. MA processes then provide flexible parametrization of such ACFs
+- MA($q$) is already in linear process form, with $\psi_i = \theta_i$, $i = 0, \dots, q$ (so $\psi_0 = 1$), and $\psi_i = 0$, $i > q$
+
+## Moving average processes: MA(1)
+
+**example:** MA(1) with $\theta_1 = \theta$, compare Ch. 2
+
+:::: {.columns}
+
+::: {.column width="55%"}
+$$
+\begin{aligned}
+y_t &= e_t + \theta e_{t-1} \\
+E(y_t) &= 0 \\
+\mathrm{Var}(y_t) &= \sigma_e^2\,(1 + \theta^2) \\
+\mathrm{Cov}(y_t, y_{t-1}) &= \mathrm{Cov}(e_t + \theta e_{t-1},\, e_{t-1} + \theta e_{t-2}) \\
+&= \mathrm{Cov}(\theta e_{t-1}, e_{t-1}) = \theta\, \sigma_e^2 \\
+\mathrm{Cov}(y_t, y_{t-2}) &= \mathrm{Cov}(e_t + \theta e_{t-1},\, e_{t-2} + \theta e_{t-3}) = 0 \\
+\mathrm{Cov}(y_t, y_{t-k}) &= 0 \quad (k > 1)
+\end{aligned}
+$$
+:::
+
+::: {.column width="45%"}
+**summary:**
+$$
+\begin{aligned}
+\mu(t) &= 0 \\
+\gamma(0) &= \sigma_e^2\,(1 + \theta^2) \\
+\gamma(1) &= \theta\, \sigma_e^2 \\
+\rho(1) &= \frac{\theta}{1 + \theta^2} \\
+\rho(k) &= \gamma(k) = 0 \quad (k > 1)
+\end{aligned}
+$$
+:::
+
+::::
+
+**remarks:**
+
+- $\rho(1)$ is maximal for $|\theta| = 1$
+- important detail: same $\rho(1)$ for $\theta$ and $1/\theta$. thus, $\theta$ cannot be uniquely determined ("identified") from $\rho(1)$, unless we know that $|\theta| \leqslant 1$ or $|\theta| \geqslant 1$ (more later)
+
+## Moving average processes: MA(1)
+
+$\rho(1)$ as a function of $\theta$:
+
+```{r ma1-rho1-code}
+#| eval: false
+theta <- seq(-1.1, 1.1, by = 0.01)
+plot(theta, theta / (1 + theta^2), type = "l", ylim = c(-1, 1),
+     xlab = expression(theta), ylab = expression(rho(1)))
+abline(h = c(-0.5, 0.5), lty = 2)
+```
+
+## Moving average processes: MA(1)
+
+```{r ma1-rho1}
+#| echo: false
+#| ref.label: ma1-rho1-code
+#| fig-width: 10
+#| fig-height: 5
+#| out-width: "85%"
+```
+
+<!-- figure: line plot of rho(1) = theta / (1 + theta^2) against theta from -1.1 to 1.1, y axis -1 to 1, dashed horizontal lines at -0.5 and 0.5. S-shaped curve through the origin, rising from about -0.5 at theta = -1 to about 0.5 at theta = 1 and flattening at both ends, so |rho(1)| never exceeds 0.5 and the extremes are attained at theta = ±1. -->
+
+## Moving average processes: MA(1)
+
+**illustrations:**
+
+- simulated MA(1) processes with standard normal white noise
+- we use $\theta = 0.9$ and $\theta = -0.9$
+- in R: `arima.sim()`
+
+```{r ma1-sim-demo}
+#| eval: false
+set.seed(1)
+arima.sim(model = list(ma = 0.9), n = 120)
+```
+
+- display simulated series, theoretical ACF, scatterplots of $y_t$ against $y_{t-1}$ and $y_{t-2}$ (lag plots)
+
+## Moving average processes: MA(1), $\theta = 0.9$
+
+```{r ma1-pos-code}
+#| eval: false
+set.seed(1)
+y <- arima.sim(model = list(ma = 0.9), n = 120)
+par(mfrow = c(1, 2))
+plot(y, ylim = c(-5, 5)); abline(h = 0, col = "lightgray")
+plot(0:12, ARMAacf(ma = 0.9, lag.max = 12), type = "h", ylim = c(-1, 1),
+     xlab = "Lag", ylab = expression(rho(k)))
+abline(h = 0); legend("topright", legend = expression(theta == 0.9), bty = "n")
+```
+
+## Moving average processes: MA(1), $\theta = 0.9$
+
+```{r ma1-pos}
+#| echo: false
+#| ref.label: ma1-pos-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels. left: line plot of a simulated MA(1) series with theta = 0.9 (seed 1, 120 observations), x axis Time 0 to 120, y axis -5 to 5, light grey line at 0; the series fluctuates around zero with range about -3 to 4 and visibly smooth short runs, neighbouring values tend to share their sign. right: theoretical ACF as vertical bars at lags 0 to 12, y axis -1 to 1: 1 at lag 0, about 0.5 at lag 1, exactly 0 at all lags from 2 on; legend 'theta = 0.9'. -->
+
+## Moving average processes: MA(1), $\theta = 0.9$
+
+lag plots: $y_t$ against $y_{t-1}$ (left) and $y_{t-2}$ (right)
+
+```{r ma1-pos-lag-code}
+#| eval: false
+set.seed(1)
+y <- arima.sim(model = list(ma = 0.9), n = 120)
+par(mfrow = c(1, 2))
+for (k in 1:2) plot(y[-(1:k)], y[1:(120 - k)], xlab = expression(y[t]), ylab = bquote(y[t - .(k)]))
+```
+
+## Moving average processes: MA(1), $\theta = 0.9$
+
+```{r ma1-pos-lag}
+#| echo: false
+#| ref.label: ma1-pos-lag-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two scatterplots of the same simulated MA(1) series (theta = 0.9), both axes about -3 to 4. left: y_t against y_{t-1}, points form a clearly positively sloped elliptical cloud (correlation about 0.5). right: y_t against y_{t-2}, points form a round cloud with no visible association. -->
+
+## Moving average processes: MA(1), $\theta = -0.9$
+
+```{r ma1-neg-code}
+#| eval: false
+set.seed(1)
+y <- arima.sim(model = list(ma = -0.9), n = 120)
+par(mfrow = c(1, 2))
+plot(y, ylim = c(-5, 5)); abline(h = 0, col = "lightgray")
+plot(0:12, ARMAacf(ma = -0.9, lag.max = 12), type = "h", ylim = c(-1, 1),
+     xlab = "Lag", ylab = expression(rho(k)))
+abline(h = 0); legend("topright", legend = expression(theta == -0.9), bty = "n")
+```
+
+## Moving average processes: MA(1), $\theta = -0.9$
+
+```{r ma1-neg}
+#| echo: false
+#| ref.label: ma1-neg-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels. left: line plot of a simulated MA(1) series with theta = -0.9 (seed 1, 120 observations), x axis Time 0 to 120, y axis -5 to 5, light grey line at 0; the series is very jagged, the sign flips almost every period, range about -4 to 3. right: theoretical ACF as vertical bars at lags 0 to 12, y axis -1 to 1: 1 at lag 0, about -0.5 at lag 1, 0 from lag 2 on; legend 'theta = -0.9'. -->
+
+## Moving average processes: MA(1), $\theta = -0.9$
+
+lag plots: $y_t$ against $y_{t-1}$ (left) and $y_{t-2}$ (right)
+
+```{r ma1-neg-lag-code}
+#| eval: false
+set.seed(1)
+y <- arima.sim(model = list(ma = -0.9), n = 120)
+par(mfrow = c(1, 2))
+for (k in 1:2) plot(y[-(1:k)], y[1:(120 - k)], xlab = expression(y[t]), ylab = bquote(y[t - .(k)]))
+```
+
+## Moving average processes: MA(1), $\theta = -0.9$
+
+```{r ma1-neg-lag}
+#| echo: false
+#| ref.label: ma1-neg-lag-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two scatterplots of the simulated MA(1) series with theta = -0.9, axes about -4 to 3. left: y_t against y_{t-1}, points form a negatively sloped elliptical cloud (correlation about -0.5). right: y_t against y_{t-2}, round cloud without visible association. -->
+
+## Moving average processes: MA(2)
+
+**example:** MA(2)
+$$
+\begin{aligned}
+y_t &= e_t + \theta_1 e_{t-1} + \theta_2 e_{t-2} \\
+\gamma(0) &= \mathrm{Var}(y_t) = \mathrm{Var}(e_t + \theta_1 e_{t-1} + \theta_2 e_{t-2}) = (1 + \theta_1^2 + \theta_2^2)\, \sigma_e^2 \\
+\gamma(1) &= \mathrm{Cov}(y_t, y_{t-1}) = \mathrm{Cov}(e_t + \theta_1 e_{t-1} + \theta_2 e_{t-2},\; e_{t-1} + \theta_1 e_{t-2} + \theta_2 e_{t-3}) \\
+&= \mathrm{Cov}(\theta_1 e_{t-1}, e_{t-1}) + \mathrm{Cov}(\theta_2 e_{t-2}, \theta_1 e_{t-2}) = (\theta_1 + \theta_1 \theta_2)\, \sigma_e^2 \\
+\gamma(2) &= \mathrm{Cov}(y_t, y_{t-2}) = \mathrm{Cov}(e_t + \theta_1 e_{t-1} + \theta_2 e_{t-2},\; e_{t-2} + \theta_1 e_{t-3} + \theta_2 e_{t-4}) \\
+&= \mathrm{Cov}(\theta_2 e_{t-2}, e_{t-2}) = \theta_2\, \sigma_e^2
+\end{aligned}
+$$
+
+## Moving average processes: MA(2)
+
+:::: {.columns}
+
+::: {.column width="45%"}
+**ACF:**
+$$
+\begin{aligned}
+\rho(1) &= \frac{\theta_1 + \theta_1 \theta_2}{1 + \theta_1^2 + \theta_2^2} \\
+\rho(2) &= \frac{\theta_2}{1 + \theta_1^2 + \theta_2^2} \\
+\rho(k) &= 0 \quad (k > 2)
+\end{aligned}
+$$
+:::
+
+::: {.column width="55%"}
+**illustration:** MA(2) with $\theta_1 = 1$ and $\theta_2 = -0.6$, i.e.
+$$y_t = e_t + e_{t-1} - 0.6\, e_{t-2}$$
+$$
+\begin{aligned}
+\rho(1) &= \frac{0.4}{2.36} \approx 0.1695 \\
+\rho(2) &= \frac{-0.6}{2.36} \approx -0.254
+\end{aligned}
+$$
+:::
+
+::::
+
+## Moving average processes: MA(2)
+
+```{r ma2-code}
+#| eval: false
+set.seed(1)
+y <- arima.sim(model = list(ma = c(1, -0.6)), n = 120)
+par(mfrow = c(1, 2))
+plot(y, ylim = c(-5, 5)); abline(h = 0, col = "lightgray")
+plot(0:12, ARMAacf(ma = c(1, -0.6), lag.max = 12), type = "h", ylim = c(-1, 1),
+     xlab = "Lag", ylab = expression(rho(k)))
+abline(h = 0)
+legend("topright", c(expression(theta[1] == 1), expression(theta[2] == -0.6)), bty = "n")
+```
+
+## Moving average processes: MA(2)
+
+```{r ma2}
+#| echo: false
+#| ref.label: ma2-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels. left: line plot of a simulated MA(2) series y_t = e_t + e_{t-1} - 0.6 e_{t-2} (seed 1, 120 observations), x axis Time 0 to 120, y axis -5 to 5, light grey line at 0; irregular fluctuations around zero with range about -4 to 4 and no long runs. right: theoretical ACF as vertical bars at lags 0 to 12, y axis -1 to 1: 1 at lag 0, about 0.17 at lag 1, about -0.25 at lag 2, exactly 0 from lag 3 on; legend 'theta_1 = 1, theta_2 = -0.6'. -->
+
+## Moving average processes: MA(2)
+
+lag plots: $y_t$ against $y_{t-1}$ (left) and $y_{t-2}$ (right)
+
+```{r ma2-lag-code}
+#| eval: false
+set.seed(1)
+y <- arima.sim(model = list(ma = c(1, -0.6)), n = 120)
+par(mfrow = c(1, 2))
+for (k in 1:2) plot(y[-(1:k)], y[1:(120 - k)], xlab = expression(y[t]), ylab = bquote(y[t - .(k)]))
+```
+
+## Moving average processes: MA(2)
+
+```{r ma2-lag}
+#| echo: false
+#| ref.label: ma2-lag-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two scatterplots of the simulated MA(2) series, axes about -4 to 4. left: y_t against y_{t-1}, nearly round cloud with a faint positive tilt (correlation about 0.17). right: y_t against y_{t-2}, cloud with a mild negative tilt (correlation about -0.25). -->
+

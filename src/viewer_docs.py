@@ -1,5 +1,6 @@
 """
-IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, SID-CONTENT-RENDER
+IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML,
+SID-CONTENT-RENDER
 Pre-rendered HTML documents shown next to the chat, and what the bot knows about them.
 
 A course folder may hold `*.html` files (Quarto reveal.js decks, a knowledge-card graph
@@ -10,7 +11,9 @@ built by ../graph, or any other page). They are indexed once at startup into *lo
   * the bot gets that location's text, prominently, plus its neighbours before answering
     (IID-UI-CONTENT-CONTEXT),
   * the bot can point to pages with `[text](view:DOC/LOC)` links, rewritten into real
-    panel links after streaming (IID-UI-CONTENT-MARK).
+    panel links after streaming (IID-UI-CONTENT-MARK),
+  * a course whose material exists only as HTML (e.g. the card graph) can use that text as
+    its lecture content (`content_from_viewer: true`, IID-CONTENT-FROM-HTML).
 
 The HTML files are never injected whole: a Quarto deck is ~7 MB, almost all base64 images.
 Without any HTML in a folder nothing here is used and the app behaves exactly as before.
@@ -487,6 +490,14 @@ class ViewerSet:
         first = next(iter(self.docs.values()))
         return first.doc_id, ""
 
+    def button_word(self) -> str:
+        """IID-UI-CONTENT-VIEW: what the header button calls the panel ("📖 Cards" in a
+        course that only shows the card graph, "📖 Slides" whenever a deck is there)."""
+        kinds = {d.kind for d in self.docs.values()}
+        if REVEAL in kinds:
+            return "Slides"
+        return "Cards" if kinds == {CARDGRAPH} else "Pages"
+
     def client_docs(self) -> list[dict]:
         """IID-UI-CONTENT-VIEW: what the panel needs for its document picker."""
         return [{"id": d.doc_id, "label": d.label, "url": self.url(d.doc_id)}
@@ -520,10 +531,10 @@ class ViewerSet:
         if d.kind == CARDGRAPH:
             return f"{head}: {loc.summary}" if loc.summary else head
         if excerpt and loc.text:
-            body = _squash(re.sub(r"^#+ [^\n]*\n", "", loc.text))  # title is in `head`
+            body = _squash(re.sub(r"^#+ [^\n]*(\n|$)", "", loc.text))  # title is in `head`
             if len(body) > NEIGHBOUR_EXCERPT:
                 body = body[:NEIGHBOUR_EXCERPT].rsplit(" ", 1)[0] + " …"
-            return f"{head}: {body}"
+            return f"{head}: {body}" if body else head
         return head
 
     def page_context(self, doc_id: str, loc_id: str) -> str:
@@ -610,6 +621,35 @@ class ViewerSet:
                 lines.append(f"  {lid}: {loc.title}{extra}")
         lines.append("--- VIEWER DOCUMENTS END ---")
         return "\n".join(lines)
+
+    def as_content(self) -> str:
+        """IID-CONTENT-FROM-HTML: the text of every slide/card/page as lecture content, for a
+        course whose material exists only as HTML (`content_from_viewer: true`). Each entry
+        carries its `view:` id, so the bot can link what it quotes, and a card lists the ids
+        of its related cards so the graph's structure is known without the panel open
+        ("used by" is left out: it only mirrors the other cards' outgoing relations)."""
+        sections: list[str] = []
+        for d in self.docs.values():
+            parts = [f"### [{d.filename}] {d.label}"]
+            for lid in d.order:
+                loc = d.locations[lid]
+                if d.kind == GENERIC:
+                    parts.append(loc.text)
+                    continue
+                head = f'#### {d.noun().capitalize()} "{loc.title}" ({self._ref(d.doc_id, lid)})'
+                body = [head + (f" — {loc.ctype}" if loc.ctype else "")]
+                if loc.summary:
+                    body.append(f"Summary: {loc.summary}")
+                if loc.text:
+                    body.append(loc.text)
+                rel = "; ".join(f"{name}: {', '.join(ids)}"
+                                for name, ids in loc.relations.items()
+                                if ids and name != "used by")
+                if rel:
+                    body.append(f"Related card ids — {rel}")
+                parts.append("\n\n".join(body))
+            sections.append("\n\n".join(parts))
+        return "\n\n---\n\n".join(sections)
 
     def rewrite_links(self, text: str) -> str:
         """IID-UI-CONTENT-MARK: `[t](view:DOC/LOC)` → `[t](/viewer/<course>/<file>#frag)`.

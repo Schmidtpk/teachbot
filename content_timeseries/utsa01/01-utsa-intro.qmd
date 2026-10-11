@@ -534,7 +534,7 @@ Notes:
 **counterexample: dependence unlimited.** $y_1 \sim N(\mu, 1)$, $\quad y_t = y_{t-1}$ for $t = 2, \dots, T$
 
 - every $y_t \sim N(\mu, 1)$: mean, variance stable over time
-- but $\bar y = y_1$ for every $T$: no convergence, a longer path adds [no]{.alert} information
+- but $\bar y = y_1$ for every $T$: no convergence to $\mu$, a longer path adds [no]{.alert} information
 - reason: perfect dependence
 
 **needed:** stability *and* limited dependence (later: stationarity, ergodicity)
@@ -627,22 +627,26 @@ $$y_t = \phi \, y_{t-1} + e_t, \qquad \{e_t\} \sim WN(0, \sigma^2)$$
 - MA($q$), AR($p$), [ARMA($p,q$)]{.alert} processes, lag polynomials
 - [stationarity and causality]{.alert}, [invertibility]{.alert}
 - MA($\infty$) representation, Yule-Walker equations
-:::
 
-::: {.column width="50%"}
 **Ch. 4 – ARMA modelling**
 
 - [estimation]{.alert}: method of moments, least squares, maximum likelihood
 - model diagnostics: residual checks
+:::
 
+::: {.column width="50%"}
 **Ch. 5 – Forecasting**
 
 - [minimum MSE forecast]{.alert}
 - forecast error variance, [interval forecasts]{.alert}
 
-**Ch. 6 – Extending ARMA models**
+**Ch. 6 – Volatility models**
 
-- [ARIMA]{.alert} models
+- [ARCH]{.alert} and [GARCH]{.alert} models
+
+**Ch. 7 – Extending ARMA models**
+
+- [ARIMA]{.alert} models, unit roots, seasonality
 :::
 
 ::::

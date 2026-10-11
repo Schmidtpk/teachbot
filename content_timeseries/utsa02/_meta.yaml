@@ -1,0 +1,7 @@
+# IID-MULTI-COURSE: Q&A for chapter 2 (IID-QNA-CORE). Deck .qmd + .html and the script are
+# copied by scripts/sync_timeseries.py; uses root _system_prompt.md / _welcome.md.
+lecture_name: "Ch. 2 – Fundamental Concepts"
+order: 2
+description: "Questions about **chapter 2**: slides and lecture script."
+extra_content:            # background: the chapter builds on chapter 1
+  - utsa01/script_01-utsa-intro.qmd

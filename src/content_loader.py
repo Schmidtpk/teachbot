@@ -54,10 +54,11 @@ def load_files(files: list[Path]) -> str:
     return "\n\n---\n\n".join(_clean_sections(files))
 
 
-def load_content(content_dir: str | Path) -> str:
+def load_content(content_dir: str | Path, allow_empty: bool = False) -> str:
     """
     IID-CONTENT-INJECT: Read all .qmd and .md files, clean, and concatenate.
-    Raises SystemExit if the folder is missing or yields no content.
+    Raises SystemExit if the folder is missing or yields no content — unless `allow_empty`
+    (IID-CONTENT-FROM-HTML: the course's content comes from its HTML files instead).
     """
     content_path = Path(content_dir)
     if not content_path.is_dir():
@@ -68,6 +69,8 @@ def load_content(content_dir: str | Path) -> str:
     files = [f for f in sorted(content_path.glob("**/*.qmd")) + sorted(content_path.glob("**/*.md"))
              if not f.name.startswith("_")]
     if not files:
+        if allow_empty:
+            return ""
         sys.exit(f"[Lectos] ERROR: content directory '{content_dir}' is empty. "
                  "Add at least one .qmd or .md file.")
 

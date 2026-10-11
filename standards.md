@@ -29,6 +29,8 @@ Course material shown in the UI (IID-UI-CONTENT-VIEW) is **pre-rendered HTML sup
 - Locations are addressed by stable ids: reveal.js slide `<section id>` (fragment `#/id`), card id (`#id`), any other anchor (`#id`). The LLM references them as `view:DOC/LOC` (IID-UI-CONTENT-MARK).
 - The HTML is indexed to text once at startup (`src/viewer_docs.py`); it is never injected whole (decks are ~7 MB, mostly images).
 - A deck and the `.qmd` it was rendered from share a file stem (`03_1-utsa-arma.qmd` ↔ `03_1-utsa-arma.html`) — card `sources` rely on it.
+- A deck is deployed together with its `.qmd` in the same course folder: the `.qmd` is the lecture content (IID-CONTENT-INJECT), the HTML only adds the open slide. A deck without it is a startup WARNING. Courses without any `.qmd` (e.g. the card graph) use `content_from_viewer: true` instead (IID-CONTENT-FROM-HTML).
+- Copy both from the same source in one step (`scripts/sync_timeseries.py` for the time series course), so they cannot drift apart.
 
 ---
 

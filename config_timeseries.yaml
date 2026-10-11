@@ -7,8 +7,10 @@
 course_name: "Univariate Time Series Analysis"
 
 # IID-MULTI-DEPLOY: each deploy points to its own content folder.
-# content_timeseries/ has two course subfolders (IID-MULTI-COURSE): lecture/ (plain Q&A,
-# IID-QNA-CORE) and assignment1/ (step-by-step assignment helper, IID-ASSIGNMENT-HELP).
+# content_timeseries/ course subfolders (IID-MULTI-COURSE): utsa01/, utsa02/, utsa03/ (Q&A per
+# chapter, IID-QNA-CORE: deck .qmd + .html + script), cards/ (knowledge cards only,
+# IID-CONTENT-FROM-HTML) and assignment1/ (step-by-step helper, IID-ASSIGNMENT-HELP).
+# Copy/refresh the files with scripts/sync_timeseries.py (the HTML is gitignored).
 content_dir: content_timeseries   # IID-LECTURE-CONTENT
 logs_dir: logs                    # IID-CHAT-LOG
 sheets_log_id: "16xdFMSLu7T4Cgy3pu10JKn78EKCe8vz1tGkDa8xcq1g"  # IID-SHEETS-LOG: "Lectos Timeseries logs" Sheet

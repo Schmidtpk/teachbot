@@ -185,8 +185,9 @@ viewer:                         # optional; default = every *.html, sorted by na
 # viewer: false                 # no panel for this course
 ```
 
-- Slide decks: render Quarto reveal.js with `self-contained: true`; keep the file stem of the `.qmd` (`03_1-utsa-arma.qmd` → `03_1-utsa-arma.html`) so cards can be matched to their slides.
+- Slide decks: render Quarto reveal.js with `self-contained: true`; keep the file stem of the `.qmd` (`03_1-utsa-arma.qmd` → `03_1-utsa-arma.html`) so cards can be matched to their slides. Put the `.qmd` next to the `.html`: it is what the bot reads as lecture content (a deck without it gives a startup warning).
 - The knowledge-card graph: copy `graph/site/index.html` in under a name such as `cards.html`.
+- **A course made only of HTML** (e.g. just the cards): add `content_from_viewer: true` to its `_meta.yaml`. The text of its HTML files then becomes the lecture content, so the folder needs no `.qmd`, and the bot can answer and link cards with the panel closed.
 - The bot gets the open slide/card as text only (figures appear as `[figure]`; the code that drew them is visible). Speaker notes are never passed on.
 - The files are served only to logged-in users who may open the course. They are large, so do not commit them to a public repo (see `.gitignore` and the deployment notes in `CLAUDE.md`).
 
@@ -293,6 +294,7 @@ lectos/
 │   ├── archive_sheet.py        # Download + clear Google Sheet
 │   ├── download_sheet.py       # Download only (sheet untouched)
 │   ├── analyze_recent.py       # Activity summary over recent backups
+│   ├── sync_timeseries.py      # Copy time series decks (.qmd + .html), scripts, cards into content_timeseries/
 │   └── render_chats.py         # Generate exports/chats.html viewer
 ├── tests/
 │   ├── runner.py               # Run test cases through LLM pipeline

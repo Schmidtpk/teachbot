@@ -1,0 +1,8 @@
+# IID-MULTI-COURSE: Q&A for chapter 3 (IID-QNA-CORE). Both ARMA decks (.qmd + .html) are
+# copied by scripts/sync_timeseries.py (a ch. 3 script too, once it exists).
+lecture_name: "Ch. 3 – ARMA Models"
+order: 3
+description: "Questions about **chapter 3** (ARMA models, parts 1 and 2)."
+extra_content:            # background: the chapter builds on chapters 1 and 2
+  - utsa01/script_01-utsa-intro.qmd
+  - utsa02/script_02-utsa-fundamentals.qmd
