@@ -336,6 +336,7 @@ No HTML → nothing changes (tested in `tests/content_view.py`).
 | `content/_diagnose_prompt.md` | IID-LEARN-DIAGNOSE | Editable diagnostic instructions (JSON output); default fallback for goals courses that omit their own copy |
 | `src/progress_store.py` | IID-LEARN-GOALS | Per-student record of completed goals — Google Sheet `progress` tab (durable) or `progress/<email>.json` fallback |
 | `src/content_loader.py` | IID-CONTENT-INJECT | Loads + cleans a content folder; skips `_`-prefixed files (app-config convention) |
+| `src/math_delimiters.py` | IID-UI-RENDER | Converts `\(…\)` / `\[…\]` in streamed answers to `$…$` / `$$…$$` (the only forms the chat renders); used in `app._stream_once` |
 | `src/llm_client.py` | SID-LLM-PROVIDER, IID-STREAM-RESILIENCE, IID-LLM-THINKING | OpenRouter async client. `stream_events` yields `(reasoning\|content, text)`; `stream_response` is its content-only view. `_reasoning_kwargs` turns `llm.reasoning` into OpenRouter's `extra_body` |
 | `scripts/check_reasoning_support.py` | IID-LLM-THINKING | Checks whether a model's providers declare `reasoning` **and** whether a live request honours it. Run before configuring any model with a thinking option |
 | `src/viewer_docs.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML | Indexes course HTML (reveal decks, card graph, any page) into slides/cards/pages; builds the per-turn page context, the link catalogue, the HTML-as-lecture-content text; rewrites `view:` links |
@@ -463,6 +464,7 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/learn_goals.py` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Multi-turn harness for learning-goals mode: judges the opening question + the tutor's feedback to simulated students |
 | `tests/cases/learn_part1_goals.yaml` | IID-TEST-LLM-EVAL, IID-LEARN-GOALS | Goal cases for "Practice: Part I": per-goal `question_rubric` + student personas with `feedback_rubric` |
 | `tests/stream_resilience.py` | IID-STREAM-RESILIENCE | Offline: retry, history rewind, stream cleanup, reasoning-as-liveness, Thinking step |
+| `tests/math_delimiters.py` | IID-UI-RENDER | Offline: LaTeX delimiter conversion, at every possible chunk split; code untouched |
 | `tests/model_choices.py` | IID-LLM-THINKING, IID-STUDENT-MODEL-CHOICE | Offline: `reasoning` translation, choice validation, chooser behaviour, all configs import |
 | `tests/content_view.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML | Offline: HTML indexing, page context, links, window messages, route order, Chainlit internals, `content_from_viewer`, the time series course layout, no-HTML courses unchanged (needs the synced HTML) |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |

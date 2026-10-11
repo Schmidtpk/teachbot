@@ -31,6 +31,7 @@ from src.content_loader import load_content
 from src.course_loader import ROOT_COURSE_ID, CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, load_root_viewer, parse_model_choices
 from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
 from src.llm_client import CONTENT, REASONING, build_client, stream_events
+from src.math_delimiters import MathDelimiterStream
 from src.progress_store import ProgressStore
 from src.tutor_loop import build_act_instruction, diagnose_answer
 from src.viewer_docs import ViewerSet
@@ -272,6 +273,9 @@ async def _stream_once(
     Once content starts flowing the answer is visibly streaming and no deadline applies —
     aborting there would throw away a half-written answer that the student can already read.
 
+    Content passes through `MathDelimiterStream` (IID-UI-RENDER): `\\(…\\)` / `\\[…\\]`
+    become `$…$` / `$$…$$` before they reach the student or the history.
+
     Reasoning deltas drive a "Thinking…" step. Their text is only shown when
     `show_reasoning` is True: in learning-goals mode the chain-of-thought contains the
     expected answer, so revealing it would hand the student exactly what the Socratic
@@ -283,6 +287,7 @@ async def _stream_once(
     start = time.monotonic()
     thinking: cl.Step | None = None
     text = ""
+    math = MathDelimiterStream()  # IID-UI-RENDER
 
     async def close_thinking(reasoned_for: float) -> None:
         if thinking is None:
@@ -334,9 +339,15 @@ async def _stream_once(
         else:
             if thinking is not None and not text:
                 await close_thinking(time.monotonic() - start)
-            text += chunk
-            await response_msg.stream_token(chunk)
+            shown = math.feed(chunk)  # IID-UI-RENDER: math delimiters the chat renders
+            text += shown
+            if shown:
+                await response_msg.stream_token(shown)
 
+    tail = math.flush()
+    if tail:
+        text += tail
+        await response_msg.stream_token(tail)
     if thinking is not None and not text:  # reasoned, then returned nothing
         await close_thinking(time.monotonic() - start)
     return True, text

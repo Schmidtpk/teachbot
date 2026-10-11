@@ -32,6 +32,7 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 ### IID-UI-RENDER
 **Lifecycle:** v1
 **Description:** LLM responses are rendered as Markdown in the chat UI. LaTeX math (inline `$...$` and block `$$...$$`) must be rendered correctly. Implemented via Chainlit's built-in renderer (see SID-STACK).
+**Delimiter conversion (2026-10-11):** the renderer only knows the dollar forms; models write `\(…\)` / `\[…\]` regardless of the prompt, markdown eats the backslash and students saw `[ y_t=\frac{\theta(B)}{\phi(B)}e_t ]`. Every streamed answer therefore passes through `src/math_delimiters.py` (`MathDelimiterStream`, in `app._stream_once`): `\(`/`\)` → `$`, `\[`/`\]` → `$$`, also when a delimiter is split across chunks; code (fences, inline) and `\\` line breaks untouched. Student, history and logs all get the converted text. Tests: `tests/math_delimiters.py`, `tests/stream_resilience.py`.
 
 ### IID-UI-CONTENT-VIEW
 **Lifecycle:** DONE (2026-10-11; switched on for `teachbot-timeseries` once its HTML is uploaded)

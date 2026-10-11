@@ -154,6 +154,16 @@ async def main() -> None:
           "assistant turn appended to history")
     check(not FakeStep.instances, "no Thinking step for a non-reasoning model")
 
+    # 1b — IID-UI-RENDER: \( \) / \[ \] reach the student and the history as $ / $$,
+    # even though every character arrives as its own chunk
+    print("\ncase: LaTeX delimiters converted while streaming")
+    history = fresh()
+    (msg, text, model, ok), spy = await run_case(
+        [say("so \\[y_t=\\frac{\\theta(B)}{\\phi(B)}e_t\\] with \\(|z|>1\\)")], history)
+    want = "so $$y_t=\\frac{\\theta(B)}{\\phi(B)}e_t$$ with $|z|>1$"
+    check(msg.content == want, f"student sees $$ / $ (got {msg.content!r})")
+    check(text == want and history[-1]["content"] == want, "history and logs get the same text")
+
     # 2 — stall then success
     print("\ncase: first attempt stalls, retry succeeds")
     history = fresh()
