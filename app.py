@@ -22,8 +22,8 @@ from chainlit.server import app as chainlit_app  # IID-UI-CONTENT-VIEW: extra Fa
 from chainlit.utils import utc_now  # IID-STREAM-RESILIENCE: Step start/end timestamps
 import yaml
 from dotenv import load_dotenv
-from fastapi import Depends, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, HTTPException, Request
+from fastapi.responses import FileResponse, Response
 
 from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
@@ -35,6 +35,7 @@ from src.math_delimiters import MathDelimiterStream
 from src.progress_store import ProgressStore
 from src.tutor_loop import build_act_instruction, diagnose_answer
 from src.viewer_docs import ViewerSet
+from src.viewer_files import not_modified, prepared_file, warm  # IID-UI-CONTENT-VIEW
 
 # SID-API-CONFIG: load secrets from .env (never hardcoded)
 load_dotenv()
@@ -59,6 +60,9 @@ COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
 # IID-UI-CONTENT-VIEW: single-course mode reads HTML from the content root; with courses,
 # each CourseConfig carries its own `viewer`. None everywhere = feature invisible.
 ROOT_VIEWER: ViewerSet | None = None if COURSES else load_root_viewer(_ROOT_CONTENT)
+# IID-UI-CONTENT-VIEW: gzip every viewer file once, in the background, at startup.
+warm([d.path for v in ([c.viewer for c in COURSES] if COURSES else [ROOT_VIEWER]) if v
+      for d in v.docs.values()])
 
 
 def _viewer_for(course_id: str, user: cl.User | None) -> ViewerSet | None:
@@ -76,20 +80,30 @@ def _viewer_for(course_id: str, user: cl.User | None) -> ViewerSet | None:
 
 
 @chainlit_app.get("/viewer/{course_id}/{filename}")
-async def serve_viewer_file(course_id: str, filename: str, user=Depends(get_current_user)):
+async def serve_viewer_file(course_id: str, filename: str, request: Request,
+                            user=Depends(get_current_user)):
     """IID-UI-CONTENT-VIEW: serve a course's HTML to the viewer panel's iframe.
 
     Not under /public (served to anyone): with login enabled, `get_current_user` reads
     Chainlit's auth cookie and rejects requests without one (401). Only files indexed at
     startup are served, so no path from the URL ever reaches the file system.
-    `no-cache` = revalidate via ETag: a 7 MB deck is downloaded once, not on every open.
+    `no-cache` = the browser revalidates with `If-None-Match` on every open and gets an empty
+    304 while the file is unchanged, so a 7 MB deck is downloaded once. The body is gzipped
+    once and kept (`src/viewer_files.py`); a body with Content-Encoding set passes Chainlit's
+    GZipMiddleware untouched, so it is not compressed again per request.
     """
     viewer = _viewer_for(course_id, user)
     doc = next((d for d in viewer.docs.values() if d.filename == filename), None) if viewer else None
     if doc is None:
         raise HTTPException(status_code=404)
-    return FileResponse(doc.path, media_type="text/html",
-                        headers={"Cache-Control": "private, no-cache"})
+    prepared = await asyncio.to_thread(prepared_file, doc.path)
+    headers = {"Cache-Control": "private, no-cache", "ETag": prepared.etag, "Vary": "Accept-Encoding"}
+    if not_modified(request.headers.get("if-none-match"), prepared.etag):
+        return Response(status_code=304, headers=headers)
+    if "gzip" in request.headers.get("accept-encoding", ""):
+        return Response(prepared.gzip, media_type="text/html",
+                        headers={**headers, "Content-Encoding": "gzip"})
+    return FileResponse(doc.path, media_type="text/html", headers=headers)  # rare: no gzip
 
 
 # IID-UI-CONTENT-VIEW: importing chainlit.server already registered its catch-all GET

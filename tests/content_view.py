@@ -2,7 +2,8 @@
 IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML,
 IID-TEST-LLM-EVAL
 Offline tests for the HTML viewer panel: indexing slide decks / card graphs / plain pages,
-the page context the bot gets, answer links, the window-message handler, the file route,
+the page context the bot gets, answer links, the window-message handler, the file route
+(gzip once, 304 on revalidation),
 HTML text as lecture content (`content_from_viewer`), and that a course WITHOUT HTML
 behaves exactly as before.
 
@@ -363,6 +364,49 @@ def main() -> None:
             check(len(d.order) > 0 and all(not re.search(r"data:image", d.locations[x].text)
                                            for x in d.order),
                   f"{c.course_id}/{d.filename}: {d.kind}, {len(d.order)} locations, no base64 in text")
+
+    # 11 — the file route over HTTP: gzipped once, 304 on revalidation (IID-UI-CONTENT-VIEW)
+    print("\ncase: file route caching")
+    import gzip
+    from fastapi.testclient import TestClient
+    from src import viewer_files
+    from src.viewer_files import not_modified, prepared_file
+    check(not_modified('"a", W/"b"', '"b"') and not_modified("*", '"x"')
+          and not not_modified('"a"', '"b"') and not not_modified(None, '"b"'),
+          "If-None-Match: list, weak tag and * match; others do not")
+    route_course = next(c for c in app.COURSES if c.viewer)
+    route_doc = next(iter(route_course.viewer.docs.values()))
+    url = f"/viewer/{route_course.course_id}/{route_doc.filename}"
+    app.chainlit_app.dependency_overrides[app.get_current_user] = lambda: None
+    try:
+        client = TestClient(app.chainlit_app)
+        r1 = client.get(url, headers={"Accept-Encoding": "gzip"})
+        etag = r1.headers.get("etag", "")
+        check(r1.status_code == 200 and r1.headers.get("content-encoding") == "gzip"
+              and r1.content == route_doc.path.read_bytes() and etag,
+              f"200 gzipped with an ETag ({route_doc.filename})")
+        compressed = prepared_file(route_doc.path).gzip
+        check(gzip.decompress(compressed) == route_doc.path.read_bytes()
+              and viewer_files._CACHE[route_doc.path][1].gzip is compressed,
+              "compressed body is kept and reused")
+        r2 = client.get(url, headers={"Accept-Encoding": "gzip", "If-None-Match": etag})
+        check(r2.status_code == 304 and r2.content == b"" and r2.headers.get("etag") == etag,
+              "matching If-None-Match → empty 304")
+        r3 = client.get(url, headers={"Accept-Encoding": "identity"})
+        check(r3.status_code == 200 and "content-encoding" not in r3.headers
+              and r3.content == route_doc.path.read_bytes() and r3.headers.get("etag") == etag,
+              "client without gzip gets the plain file, same ETag")
+        check(client.get(f"/viewer/{route_course.course_id}/nope.html").status_code == 404,
+              "unindexed file → 404")
+    finally:
+        app.chainlit_app.dependency_overrides.clear()
+    changing = tmp / "changing.html"
+    changing.write_text("<p>one</p>", encoding="utf-8")
+    before = prepared_file(changing)
+    changing.write_text("<p>two, longer</p>", encoding="utf-8")
+    after = prepared_file(changing)
+    check(after.etag != before.etag and gzip.decompress(after.gzip) == b"<p>two, longer</p>",
+          "file changed on disk → new ETag, compressed again")
 
     failed = [lbl for ok_, lbl in RESULTS if not ok_]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")
