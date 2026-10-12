@@ -257,6 +257,27 @@ railway logs                               # stream runtime logs
 railway variables set KEY=value            # set/update a variable
 ```
 
+### Daily health check
+
+`.github/workflows/health.yml` runs every day at 05:17 UTC (and on demand via *Actions → Health
+check → Run workflow*). It calls `/health` on every instance listed in `scripts/deploys.py`.
+That endpoint lets each instance test itself with its own secrets: the OpenRouter key is valid
+and its spend cap has room, the account balance is above $10, one tiny request (16 tokens) to
+every model students can reach succeeds, and the log Sheet opens. Nothing secret is needed on
+GitHub. When anything fails, GitHub's own failure mail names the instance, and the run summary
+says what is wrong and what to do. Results are cached for 10 minutes, so the open endpoint
+cannot be used to run up costs.
+
+```bash
+python scripts/health_check.py                     # check all instances from your machine
+python scripts/health_check.py --service dcm       # one instance
+curl https://<instance>/health                     # the raw JSON report
+```
+
+Floors can be changed per deploy in the config yaml: `health: {min_account_credit_usd: 10,
+min_key_remaining_usd: 1}`. GitHub pauses scheduled workflows after 60 days without commits
+(it mails a warning first); re-enable it under Actions.
+
 ## Project structure
 
 ```         
@@ -295,6 +316,8 @@ lectos/
 │   ├── download_sheet.py       # Download only (sheet untouched)
 │   ├── analyze_recent.py       # Activity summary over recent backups
 │   ├── sync_timeseries.py      # Copy time series decks (.qmd + .html), scripts, cards into content_timeseries/
+│   ├── health_check.py         # Daily /health check of every instance (GitHub Actions)
+│   ├── deploys.py              # The deployed instances (shared list)
 │   └── render_chats.py         # Generate exports/chats.html viewer
 ├── tests/
 │   ├── runner.py               # Run test cases through LLM pipeline
@@ -304,6 +327,7 @@ lectos/
 │   ├── learn_goals_report.py   # HTML report from learn_goals.py --json results
 │   ├── smoke.py                # Deployment health check
 │   ├── content_view.py         # Viewer panel: indexing, page context, links (offline)
+│   ├── health.py               # /health self-check + monitor script (offline)
 │   ├── cases/                  # YAML test cases (qna, behavior, learn goals)
 │   └── configs/variants.yaml   # Model/prompt variants for comparison
 ├── intentions.md               # Feature roadmap and IID tags

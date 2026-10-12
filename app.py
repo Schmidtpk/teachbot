@@ -1,6 +1,7 @@
 """
 IID-CHAT-SHELL1, IID-QNA-CORE, IID-UI-RENDER, IID-AUTH-BASIC, IID-STUDENT-FEEDBACK-STORE,
-IID-MULTI-COURSE, IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK
+IID-MULTI-COURSE, IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK,
+IID-HEALTH-MONITOR
 Chainlit entry point for Lectos v1.
 Run with:  chainlit run app.py
 """
@@ -23,13 +24,14 @@ from chainlit.utils import utc_now  # IID-STREAM-RESILIENCE: Step start/end time
 import yaml
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import ROOT_COURSE_ID, CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, load_root_viewer, parse_model_choices
 from src.goals import GOAL_KICKOFF, build_goal_system_blocks, goal_material, sample_goal
+from src.health import cached_checks, models_in_use  # IID-HEALTH-MONITOR
 from src.llm_client import CONTENT, REASONING, build_client, stream_events
 from src.math_delimiters import MathDelimiterStream
 from src.progress_store import ProgressStore
@@ -144,6 +146,29 @@ _LIMITS = CFG.get("limits") or {}
 _SINGLE_COURSE_MODEL_CHOICES = parse_model_choices(
     CFG.get("student_model_choices"), f"the deploy config ({_cfg_path.name})"
 )
+
+# IID-HEALTH-MONITOR: every model a student of this deploy can reach, pinged by /health.
+_HEALTH_MODELS = models_in_use(
+    CFG, [c.llm for c in COURSES],
+    [m for c in COURSES for m in c.student_model_choices] + _SINGLE_COURSE_MODEL_CHOICES,
+)
+
+
+@chainlit_app.get("/health")
+async def health():
+    """IID-HEALTH-MONITOR: self-check for the daily GitHub Actions monitor.
+
+    No login: the monitor holds no secrets. 503 when any check fails, so a plain HTTP
+    monitor sees the failure too. Cached (src/health.py), so it cannot be used to run
+    up LLM costs.
+    """
+    result = await cached_checks(LLM_CLIENT, CFG, _HEALTH_MODELS)
+    return JSONResponse(result, status_code=200 if result["ok"] else 503,
+                        headers={"Cache-Control": "no-store"})
+
+
+# IID-HEALTH-MONITOR: same reason as /viewer above — get in front of Chainlit's catch-all.
+chainlit_app.router.routes.insert(0, chainlit_app.router.routes.pop())
 
 # IID-LEARN-GOALS, IID-LEARN-DIAGNOSE: Chainlit's Socket.IO layer uses engine.io's
 # default ping_timeout (20s); a stalled LLM call with no visible activity risks the

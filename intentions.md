@@ -619,6 +619,14 @@ gitignored and reaches Railway only via `railway up --no-gitignore` with `.railw
 **Outputs:** Exit code 0 (pass) or 1 (fail). CI job fails if the HTTP ping fails.
 **Key files:** `tests/smoke.py`, `.github/workflows/ci.yml`
 
+### IID-HEALTH-MONITOR
+**Lifecycle:** DONE
+**Description:** Daily check, without the lecturer's machine, that every deployed instance can still answer students. Each instance serves an unauthenticated `GET /health` that tests itself with its own secrets: OpenRouter key valid, not expiring within 7 days and spend cap not nearly exhausted; account balance above a floor; one tiny completion (16 tokens) per model a student can reach (deploy default, course models, diagnose model, every `student_model_choices` entry); log Sheet opens read-only. 200 + JSON when all pass, 503 otherwise. Results are cached (10 min if OK, 60 s if failed), so the open route cannot be used to run up costs; the JSON contains no amounts and no secrets. A scheduled GitHub Actions workflow (one job per instance) runs a stdlib-only script that turns each failure into a plain explanation with what to do (down → logs; old code → redeploy; failed self-check → its detail), retries once after 90 s against blips, and fails the job; GitHub's own failure mail is the alert (no mail credentials on GitHub).
+**Inputs:** `deploys.DEPLOYS` (instance URLs); each service's `OPENROUTER_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `sheets_log_id`; optional `health: {min_account_credit_usd, min_key_remaining_usd}` in the config yaml (defaults 10 / 1).
+**Outputs:** Daily workflow run, error annotations + run summary table, GitHub failure e-mail.
+**Key files:** `src/health.py`, `app.py` (`/health` route), `scripts/health_check.py`, `scripts/deploys.py`, `.github/workflows/health.yml`, `tests/health.py`
+**No-Goals:** sending own e-mails; checking answer quality (see IID-WEEKLY-REPORT); minute-level uptime alerts.
+
 ### IID-TEST-LLM-EVAL
 **Lifecycle:** DONE
 **Description:** Evaluate LLM pipeline quality without deployment — directly calls `src/content_loader` and `src/llm_client`, bypassing Chainlit. Test cases are defined in YAML files (`tests/cases/`) so educators can add/edit them without touching Python. An LLM-as-judge grades each response against a per-case rubric (PASS/FAIL + explanation). The judge model defaults to the same model in `config.yaml`; override with `JUDGE_MODEL` env var for a stronger grader.

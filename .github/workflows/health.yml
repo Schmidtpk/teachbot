@@ -1,0 +1,36 @@
+# IID-HEALTH-MONITOR
+# Daily check that every deployed instance can still answer students: calls each
+# instance's /health (src/health.py: OpenRouter key + balance, one tiny request per
+# model, log Sheet) via scripts/health_check.py. Stdlib only, no secrets.
+#
+# A failure fails that instance's job, and GitHub mails the failure (Settings →
+# Notifications → Actions; scheduled runs notify the user who last changed the cron line).
+# The run page's summary and annotations say what is wrong and what to do.
+#
+# Keep the matrix in sync with DEPLOYS in scripts/deploys.py (tests/health.py checks it).
+# GitHub pauses scheduled workflows after 60 days without commits to the repo and mails a
+# warning first — re-enable under Actions → Health check.
+
+name: Health check
+
+on:
+  schedule:
+    - cron: "17 5 * * *"   # daily 05:17 UTC (07:17 Basel summer time); off the hour = less queueing
+  workflow_dispatch:        # "Run workflow" button for a manual check
+
+jobs:
+  health:
+    name: ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false      # one broken instance must not hide the state of the others
+      matrix:
+        service: [teachbot, public, dcm, timeseries]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check /health
+        run: python scripts/health_check.py --service ${{ matrix.service }}

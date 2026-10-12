@@ -84,7 +84,11 @@ Plan/documentation should be intention-first:
   public instances (`--service teachbot-timeseries`). Log Sheet: "Lectos Timeseries logs".
   The weekly archive script only covers the main Sheet.
 - **QR codes** for handing out links: `python scripts/make_qr.py` (needs `pip install "qrcode[pil]"`)
-  writes `qr/teachbot_<name>_qr.png/.svg`; URLs are listed in the script's `DEPLOYS` dict.
+  writes `qr/teachbot_<name>_qr.png/.svg`; URLs are listed in `scripts/deploys.py` (`DEPLOYS`), shared with the health check.
+- **Daily health check** (IID-HEALTH-MONITOR): `.github/workflows/health.yml` calls `/health` on
+  every instance at 05:17 UTC; a failure = GitHub failure mail to the account that last changed the
+  cron line. A new instance → add it to `scripts/deploys.py` **and** the workflow matrix
+  (`tests/health.py` checks they match). Manual run: `python scripts/health_check.py`.
 - **Start command:** `railway.toml` (nixpacks + `chainlit run ...`) is honoured by the two older
   services, but a service created via `railway add` in 2026-09 (`teachbot-dcm`) builds with
   Railpack and ignored `railway.toml` completely (ran `python app.py` → HTTP 502). `Procfile`
@@ -344,6 +348,10 @@ No HTML → nothing changes (tested in `tests/content_view.py`).
 | `scripts/sync_timeseries.py` | IID-MULTI-COURSE, IID-CONTENT-FROM-HTML, SID-CONTENT-RENDER | Copies the time series decks (`.qmd` + `.html` together), chapter scripts and `cards.html` into `content_timeseries/<course>/`; `--check` reports only |
 | `public/elements/HtmlViewer.jsx` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT | Viewer panel (Chainlit custom element): document picker + iframe; reports the open slide/card |
 | `public/viewer.js` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-MARK | Chainlit `custom_js`: header button, auto-open on desktop, answer links open in the panel |
+| `src/health.py` | IID-HEALTH-MONITOR | `/health` self-check: OpenRouter key + balance, 16-token ping per model in use, log Sheet; cached 10 min (60 s when failed); no amounts/secrets in the JSON |
+| `scripts/health_check.py` | IID-HEALTH-MONITOR | Calls `/health` on each instance, explains failures (down / old code / failed check), GitHub annotations + summary. Stdlib only |
+| `scripts/deploys.py` | IID-MULTI-DEPLOY, IID-HEALTH-MONITOR | The deployed instances (`DEPLOYS`), used by `make_qr.py` and `health_check.py`; keep in sync with the service table and `health.yml` matrix |
+| `.github/workflows/health.yml` | IID-HEALTH-MONITOR | Daily 05:17 UTC, one job per instance; GitHub's failure mail is the alert |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
 | `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
@@ -468,6 +476,7 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/math_delimiters.py` | IID-UI-RENDER | Offline: LaTeX delimiter conversion, at every possible chunk split; code untouched |
 | `tests/model_choices.py` | IID-LLM-THINKING, IID-STUDENT-MODEL-CHOICE | Offline: `reasoning` translation, choice validation, chooser behaviour, all configs import |
 | `tests/content_view.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML | Offline: HTML indexing, page context, links, window messages, route order, Chainlit internals, `content_from_viewer`, the time series course layout, no-HTML courses unchanged (needs the synced HTML) |
+| `tests/health.py` | IID-HEALTH-MONITOR | Offline: key/balance/Sheets/model checks, cache, `/health` route, monitor's failure texts, workflow matrix = `DEPLOYS` |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
 | `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |
 | `tests/cases/behavior.yaml` | IID-TEST-LLM-EVAL | Behavior/hallucination guard test cases |

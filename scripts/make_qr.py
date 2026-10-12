@@ -14,13 +14,7 @@ from pathlib import Path
 import qrcode
 from qrcode.image.svg import SvgPathImage
 
-# IID-MULTI-DEPLOY: keep in sync with the service table in CLAUDE.md
-DEPLOYS = {
-    "teachbot": "https://teachbot-production-2e85.up.railway.app",
-    "public": "https://teachbot-public-production.up.railway.app",
-    "dcm": "https://teachbot-dcm-production.up.railway.app",
-    "timeseries": "https://teachbot-timeseries-production.up.railway.app",
-}
+from deploys import DEPLOYS  # IID-MULTI-DEPLOY: shared instance list
 
 OUT_DIR = Path(__file__).resolve().parent.parent / "qr"
 

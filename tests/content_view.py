@@ -264,8 +264,8 @@ def main() -> None:
 
     # 7 — the deployed app: route order, Chainlit internals we rely on, no-HTML courses
     print("\ncase: app wiring")
-    first = app.chainlit_app.router.routes[0]
-    check(getattr(first, "path", "") == "/viewer/{course_id}/{filename}",
+    paths = [getattr(r, "path", "") for r in app.chainlit_app.router.routes]
+    check(paths.index("/viewer/{course_id}/{filename}") < paths.index("/{full_path:path}"),
           "viewer route sits before Chainlit's catch-all UI route")
     import chainlit
     cl_dir = Path(chainlit.__file__).parent
