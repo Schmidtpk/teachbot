@@ -545,6 +545,12 @@ class ViewerSet:
         page that is open rather than about whatever is nearby.
         """
         d = self.docs[doc_id]
+        if loc_id not in d.locations:
+            # A deck/card graph open at a page without an id (a slide without a title, the
+            # card overview): `validate` maps that to "" — name the document, nothing more.
+            return (f"=== THE STUDENT HAS THIS DOCUMENT OPEN ===\nDocument: {d.label}\n"
+                    f"(No particular {d.noun()} is identified — e.g. an untitled {d.noun()} "
+                    f"or the overview. Do not assume which one.)\n=== END ===")
         loc = d.locations[loc_id]
         text = loc.text
         limit = GENERIC_MAX if d.kind == GENERIC else CURRENT_MAX

@@ -211,6 +211,14 @@ def main() -> None:
     cctx = vs.page_context("cards", "ar1-process")
     check(cctx.startswith("=== THE STUDENT IS LOOKING AT THIS CARD") and "Builds on (key concepts):" in cctx,
           "card context: card first, then its key concepts")
+    # Untitled slide / card overview: the browser reports no id → validate gives "" (crashed
+    # live on 2026-10-11 with KeyError '').
+    for doc_id in ("deck", "cards"):
+        open_page = vs.validate(doc_id, "")
+        nctx = vs.page_context(*open_page)
+        check(open_page == (doc_id, "") and "Document:" in nctx and "Do not assume" in nctx
+              and vs.marker(*open_page) and vs.tag(*open_page) == doc_id,
+              f"{doc_id} open without a location id → document-only context, no crash")
     check(vs.marker("deck", "ar1-def") == '[Student had open: Ch. 3 – ARMA Models, slide 3/5 '
           '"Autoregressive processes: AR(1)"]', "one-line history marker")
     check(vs.tag("deck", "ar1-def") == "deck#ar1-def" and vs.tag("syllabus", "") == "syllabus",
