@@ -29,9 +29,11 @@ import json
 import os
 import shutil
 import smtplib
+import socket
 import statistics
 import subprocess
 import sys
+import time
 from collections import Counter, defaultdict
 from datetime import date, datetime, timezone
 from email.message import EmailMessage
@@ -54,6 +56,11 @@ AGENT_MODEL = "opus"
 AGENT_TIMEOUT_S = 30 * 60
 # The agent's report must contain these section ids (see SKILL.md).
 REQUIRED_SECTIONS = ["summary", "tool-problems", "worst-answers", "flags", "focus", "struggles", "suggestions"]
+# Task Scheduler starts a missed run right at PC start, often before the network is up
+# (2026-10-14: DNS failure, no report). A failed run is not retried, so wait here instead.
+NETWORK_HOSTS = ["oauth2.googleapis.com", "smtp.gmail.com"]
+NETWORK_WAIT_S = 15 * 60
+NETWORK_POLL_S = 20
 
 
 def log(msg: str) -> None:
@@ -61,6 +68,26 @@ def log(msg: str) -> None:
 
 
 # ── State: once per ISO week, resumable ─────────────────────────────────────
+
+
+def wait_for_network(timeout_s: float = NETWORK_WAIT_S) -> None:
+    """IID-WEEKLY-REPORT: block until the Google and Gmail hosts resolve, or give up loudly."""
+    deadline = time.monotonic() + timeout_s
+    waited = False
+    while True:
+        try:
+            for host in NETWORK_HOSTS:
+                socket.getaddrinfo(host, 443)
+            if waited:
+                log("Network is up.")
+            return
+        except OSError as e:
+            if time.monotonic() >= deadline:
+                raise SystemExit(f"ERROR: no network after {timeout_s / 60:.0f} min ({e})")
+            if not waited:
+                log(f"Network not ready ({e}); waiting up to {timeout_s / 60:.0f} min")
+                waited = True
+            time.sleep(NETWORK_POLL_S)
 
 
 def iso_week(d: date | None = None) -> str:
@@ -411,6 +438,9 @@ def main() -> None:
     if state.get("week") == week and state.get("stage") == "sent" and not args.force and persist:
         log(f"{week} already reported — nothing to do (use --force to repeat).")
         return
+
+    if not (args.week_dir and args.no_send):
+        wait_for_network()
 
     # ── 1. archive (or resume) ──
     csv_path: Path | None
