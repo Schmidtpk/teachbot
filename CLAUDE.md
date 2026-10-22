@@ -48,16 +48,18 @@ Plan/documentation should be intention-first:
 
 ## Deployment (Railway)
 
-- Project: `victorious-energy` on Railway — **four services from this one repo** (IID-MULTI-DEPLOY):
+- Project: `victorious-energy` on Railway — **three live services from this one repo** (IID-MULTI-DEPLOY):
 
 | Service | Config (via `TEACHBOT_CONFIG`) | Content | Auth | URL |
 |---------|-------------------------------|---------|------|-----|
-| `teachbot` | `config.yaml` (default) | `content/` | login required | https://teachbot-production-2e85.up.railway.app |
+| `teachbot` (**offline since 2026-10-22**, Predictions lecture finished) | `config.yaml` (default) | `content/` | login required | was https://teachbot-production-2e85.up.railway.app |
 | `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
 | `teachbot-dcm` | `config_dcm.yaml` | `content_dcm/` | none (free public) | https://teachbot-dcm-production.up.railway.app |
 | `teachbot-timeseries` | `config_timeseries.yaml` | `content_timeseries/` | login (`stud.unibas.ch`) | https://teachbot-timeseries-production.up.railway.app |
 
-- `teachbot` deploys automatically on every push to `master` via the GitHub connection.
+- `teachbot` (Predictions lecture, Heidelberg) was taken offline 2026-10-22; it is no longer in
+  `scripts/deploys.py`, the health matrix or the CI smoke test (which now pings the public instance).
+  While it ran, it deployed automatically on every push to `master` via the GitHub connection.
 - `teachbot-dcm` is a second free public Q&A instance for an introductory discrete choice modelling
   class (link handed out via QR code). Its content folder currently holds generic introductory
   notes (`content_dcm/dcm_intro.md`); replace/extend with the actual lecture material and

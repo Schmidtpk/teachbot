@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false      # one broken instance must not hide the state of the others
       matrix:
-        service: [teachbot, public, dcm, timeseries]
+        service: [public, dcm, timeseries]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

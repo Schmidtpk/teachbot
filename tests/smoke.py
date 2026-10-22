@@ -21,7 +21,8 @@ import sys
 import urllib.error
 import urllib.request
 
-LIVE_URL = "https://teachbot-production-2e85.up.railway.app"
+# Public instance: the main `teachbot` service (Predictions lecture) went offline 2026-10-22.
+LIVE_URL = "https://teachbot-public-production.up.railway.app"
 HTTP_TIMEOUT = 15           # seconds
 PLAYWRIGHT_TIMEOUT = 30_000  # milliseconds (Playwright uses ms)
 TEST_QUESTION = "What is this course about? One sentence please."
