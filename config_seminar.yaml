@@ -1,0 +1,58 @@
+# IID-MULTI-DEPLOY, IID-EDUCATOR-CONFIG, SID-API-CONFIG
+# Config for the replication seminar deploy (Railway service `teachbot-seminar`).
+# Selected there via the env var TEACHBOT_CONFIG=config_seminar.yaml.
+# Heidelberg seminar on replicating econometrics/theory papers (WS 2026/27): a general-purpose
+# assistant with strong models, but students get only a fixed number of words per chat, so they
+# have to curate what they send. Login restricted to the participant list below.
+
+course_name: "Replication Seminar"
+
+# IID-GENERAL-ASSISTANT: no lecture material — the bot is defined by content_seminar/_system_prompt.md.
+content_dir: content_seminar   # IID-LECTURE-CONTENT (only the _-prefixed app files)
+general_assistant: true
+logs_dir: logs                 # IID-CHAT-LOG
+sheets_log_id: "1ODpRIuheQCC4DJSrkSvWSsuiCNu5AQPuE4nG8VokZyI"  # IID-SHEETS-LOG: "Lectos Seminar logs" Sheet
+
+# IID-AUTH-BASIC: only the seminar participants (no domain-wide access). First login = registration.
+# The repo is public, so the 17 addresses are NOT in this file: they live in the Railway variable
+# SEMINAR_ALLOWED_EMAILS (comma-separated; locally in .env). Missing/empty -> startup failure.
+auth:
+  allowed_domains: []
+  allowed_emails: []
+  allowed_emails_env: SEMINAR_ALLOWED_EMAILS
+
+# IID-INPUT-WORD-BUDGET: 1000 words of student input per chat (a new chat starts a new budget).
+# No output cap: max_tokens below is only a safety ceiling, and it includes thinking tokens.
+limits:
+  max_words_per_chat: 1000
+
+# LLM settings — SID-LLM-PROVIDER
+# This service has its own OpenRouter key (Railway variable): $50 total cap, expires 2027-04-27.
+llm:
+  base_url: https://openrouter.ai/api/v1
+  model: anthropic/claude-sonnet-5.5   # SID-LLM-PROVIDER; = first entry of student_model_choices
+  temperature: 0.3
+  max_tokens: 32000
+  # IID-LLM-THINKING: `reasoning` deliberately unset everywhere = each model's standard thinking.
+  # Measured 2026-10-29 (scratch probes, OpenRouter): all providers declare `reasoning`
+  # (Sonnet 5.5 10/10, Terra 4/4, Sol 8/8, Opus 5.5 11/11). With it unset: Terra, Sol and Opus
+  # think on every question (51-122 reasoning tokens on a short proof); Sonnet 5.5 thinks
+  # adaptively (0 tokens on short questions, streamed thinking on a long GMM derivation) and
+  # reports 0 reasoning tokens even with effort=medium/high or enabled=true.
+  # IID-STREAM-RESILIENCE: on that GMM question the OpenAI models stream NO thinking — the first
+  # delta is the answer, after 11.9s (Terra) / 19.7s (Sol). The default 15s gap would kill Sol;
+  # first content came after 25s (Sonnet) / 28s (Opus). Hence the longer deadlines.
+  first_token_timeout_s: 90
+  first_content_timeout_s: 180
+
+# IID-STUDENT-MODEL-CHOICE: students can switch in the ⚙ Chat Settings menu (applies from the
+# next message). Pinned ids, not the ~…-latest aliases, so the model cannot change mid-semester.
+student_model_choices:
+  - id: anthropic/claude-sonnet-5.5
+    label: "Claude Sonnet 5.5"
+  - id: openai/gpt-6.1-terra
+    label: "GPT-6.1 Terra"
+  - id: openai/gpt-6.1-sol
+    label: "GPT-6.1 Sol"
+  - id: anthropic/claude-opus-5.5
+    label: "Claude Opus 5.5"

@@ -142,7 +142,7 @@ Reference IIDs in code comments wherever a snippet implements an intention. See 
 **Reasoning counts as liveness.** `src/llm_client.py::stream_events` yields `(REASONING|CONTENT, text)` tuples (`stream_response` is now the content-only view of it, kept for the test harnesses). Two deadlines replace the single one:
 - `FIRST_TOKEN_TIMEOUT_S` (15s) — maximum gap between deltas of *any* kind, i.e. "is the connection alive".
 - `FIRST_CONTENT_TIMEOUT_S` (45s) — absolute ceiling from request start to the first *content* delta, so an endlessly-ruminating model still gives up.
-Once content starts flowing no deadline applies — aborting there would discard a half-written answer the student can already read. Measured effect on the real model: the longest silence the watchdog sees drops from ~15s (time to first content) to ~3.5s (time to first anything). The question that failed three times for one student now answers in 8.7s.
+Both are overridable per deploy via `llm.first_token_timeout_s` / `llm.first_content_timeout_s` (`teachbot-seminar`: 90s / 180s — on a long derivation GPT-6.1 Sol streams no thinking at all and its first delta is the answer, after ~20s). Once content starts flowing no deadline applies — aborting there would discard a half-written answer the student can already read. Measured effect on the real model: the longest silence the watchdog sees drops from ~15s (time to first content) to ~3.5s (time to first anything). The question that failed three times for one student now answers in 8.7s.
 **"Thinking…" step.** Reasoning deltas open a `cl.Step` so the student sees activity instead of an empty bubble (verified over the live websocket: step appears at 5.8s, answer at 14.8s). Its text is shown only when `show_reasoning=True`; **learning-goals mode passes False**, because a tutor's chain-of-thought spells out the answer and the mastery verdict the Socratic dialogue is meant to elicit — there the step shows a neutral "Thought for Ns." instead.
 **Behaviour on total failure:**
 - `history` is **rewound** to its pre-call state: the unanswered prompt (student question, goal kickoff, or act instruction) is dropped, so a manual retry sends one clean turn rather than a transcript in which the tutor repeatedly apologises to itself.
@@ -497,13 +497,20 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   `openai/gpt-6-luna` (since 2026-10-06; was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key + own `CHAINLIT_AUTH_SECRET`, own log
   Sheet ("Lectos Timeseries logs"). No session caps (authenticated). Set up 2026-09-15 with a
   placeholder content file until the lecture slides are added.
+- `teachbot-seminar` (login-protected general assistant, Heidelberg replication seminar on
+  econometrics/theory papers, 2026-10-29): `config_seminar.yaml`, `content_seminar/` (only the
+  `_`-prefixed app files, IID-GENERAL-ASSISTANT), login for 17 named participants whose addresses
+  come from the Railway variable `SEMINAR_ALLOWED_EMAILS` (the repo is public), student model choice
+  Sonnet 5.5 (default) / GPT-6.1 Terra / GPT-6.1 Sol / Opus 5.5 with each model's standard thinking,
+  1000 words of student input per chat (IID-INPUT-WORD-BUDGET), no output cap, own OpenRouter key
+  (`teachbot_seminar_live`, $50 total, expires 2027-04-27), own log Sheet ("Lectos Seminar logs").
 **Content mirroring:** `content_public/` holds snapshot copies of `content/_shared/script0.qmd` +
 `content/qna_part1/script1.1.qmd`/`script1.2.qmd`. Re-sync after editing the originals by
 re-copying (see CLAUDE.md) and re-rendering the HTML site.
 **Success criteria:**
 - The default deploy behaves identically with the env var unset.
 - Each service's secrets (OpenRouter key) are Railway variables on that service only.
-**Key files:** `app.py` (config selection, sidebar readme generation), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`, `config_timeseries.yaml`, `content_timeseries/`, `content*/_readme.md`
+**Key files:** `app.py` (config selection, sidebar readme generation), `config_public.yaml`, `content_public/`, `config_dcm.yaml`, `content_dcm/`, `config_timeseries.yaml`, `content_timeseries/`, `config_seminar.yaml`, `content_seminar/`, `content*/_readme.md`
 **No-Goals:** Per-course auth inside one instance (Chainlit auth is app-global), shared user
 registry across deploys, a deploy-management UI.
 
@@ -518,6 +525,35 @@ the counter. The hard backstop against abuse is the spend limit on the public de
 OpenRouter API key.
 **Key files:** `app.py` (`_LIMITS`, `on_message` guard), `config_public.yaml` (`limits:` block)
 **No-Goals:** IP-based limiting, persistent quotas, CAPTCHA, abuse detection.
+The same `limits:` block also carries `max_words_per_chat` (IID-INPUT-WORD-BUDGET), which is a
+teaching device rather than cost damping and is used on a login deploy.
+
+### IID-INPUT-WORD-BUDGET
+**Lifecycle:** DONE
+**Description:** A fixed budget of student input words per chat (`limits.max_words_per_chat`), so
+students must curate what they send (replication seminar: excerpts, key equations, the error
+message — not whole papers). Words = whitespace-separated tokens of the raw message. Checked in
+`on_message` before logging or any LLM call: a message that would exceed the remaining budget is
+refused with its word count and the words left (or, when nothing is left, a pointer to a new chat)
+and costs nothing; an accepted message is charged at once and **refunded** when every stream
+attempt fails (IID-STREAM-RESILIENCE), since the model never saw it. A new chat starts a new budget
+— intended ("per chat"). Model output and thinking are not counted and not capped.
+**Success criteria:** refused messages never reach the history, the logs or the LLM; the budget can
+be used up exactly; a failed turn leaves the budget as it was.
+**Key files:** `app.py` (`_word_budget_refusal`, `on_message` guard + refund), `config_seminar.yaml`,
+`tests/seminar.py`
+**No-Goals:** token-based counting, budgets across chats or per student, output caps.
+
+### IID-GENERAL-ASSISTANT
+**Lifecycle:** DONE
+**Description:** A single-course deploy without any lecture material: `general_assistant: true`
+lets the content folder hold only the `_`-prefixed app files (`_system_prompt.md`, `_welcome.md`,
+`_readme.md`), and the system prompt is then the instructions alone (no empty LECTURE CONTENT
+block). Every other deploy keeps failing loudly on an empty content folder (SID-API-CONFIG
+"fail loudly"). Refused at startup together with course subfolders, where content is per course.
+**Key files:** `app.py` (`_GENERAL_ASSISTANT`, single-course branch of `on_chat_start`),
+`src/content_loader.py` (`allow_empty`), `config_seminar.yaml`, `content_seminar/`, `tests/seminar.py`
+**No-Goals:** web search, file uploads, tools.
 
 ---
 
@@ -560,6 +596,12 @@ OpenRouter API key.
 **Key files:** `src/auth.py`, `config.yaml` (auth section), `users.yaml` (runtime, gitignored), `app.py` (`@cl.password_auth_callback`)
 **Setup:** Generate JWT secret with `chainlit create-secret`, add as `CHAINLIT_AUTH_SECRET` in `.env` and Railway variables.
 **Password reset:** Educator removes student entry from `users.yaml`; student re-registers on next login.
+**Allowlist from the environment** (2026-10-29): the repo is public, so a list of named students must
+not sit in a config file. `auth.allowed_emails_env: VAR` adds the addresses in that environment
+variable (separated by commas, semicolons or whitespace) to `allowed_emails`, resolved once at
+startup (`src/auth.py::resolve_auth_cfg`). An unset/empty variable or an invalid address is a loud
+startup failure — otherwise auth would silently switch off and the deploy would be public.
+Used by `config_seminar.yaml` (`SEMINAR_ALLOWED_EMAILS`, Railway variable + local `.env`).
 **No-Goals:** SSO, OAuth, institutional LDAP integration, email verification, password strength enforcement
 
 ---

@@ -13,7 +13,9 @@ User accounts are stored in users.yaml (gitignored, created at runtime).
 Password reset: educator removes the student's entry from users.yaml; student re-registers.
 """
 
+import os
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -30,6 +32,29 @@ _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 def is_valid_email(email: str) -> bool:
     """Basic email format check."""
     return bool(_EMAIL_RE.match(email))
+
+
+def resolve_auth_cfg(auth_cfg: dict) -> dict:
+    """IID-AUTH-BASIC: merge `allowed_emails_env` into `allowed_emails`.
+
+    The repo is public, so a participant list of named students must not live in a config
+    file. `allowed_emails_env: SOME_VAR` reads the addresses (separated by commas, semicolons
+    or whitespace) from that environment variable — a Railway variable in production.
+    A named variable that is unset or empty is a loud startup failure: with both lists empty
+    auth would silently switch off and the deploy would be public.
+    """
+    var = auth_cfg.get("allowed_emails_env")
+    if not var:
+        return auth_cfg
+    raw = os.environ.get(var, "")
+    emails = [e for e in re.split(r"[,;\s]+", raw) if e]
+    if not emails:
+        sys.exit(f"[Lectos] ERROR: auth.allowed_emails_env names '{var}', but that environment "
+                 f"variable is unset or empty — refusing to start without a login allowlist.")
+    bad = [e for e in emails if not is_valid_email(e)]
+    if bad:
+        sys.exit(f"[Lectos] ERROR: '{var}' contains invalid email address(es): {', '.join(bad)}")
+    return {**auth_cfg, "allowed_emails": [*(auth_cfg.get("allowed_emails") or []), *emails]}
 
 
 def auth_enabled(auth_cfg: dict) -> bool:

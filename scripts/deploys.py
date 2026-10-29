@@ -10,6 +10,7 @@ DEPLOYS = {
     "public": "https://teachbot-public-production.up.railway.app",
     "dcm": "https://teachbot-dcm-production.up.railway.app",
     "timeseries": "https://teachbot-timeseries-production.up.railway.app",
+    "seminar": "https://teachbot-seminar-production.up.railway.app",
 }
 
 

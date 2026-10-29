@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, verify_password
+from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, resolve_auth_cfg, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import ROOT_COURSE_ID, CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, load_root_viewer, parse_model_choices
@@ -51,6 +51,8 @@ if not _cfg_path.is_file():
     sys.exit(f"TEACHBOT_CONFIG points to a missing config file: {_cfg_path}")
 with _cfg_path.open(encoding="utf-8") as fh:
     CFG: dict = yaml.safe_load(fh)
+# IID-AUTH-BASIC: resolve an env-var allowlist once, so every reader of CFG["auth"] sees it.
+CFG["auth"] = resolve_auth_cfg(CFG.get("auth") or {})
 
 # IID-LLM-PROVIDER: single shared async client (model overrides flow through cfg, not the client)
 LLM_CLIENT = build_client(CFG)
@@ -58,6 +60,14 @@ LLM_CLIENT = build_client(CFG)
 # IID-MULTI-COURSE: discover course subfolders at startup; [] = single-course fallback mode
 _ROOT_CONTENT = Path(CFG.get("content_dir", "content"))
 COURSES: list[CourseConfig] = discover_courses(_ROOT_CONTENT, CFG)
+
+# IID-GENERAL-ASSISTANT: `general_assistant: true` lets a single-course deploy run with no
+# lecture content at all (the system prompt alone defines the bot). Multi-course deploys
+# keep requiring content per course, so the flag is refused there rather than ignored.
+_GENERAL_ASSISTANT = bool(CFG.get("general_assistant", False))
+if _GENERAL_ASSISTANT and COURSES:
+    sys.exit(f"[Lectos] ERROR: general_assistant is only supported without course subfolders "
+             f"('{_ROOT_CONTENT}' has {len(COURSES)}).")
 
 # IID-UI-CONTENT-VIEW: single-course mode reads HTML from the content root; with courses,
 # each CourseConfig carries its own `viewer`. None everywhere = feature invisible.
@@ -136,10 +146,25 @@ def _write_sidebar_readme() -> None:
 
 _write_sidebar_readme()
 
-# IID-PUBLIC-RATELIMIT: optional per-session caps, set only in no-login deploy configs
-# (e.g. config_public.yaml). Best-effort cost damping, not security — a page reload
-# starts a fresh session and resets the counter.
+# IID-PUBLIC-RATELIMIT: optional per-session caps (e.g. config_public.yaml). Best-effort cost
+# damping, not security — a page reload starts a fresh session and resets the counter.
+# IID-INPUT-WORD-BUDGET: `max_words_per_chat` is a teaching device rather than cost damping —
+# students get a fixed number of words per chat and have to curate what they send.
 _LIMITS = CFG.get("limits") or {}
+
+
+def _word_budget_refusal(text: str, used: int, max_words: int) -> str | None:
+    """IID-INPUT-WORD-BUDGET: the refusal for a message that would exceed the chat's word
+    budget, or None when it fits. Words = whitespace-separated tokens, as a student counts."""
+    words = len(text.split())
+    left = max_words - used
+    if words <= left:
+        return None
+    if left <= 0:
+        return (f"⚠️ You have used all {max_words} words of this chat. "
+                f"Start a new chat to continue.")
+    return (f"⚠️ This message has {words} words, but only {left} of the {max_words} words "
+            f"for this chat are left. Please shorten it, or start a new chat.")
 
 # IID-STUDENT-MODEL-CHOICE: validated at import so a malformed list stops the deploy
 # rather than silently showing students a chooser with an option missing.
@@ -309,6 +334,8 @@ async def _stream_once(
         liveness, so "thinking hard" is no longer mistaken for "hung".
       * FIRST_CONTENT_TIMEOUT_S — absolute ceiling from request start to the first
         *content* delta, so an endlessly-ruminating model still gives up eventually.
+    A deploy whose models think for minutes can raise both via `llm.first_token_timeout_s` /
+    `llm.first_content_timeout_s` (IID-GENERAL-ASSISTANT: the seminar's GPT/Opus choices).
     Once content starts flowing the answer is visibly streaming and no deadline applies —
     aborting there would throw away a half-written answer that the student can already read.
 
@@ -327,6 +354,8 @@ async def _stream_once(
     thinking: cl.Step | None = None
     text = ""
     math = MathDelimiterStream()  # IID-UI-RENDER
+    token_gap = course_llm.get("first_token_timeout_s", FIRST_TOKEN_TIMEOUT_S)
+    content_cap = course_llm.get("first_content_timeout_s", FIRST_CONTENT_TIMEOUT_S)
 
     async def close_thinking(reasoned_for: float) -> None:
         if thinking is None:
@@ -343,10 +372,10 @@ async def _stream_once(
             except StopAsyncIteration:
                 break
         else:
-            remaining = FIRST_CONTENT_TIMEOUT_S - (time.monotonic() - start)
+            remaining = content_cap - (time.monotonic() - start)
             if remaining <= 0:
                 print(
-                    f"[_stream_once] no content after {FIRST_CONTENT_TIMEOUT_S}s "
+                    f"[_stream_once] no content after {content_cap}s "
                     f"of reasoning — giving up on this attempt",
                     file=sys.stderr,
                 )
@@ -355,7 +384,7 @@ async def _stream_once(
                 return False, ""
             try:
                 kind, chunk = await asyncio.wait_for(
-                    events.__anext__(), timeout=min(FIRST_TOKEN_TIMEOUT_S, remaining)
+                    events.__anext__(), timeout=min(token_gap, remaining)
                 )
             except StopAsyncIteration:
                 break
@@ -432,7 +461,8 @@ async def _stream_assistant(
             return response_msg, text, active_model, True
         print(
             f"[_stream_assistant] model={active_model} no token after "
-            f"{FIRST_TOKEN_TIMEOUT_S}s (attempt {attempt + 1}/{1 + STREAM_RETRIES})",
+            f"{course_llm.get('first_token_timeout_s', FIRST_TOKEN_TIMEOUT_S)}s "
+            f"(attempt {attempt + 1}/{1 + STREAM_RETRIES})",
             file=sys.stderr,
         )
 
@@ -627,7 +657,8 @@ async def on_chat_start() -> None:
         model_choices = course.student_model_choices  # IID-STUDENT-MODEL-CHOICE
     else:
         # Single-course fallback: load root content/ directly (IID-CONTENT-INJECT)
-        content = load_content(_ROOT_CONTENT)
+        # IID-GENERAL-ASSISTANT: a deploy without lecture material runs on its system prompt alone.
+        content = load_content(_ROOT_CONTENT, allow_empty=_GENERAL_ASSISTANT)
         instructions = load_course_text(
             _ROOT_CONTENT / "_system_prompt.md", CFG.get("course_name", "this course")
         )
@@ -637,7 +668,7 @@ async def on_chat_start() -> None:
         system_prompt = (
             f"{instructions}\n\n"
             f"--- LECTURE CONTENT START ---\n{content}\n--- LECTURE CONTENT END ---\n"
-        )
+        ) if content else instructions
         course_llm = CFG.get("llm", {})
         # IID-STUDENT-MODEL-CHOICE: single-course deploys (content dir with no subfolders,
         # e.g. teachbot-timeseries) read the list straight from the deploy config, since
@@ -796,6 +827,19 @@ async def on_message(message: cl.Message) -> None:
                 ).send()
                 return
 
+    # IID-INPUT-WORD-BUDGET: a refused message costs nothing; an accepted one is charged now
+    # and refunded below if the model never answers.
+    charged_words = 0
+    max_words = _LIMITS.get("max_words_per_chat")
+    if max_words:
+        used = cl.user_session.get("words_used", 0)
+        refusal = _word_budget_refusal(message.content, used, max_words)
+        if refusal:
+            await cl.Message(content=refusal).send()
+            return
+        charged_words = len(message.content.split())
+        cl.user_session.set("words_used", used + charged_words)
+
     user_text = message.content.strip()
 
     # IID-UI-CONTENT-CONTEXT: the page open in the viewer panel goes into this request only;
@@ -836,6 +880,8 @@ async def on_message(message: cl.Message) -> None:
         history, course_llm, page_context=page_context)
     if not ok:  # IID-STREAM-RESILIENCE: every attempt stalled — history already rewound
         _log_stream_failure(logger, sheets_logger, full_response, active_model)
+        if charged_words:  # IID-INPUT-WORD-BUDGET: the model never saw it — give the words back
+            cl.user_session.set("words_used", cl.user_session.get("words_used", 0) - charged_words)
         return
     # IID-UI-CONTENT-MARK: `[t](view:DOC/LOC)` → links that open the page in the panel.
     # Done once streaming has finished; history and logs keep the model's own wording.

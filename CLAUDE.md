@@ -48,7 +48,7 @@ Plan/documentation should be intention-first:
 
 ## Deployment (Railway)
 
-- Project: `victorious-energy` on Railway — **three live services from this one repo** (IID-MULTI-DEPLOY):
+- Project: `victorious-energy` on Railway — **four live services from this one repo** (IID-MULTI-DEPLOY):
 
 | Service | Config (via `TEACHBOT_CONFIG`) | Content | Auth | URL |
 |---------|-------------------------------|---------|------|-----|
@@ -56,6 +56,7 @@ Plan/documentation should be intention-first:
 | `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
 | `teachbot-dcm` | `config_dcm.yaml` | `content_dcm/` | none (free public) | https://teachbot-dcm-production.up.railway.app |
 | `teachbot-timeseries` | `config_timeseries.yaml` | `content_timeseries/` | login (`stud.unibas.ch`) | https://teachbot-timeseries-production.up.railway.app |
+| `teachbot-seminar` | `config_seminar.yaml` | `content_seminar/` (no lecture content) | login (17 named participants) | https://teachbot-seminar-production.up.railway.app |
 
 - `teachbot` (Predictions lecture, Heidelberg) was taken offline 2026-10-22; it is no longer in
   `scripts/deploys.py`, the health matrix or the CI smoke test (which now pings the public instance).
@@ -85,6 +86,18 @@ Plan/documentation should be intention-first:
   "Thorough (thinks first, slower)" in the ⚙ Chat Settings menu. Manual deploys like the
   public instances (`--service teachbot-timeseries`). Log Sheet: "Lectos Timeseries logs".
   The weekly archive script only covers the main Sheet.
+- `teachbot-seminar` (2026-10-29) is a login-protected **general assistant** for the Heidelberg
+  seminar on replicating econometrics/theory papers: no lecture content (`general_assistant: true`,
+  IID-GENERAL-ASSISTANT), models Sonnet 5.5 (default) / GPT-6.1 Terra / GPT-6.1 Sol / Opus 5.5 with
+  each model's standard thinking (`reasoning` unset — measurements in `config_seminar.yaml`), longer
+  stream deadlines (`llm.first_token_timeout_s` / `first_content_timeout_s`), **1000 words of
+  student input per chat** (`limits.max_words_per_chat`, IID-INPUT-WORD-BUDGET), no output cap.
+  **Login allowlist = the Railway variable `SEMINAR_ALLOWED_EMAILS`** (comma-separated; also in
+  local `.env`), not the config — the repo is public (`auth.allowed_emails_env`, IID-AUTH-BASIC).
+  Add a participant: `railway variables set SEMINAR_ALLOWED_EMAILS=... --service teachbot-seminar`,
+  then `railway redeploy --yes --service teachbot-seminar`. Own OpenRouter key
+  `teachbot_seminar_live` ($50 total, no reset, expires 2027-04-27). Log Sheet: "Lectos Seminar
+  logs". Manual deploys like the other services (`railway up --service teachbot-seminar --detach`).
 - **QR codes** for handing out links: `python scripts/make_qr.py` (needs `pip install "qrcode[pil]"`)
   writes `qr/teachbot_<name>_qr.png/.svg`; URLs are listed in `scripts/deploys.py` (`DEPLOYS`), shared with the health check.
 - **Daily health check** (IID-HEALTH-MONITOR): `.github/workflows/health.yml` calls `/health` on
@@ -355,7 +368,7 @@ No HTML → nothing changes (tested in `tests/content_view.py`).
 | `scripts/deploys.py` | IID-MULTI-DEPLOY, IID-HEALTH-MONITOR | The deployed instances (`DEPLOYS`), used by `make_qr.py` and `health_check.py`; keep in sync with the service table and `health.yml` matrix |
 | `.github/workflows/health.yml` | IID-HEALTH-MONITOR | Daily 05:17 UTC, one job per instance; GitHub's failure mail is the alert |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
-| `src/auth.py` | IID-AUTH-BASIC | Allowlist check, user load/save, bcrypt hash/verify |
+| `src/auth.py` | IID-AUTH-BASIC | Allowlist check (incl. `allowed_emails_env` → `resolve_auth_cfg`), user load/save, bcrypt hash/verify |
 | `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
 | `scripts/make_qr.py` | IID-MULTI-DEPLOY | Generates QR codes for every deployed instance into `qr/` (PNG + SVG). QR codes live **only** in `qr/`, never in `public/` (Chainlit static assets, deployed) |
@@ -478,6 +491,7 @@ railway variables set CHAINLIT_AUTH_SECRET="<new-secret>"
 | `tests/math_delimiters.py` | IID-UI-RENDER | Offline: LaTeX delimiter conversion, at every possible chunk split; code untouched |
 | `tests/model_choices.py` | IID-LLM-THINKING, IID-STUDENT-MODEL-CHOICE | Offline: `reasoning` translation, choice validation, chooser behaviour, all configs import |
 | `tests/content_view.py` | IID-UI-CONTENT-VIEW, IID-UI-CONTENT-CONTEXT, IID-UI-CONTENT-MARK, IID-CONTENT-FROM-HTML | Offline: HTML indexing, page context, links, window messages, route order, Chainlit internals, `content_from_viewer`, the time series course layout, no-HTML courses unchanged (needs the synced HTML) |
+| `tests/seminar.py` | IID-INPUT-WORD-BUDGET, IID-GENERAL-ASSISTANT, IID-AUTH-BASIC | Offline: per-chat word budget (refusal, charge, refund), env-var login allowlist, running without lecture content |
 | `tests/health.py` | IID-HEALTH-MONITOR | Offline: key/balance/Sheets/model checks, cache, `/health` route, monitor's failure texts, workflow matrix = `DEPLOYS` |
 | `tests/smoke.py` | IID-TEST-SMOKE | HTTP ping + optional Playwright chat simulation of live app |
 | `tests/cases/qna.yaml` | IID-TEST-LLM-EVAL | Q&A test cases — edit to match lecture content |

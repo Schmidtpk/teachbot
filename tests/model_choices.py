@@ -139,8 +139,9 @@ def main() -> None:
     # 5 — every deploy config still loads
     print("\ncase: all deploy configs import")
     for name in ("config.yaml", "config_public.yaml", "config_dcm.yaml",
-                 "config_timeseries.yaml"):
-        env = {**os.environ, "TEACHBOT_CONFIG": name}
+                 "config_timeseries.yaml", "config_seminar.yaml"):
+        # config_seminar.yaml reads its login allowlist from the environment (IID-AUTH-BASIC)
+        env = {"SEMINAR_ALLOWED_EMAILS": "test@example.org", **os.environ, "TEACHBOT_CONFIG": name}
         proc = subprocess.run(
             [sys.executable, "-c", "import app"], cwd=ROOT, env=env,
             capture_output=True, text=True,

@@ -119,7 +119,8 @@ def check(ok: bool, label: str) -> None:
     print(f"  {'PASS' if ok else 'FAIL'}  {label}")
 
 
-async def run_case(plan: list, history: list[dict], show_reasoning: bool = True) -> tuple:
+async def run_case(plan: list, history: list[dict], show_reasoning: bool = True,
+                   llm: dict | None = None) -> tuple:
     FakeStep.instances.clear()
     spy = StreamSpy(plan)
     app.stream_events = spy
@@ -127,7 +128,7 @@ async def run_case(plan: list, history: list[dict], show_reasoning: bool = True)
     app.cl.Step = FakeStep
     app.FIRST_TOKEN_TIMEOUT_S = TOKEN_GAP
     app.FIRST_CONTENT_TIMEOUT_S = CONTENT_CAP
-    result = await app._stream_assistant(history, {"model": "test/model"}, show_reasoning)
+    result = await app._stream_assistant(history, llm or {"model": "test/model"}, show_reasoning)
     return result, spy
 
 
@@ -245,6 +246,18 @@ async def main() -> None:
     check(history == [{"role": "system", "content": "sys"},
                       {"role": "assistant", "content": "earlier answer"}],
           f"kickoff dropped, earlier turns untouched (got {len(history)} entries)")
+
+    # 9 — IID-GENERAL-ASSISTANT: a deploy can raise both deadlines (config_seminar.yaml —
+    # GPT-6.1 Sol streams no thinking and is silent ~20s before its first delta)
+    print("\ncase: per-deploy deadlines override the defaults")
+    silent = [("sleep", CONTENT_CAP * 1.5), *say("late answer")]
+    (msg, text, model, ok), spy = await run_case([silent], fresh())
+    check(ok is False, "default deadlines: silent model given up on")
+    patient = {"model": "test/model", "first_token_timeout_s": CONTENT_CAP * 3,
+               "first_content_timeout_s": CONTENT_CAP * 3}
+    (msg, text, model, ok), spy = await run_case([silent], fresh(), llm=patient)
+    check(ok is True and text == "late answer", f"raised deadlines: answer arrives (got {text!r})")
+    check(spy.opened == 1, f"no retry needed (got {spy.opened})")
 
     failed = [lbl for ok_, lbl in RESULTS if not ok_]
     print(f"\n{len(RESULTS) - len(failed)}/{len(RESULTS)} checks passed")
