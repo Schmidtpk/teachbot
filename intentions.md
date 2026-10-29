@@ -492,8 +492,8 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
 - `teachbot-timeseries` (login-protected Q&A, Basel): `config_timeseries.yaml`,
   `content_timeseries/` (multi-course since 2026-10-11: one Q&A course per chapter `utsa01/`–`utsa03/`
   with each deck's `.qmd` + `.html` and the chapter script, later chapters with the earlier scripts as
-  `extra_content`; `cards/` = the knowledge cards only, IID-CONTENT-FROM-HTML; `assignment1/` helper,
-  IID-ASSIGNMENT-HELP; files copied by `scripts/sync_timeseries.py`), login for `stud.unibas.ch`, model
+  `extra_content`; `cards/` = the knowledge cards only, IID-CONTENT-FROM-HTML; `assignment1/` and `exercises01-03/`
+  helpers, IID-ASSIGNMENT-HELP; files copied by `scripts/sync_timeseries.py`), login for `stud.unibas.ch`, model
   `openai/gpt-6-luna` (since 2026-10-06; was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key + own `CHAINLIT_AUTH_SECRET`, own log
   Sheet ("Lectos Timeseries logs"). No session caps (authenticated). Set up 2026-09-15 with a
   placeholder content file until the lecture slides are added.
@@ -649,7 +649,12 @@ and asks for the student's object names instead of guessing.
 **Solution secrecy:** the GitHub repo is public, so `*_solution.qmd` under `content_timeseries/` is
 gitignored and reaches Railway only via `railway up --no-gitignore` with `.railwayignore` (a copy of
 `.gitignore` minus the solution rule — keep them in sync).
-**Key files:** `content_timeseries/assignment1/_meta.yaml`, `_system_prompt.md`, `_welcome.md`, `.railwayignore`
+**Second instance (2026-10-29):** `content_timeseries/exercises01-03/` ("Exercises Ch. 1–3"), the
+pen-and-paper sheet for chapters 1–3 with its solutions (copied as `utsa-exercises-01-03_solution.qmd`,
+so the same secrecy rule applies), plus scripts 1–2 and both ch. 3 decks via `extra_content`. Differs from
+the assignment helper: hints and checking of the student's own work by default, but the **full worked
+solution on explicit request** (ungraded exercises).
+**Key files:** `content_timeseries/assignment1/_meta.yaml`, `_system_prompt.md`, `_welcome.md`, `content_timeseries/exercises01-03/`, `.railwayignore`
 **No-Goals:** executing student code; grading submissions.
 
 ## Testing

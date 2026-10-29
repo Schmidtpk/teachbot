@@ -351,8 +351,9 @@ def main() -> None:
     # 9 — the time series deploy as configured (config_timeseries.yaml)
     print("\ncase: time series courses")
     by_id = {c.course_id: c for c in app.COURSES}
-    check([c.course_id for c in app.COURSES] == ["utsa01", "utsa02", "utsa03", "cards", "assignment1"],
-          f"one course per chapter, then cards, then the helper (got {list(by_id)})")
+    check([c.course_id for c in app.COURSES] == ["utsa01", "utsa02", "utsa03", "cards", "assignment1",
+                                                   "exercises01-03"],
+          f"one course per chapter, then cards, then the helpers (got {list(by_id)})")
     for cid in ("utsa01", "utsa02", "utsa03"):
         c = by_id[cid]
         decks = [d for d in (c.viewer.docs.values() if c.viewer else []) if d.kind == REVEAL]

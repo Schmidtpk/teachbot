@@ -9,6 +9,8 @@ apart. Lecture scripts go with their chapter; the card graph (../graph) is its o
 Sources:
   junctions/lecture_timeseries/slides/   decks (.qmd + rendered .html)
   junctions/lecture_timeseries/script/   lecture scripts (script_*.qmd)
+  junctions/lecture_timeseries/exercises/ exercise sheets (with solutions → *_solution.qmd,
+                                         gitignored: the repo is public)
   ../graph/site/index.html               card graph → cards/cards.html
 
 Run:
@@ -28,6 +30,7 @@ ROOT = Path(__file__).resolve().parent.parent
 LECTURE = ROOT / "junctions" / "lecture_timeseries"
 SLIDES = LECTURE / "slides"
 SCRIPTS = LECTURE / "script"
+EXERCISES = LECTURE / "exercises"
 GRAPH = ROOT.parent / "graph" / "site" / "index.html"
 TARGET = ROOT / "content_timeseries"
 
@@ -39,6 +42,8 @@ COURSES: dict[str, dict] = {
     "utsa03": {"decks": ["03_1-utsa-arma", "03_2-utsa-arma"],
                "optional_scripts": ["script_03-utsa-arma.qmd"]},
     "cards": {"files": [(GRAPH, "cards.html")]},
+    "exercises01-03": {"files": [(EXERCISES / "utsa-exercises-01-03.qmd",
+                                  "utsa-exercises-01-03_solution.qmd")]},
 }
 
 

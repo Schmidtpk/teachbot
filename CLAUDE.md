@@ -69,12 +69,13 @@ Plan/documentation should be intention-first:
 - `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
   Analysis" (domain `stud.unibas.ch`, model `openai/gpt-6-luna` since 2026-10-06
   (was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key,
-  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has five courses
+  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has six courses
   (IID-MULTI-COURSE, since 2026-10-11): `utsa01/`, `utsa02/`, `utsa03/` — Q&A per chapter, each
   deck as `.qmd` + `.html` plus the chapter script; ch. 2 and 3 get the earlier scripts via
   `extra_content` — then `cards/` (only the knowledge cards, `content_from_viewer: true`,
-  IID-CONTENT-FROM-HTML) and `assignment1/` (Assignment 1 & Exercise 1 helper,
-  IID-ASSIGNMENT-HELP). Source files come from
+  IID-CONTENT-FROM-HTML), `assignment1/` (Assignment 1 & Exercise 1 helper,
+  IID-ASSIGNMENT-HELP) and `exercises01-03/` (pen-and-paper exercises ch. 1–3, the sheet with
+  solutions as `utsa-exercises-01-03_solution.qmd`, IID-ASSIGNMENT-HELP). Source files come from
   `junctions/lecture_timeseries/` (gitignored junction to `Dropbox/teaching/lecture_timeseries`)
   and `../graph/site/index.html`; **copy them with `python scripts/sync_timeseries.py`**
   (`--check` only reports), which keeps each deck's `.qmd` and `.html` together. The
