@@ -499,7 +499,7 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   placeholder content file until the lecture slides are added.
 - `teachbot-seminar` (login-protected general assistant, Heidelberg replication seminar on
   econometrics/theory papers, 2026-10-29): `config_seminar.yaml`, `content_seminar/` (only the
-  `_`-prefixed app files, IID-GENERAL-ASSISTANT), login for 17 named participants whose addresses
+  `_`-prefixed app files, IID-GENERAL-ASSISTANT), login for the named participants (+ the lecturer's address for testing) whose addresses
   come from the Railway variable `SEMINAR_ALLOWED_EMAILS` (the repo is public), student model choice
   Sonnet 5.5 (default) / GPT-6.1 Terra / GPT-6.1 Sol / Opus 5.5 with each model's standard thinking,
   1000 words of student input per chat (IID-INPUT-WORD-BUDGET), no output cap, own OpenRouter key

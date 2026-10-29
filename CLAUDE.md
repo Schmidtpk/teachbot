@@ -56,7 +56,7 @@ Plan/documentation should be intention-first:
 | `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
 | `teachbot-dcm` | `config_dcm.yaml` | `content_dcm/` | none (free public) | https://teachbot-dcm-production.up.railway.app |
 | `teachbot-timeseries` | `config_timeseries.yaml` | `content_timeseries/` | login (`stud.unibas.ch`) | https://teachbot-timeseries-production.up.railway.app |
-| `teachbot-seminar` | `config_seminar.yaml` | `content_seminar/` (no lecture content) | login (17 named participants) | https://teachbot-seminar-production.up.railway.app |
+| `teachbot-seminar` | `config_seminar.yaml` | `content_seminar/` (no lecture content) | login (participant list + lecturer) | https://teachbot-seminar-production.up.railway.app |
 
 - `teachbot` (Predictions lecture, Heidelberg) was taken offline 2026-10-22; it is no longer in
   `scripts/deploys.py`, the health matrix or the CI smoke test (which now pings the public instance).
