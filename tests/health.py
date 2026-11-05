@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 os.environ.setdefault("TEACHBOT_CONFIG", "config_timeseries.yaml")
+os.environ.setdefault("TIMESERIES_ALLOWED_EMAILS", "test@example.org")  # IID-AUTH-BASIC
 os.environ.setdefault("OPENROUTER_API_KEY", "test-key-not-used")
 
 import yaml  # noqa: E402

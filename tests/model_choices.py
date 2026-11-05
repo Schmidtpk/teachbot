@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("TEACHBOT_CONFIG", "config_timeseries.yaml")
+os.environ.setdefault("TIMESERIES_ALLOWED_EMAILS", "test@example.org")  # IID-AUTH-BASIC
 os.environ.setdefault("OPENROUTER_API_KEY", "test-key-not-used")
 
 import yaml  # noqa: E402
@@ -141,7 +142,8 @@ def main() -> None:
     for name in ("config.yaml", "config_public.yaml", "config_dcm.yaml",
                  "config_timeseries.yaml", "config_seminar.yaml"):
         # config_seminar.yaml reads its login allowlist from the environment (IID-AUTH-BASIC)
-        env = {"SEMINAR_ALLOWED_EMAILS": "test@example.org", **os.environ, "TEACHBOT_CONFIG": name}
+        env = {"SEMINAR_ALLOWED_EMAILS": "test@example.org", "TIMESERIES_ALLOWED_EMAILS": "test@example.org",
+               **os.environ, "TEACHBOT_CONFIG": name}
         proc = subprocess.run(
             [sys.executable, "-c", "import app"], cwd=ROOT, env=env,
             capture_output=True, text=True,

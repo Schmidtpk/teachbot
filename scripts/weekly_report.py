@@ -44,9 +44,11 @@ from dotenv import load_dotenv
 
 REPO_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_DIR / "scripts"))
+sys.path.insert(0, str(REPO_DIR))
 
 from archive_sheet import archive  # noqa: E402  IID-SHEETS-LOG
 from render_chats import render  # noqa: E402  IID-CHAT-VIEW
+from src.auth import is_email_allowed, resolve_auth_cfg  # noqa: E402  IID-AUTH-BASIC
 
 CONFIG = REPO_DIR / "config_timeseries.yaml"
 OUT_ROOT = REPO_DIR / "exports" / "timeseries"
@@ -129,7 +131,7 @@ def load_rows(csv_path: Path) -> list[dict]:
     return rows
 
 
-def build_sessions(rows: list[dict], student_domains: list[str], non_students: set[str] = frozenset()) -> list[dict]:
+def build_sessions(rows: list[dict], auth_cfg: dict, non_students: set[str] = frozenset()) -> list[dict]:
     by_sid = defaultdict(list)
     for r in rows:
         by_sid[r["session_id"]].append(r)
@@ -143,8 +145,7 @@ def build_sessions(rows: list[dict], student_domains: list[str], non_students: s
             "course": next((t["course"] for t in turns if t.get("course")), ""),
             "email": email,
             "name": name_from_email(email) if email else "anonymous",
-            "is_student": email.lower() not in non_students
-            and any(email.lower().endswith("@" + d) for d in student_domains),
+            "is_student": email.lower() not in non_students and is_email_allowed(email, auth_cfg),
             "start": turns[0]["timestamp"],
             "end": turns[-1]["timestamp"],
             "turns": turns,
@@ -259,11 +260,12 @@ def write_agent_inputs(sessions: list[dict], week_dir: Path) -> dict:
 
 def prepare(csv_path: Path, week_dir: Path) -> dict:
     cfg = yaml.safe_load(CONFIG.read_text(encoding="utf-8")) or {}
-    domains = [d.lower() for d in ((cfg.get("auth") or {}).get("allowed_domains") or [])]
+    load_dotenv(REPO_DIR / ".env")  # IID-AUTH-BASIC: the participant list is an env var
+    auth_cfg = resolve_auth_cfg(cfg.get("auth") or {})
     non_students = {e.lower() for e in ((cfg.get("weekly_report") or {}).get("non_student_emails") or [])}
     week_dir.mkdir(parents=True, exist_ok=True)
     render([csv_path], week_dir / "chats.html")
-    sessions = build_sessions(load_rows(csv_path), domains, non_students)
+    sessions = build_sessions(load_rows(csv_path), auth_cfg, non_students)
     stats = write_agent_inputs(sessions, week_dir)
     log(f"Prepared {week_dir.name}: {stats['sessions']} sessions, {stats['flags']} flags")
     return stats

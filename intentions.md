@@ -365,7 +365,7 @@ and benefits automatically).
 - Flags and counts reach the lecturer even when the agent fails (mail subject then says "[analysis failed]").
 - Worst answers are verified against the lecture material, quoted, and located (file + section); none are invented to fill the list.
 - The report prompt is editable as a skill file and runnable by hand (`/weekly-report`).
-**Inputs:** `config_timeseries.yaml` (`sheets_log_id`, `auth.allowed_domains` minus `weekly_report.non_student_emails` = who counts as student); `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, optional `REPORT_TO`.
+**Inputs:** `config_timeseries.yaml` (`sheets_log_id`, the login allowlist minus `weekly_report.non_student_emails` = who counts as student); `.env`: `GMAIL_USER`, `GMAIL_APP_PASSWORD`, optional `REPORT_TO`, `TIMESERIES_ALLOWED_EMAILS`.
 **Outputs:** `exports/timeseries/week_<date>/` (CSV, chats.html, agent inputs, report.html, agent_log.json); log `exports/timeseries/weekly_log.txt`.
 **Key files:** `scripts/weekly_report.py`, `scripts/weekly_report.bat`, `.claude/skills/weekly-report/SKILL.md`
 **Standards:** SID-PRIVACY-DATA (all outputs under gitignored `exports/`)
@@ -601,7 +601,11 @@ not sit in a config file. `auth.allowed_emails_env: VAR` adds the addresses in t
 variable (separated by commas, semicolons or whitespace) to `allowed_emails`, resolved once at
 startup (`src/auth.py::resolve_auth_cfg`). An unset/empty variable or an invalid address is a loud
 startup failure — otherwise auth would silently switch off and the deploy would be public.
-Used by `config_seminar.yaml` (`SEMINAR_ALLOWED_EMAILS`, Railway variable + local `.env`).
+Used by `config_seminar.yaml` (`SEMINAR_ALLOWED_EMAILS`) and `config_timeseries.yaml`
+(`TIMESERIES_ALLOWED_EMAILS`, since 2026-11-05), each a Railway variable + local `.env`.
+**Narrowing the allowlist takes effect for logged-in users too** (2026-11-05): a login token stays
+valid for 15 days and survives redeploys, so `app.py::_login_allowed` re-checks the list at chat
+start, on each message (via the refused session), in the course chooser and for viewer files.
 **No-Goals:** SSO, OAuth, institutional LDAP integration, email verification, password strength enforcement
 
 ---

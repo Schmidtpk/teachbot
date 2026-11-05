@@ -55,7 +55,7 @@ Plan/documentation should be intention-first:
 | `teachbot` (**offline since 2026-10-22**, Predictions lecture finished) | `config.yaml` (default) | `content/` | login required | was https://teachbot-production-2e85.up.railway.app |
 | `teachbot-public` | `config_public.yaml` | `content_public/` | none (free public) | https://teachbot-public-production.up.railway.app |
 | `teachbot-dcm` | `config_dcm.yaml` | `content_dcm/` | none (free public) | https://teachbot-dcm-production.up.railway.app |
-| `teachbot-timeseries` | `config_timeseries.yaml` | `content_timeseries/` | login (`stud.unibas.ch`) | https://teachbot-timeseries-production.up.railway.app |
+| `teachbot-timeseries` | `config_timeseries.yaml` | `content_timeseries/` | login (participant list) | https://teachbot-timeseries-production.up.railway.app |
 | `teachbot-seminar` | `config_seminar.yaml` | `content_seminar/` (no lecture content) | login (participant list + lecturer) | https://teachbot-seminar-production.up.railway.app |
 
 - `teachbot` (Predictions lecture, Heidelberg) was taken offline 2026-10-22; it is no longer in
@@ -67,9 +67,14 @@ Plan/documentation should be intention-first:
   redeploy manually (same procedure as `teachbot-public`, `--service teachbot-dcm`). Log Sheet:
   "Lectos DCM logs".
 - `teachbot-timeseries` is a login-protected Q&A instance for a Basel course "Univariate Time Series
-  Analysis" (domain `stud.unibas.ch`, model `openai/gpt-6-luna` since 2026-10-06
+  Analysis" (model `openai/gpt-6-luna` since 2026-10-06
   (was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key,
-  own `CHAINLIT_AUTH_SECRET`). Content folder `content_timeseries/` has six courses
+  own `CHAINLIT_AUTH_SECRET`). **Login allowlist = the Railway variable
+  `TIMESERIES_ALLOWED_EMAILS`** (since 2026-11-05, was the whole `stud.unibas.ch` domain;
+  comma-separated, also in local `.env`, which the weekly report reads). Change it with
+  `railway variables set TIMESERIES_ALLOWED_EMAILS=... --service teachbot-timeseries`, then
+  `railway redeploy --yes --service teachbot-timeseries`; someone removed loses access even with a
+  live login token (`app.py::_login_allowed`). Content folder `content_timeseries/` has six courses
   (IID-MULTI-COURSE, since 2026-10-11): `utsa01/`, `utsa02/`, `utsa03/` — Q&A per chapter, each
   deck as `.qmd` + `.html` plus the chapter script; ch. 2 and 3 get the earlier scripts via
   `extra_content` — then `cards/` (only the knowledge cards, `content_from_viewer: true`,
@@ -430,8 +435,9 @@ struggled with, suggestions — plus all flags verbatim and `chats.html` attache
 - **Secrets** in `.env`: `GMAIL_USER` (sending account, a separate Gmail), `GMAIL_APP_PASSWORD`
   (its app password; spaces are fine), `REPORT_TO` (recipient; default `GMAIL_USER`). The agent uses the Claude Code login of the Windows user, so the task must
   run as that user.
-- **Who counts as student:** e-mails in `auth.allowed_domains` of `config_timeseries.yaml`, minus
-  `weekly_report.non_student_emails` (the lecturer's test account `me@stud.unibas.ch`); others are
+- **Who counts as student:** e-mails on the login allowlist (`TIMESERIES_ALLOWED_EMAILS` in `.env`,
+  missing = the run stops at the prepare step and can be resumed), minus
+  `weekly_report.non_student_emails` in `config_timeseries.yaml` (the lecturer's accounts); others are
   marked NON-STUDENT and excluded from student counts and the focus/struggle analysis.
 
 ```bash

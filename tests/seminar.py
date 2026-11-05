@@ -12,6 +12,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
+
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -141,6 +144,55 @@ def main() -> None:
                           text=True, env={**env, "SEMINAR_ALLOWED_EMAILS": ""})
     check(proc.returncode != 0 and "SEMINAR_ALLOWED_EMAILS" in proc.stderr,
           "seminar app refuses to start without its allowlist")
+
+    print("\ncase: a token from before the allowlist was narrowed gives no access")
+    listed, stale = "a.student@stud.uni-heidelberg.de", "someone.else@stud.uni-heidelberg.de"
+    check(app._login_allowed(listed) and app._login_allowed(listed.upper()), "listed -> allowed, any case")
+    check(not app._login_allowed(stale) and not app._login_allowed(None), "unlisted / no user -> refused")
+    saved_root, saved_courses = app.ROOT_VIEWER, app.COURSES
+    app.ROOT_VIEWER = "viewer-docs"
+    check(app._viewer_for(app.ROOT_COURSE_ID, app.cl.User(identifier=listed)) == "viewer-docs",
+          "viewer files served to a listed user")
+    check(app._viewer_for(app.ROOT_COURSE_ID, app.cl.User(identifier=stale)) is None,
+          "viewer files refused for a stale token")
+    app.COURSES = ["unused: refused before the courses are read"]
+    profiles = asyncio.run(app.set_chat_profiles(app.cl.User(identifier=stale)))
+    check(profiles == [], "stale token -> no courses in the chooser")
+    app.ROOT_VIEWER, app.COURSES = saved_root, saved_courses
+
+    refused = FakeSession()
+    app.cl.user_session = refused
+    app.cl.context = SimpleNamespace(session=SimpleNamespace(user=app.cl.User(identifier=stale)))
+    FakeMessage.sent.clear()
+    asyncio.run(app.on_chat_start())
+    check(refused.get("login_refused") is True and refused.get("history") is None
+          and FakeMessage.sent == [app._NOT_ON_LIST], "on_chat_start refuses, no chat set up")
+    n_calls = len(calls)
+    run("a question")
+    check(len(calls) == n_calls and FakeMessage.sent[-1] == app._NOT_ON_LIST,
+          "on_message refuses, no LLM call")
+
+    print("\ncase: the time series deploy admits only its participant list")
+    ts_cfg = yaml.safe_load((ROOT / "config_timeseries.yaml").read_text(encoding="utf-8"))["auth"]
+    check(not ts_cfg["allowed_domains"] and not ts_cfg["allowed_emails"]
+          and ts_cfg["allowed_emails_env"] == "TIMESERIES_ALLOWED_EMAILS",
+          "no domain-wide access, no names in the public config")
+    os.environ["LECTOS_TEST_TS"] = "listed@stud.unibas.ch,guest@gmx.ch"
+    ts_auth = resolve_auth_cfg({**ts_cfg, "allowed_emails_env": "LECTOS_TEST_TS"})
+    check(is_email_allowed("guest@gmx.ch", ts_auth), "listed outside the domain -> admitted")
+    check(not is_email_allowed("other@stud.unibas.ch", ts_auth), "same domain, not listed -> refused")
+
+    print("\ncase: weekly report classifies students by the participant list")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from weekly_report import build_sessions
+
+    rows = [{"session_id": s, "user_email": e, "timestamp": "t", "role": "user", "content": ""}
+            for s, e in (("1", "listed@stud.unibas.ch"), ("2", "guest@gmx.ch"),
+                         ("3", "lect@unibas.ch"), ("4", "gone@stud.unibas.ch"), ("5", ""))]
+    report_auth = {"allowed_emails": ["listed@stud.unibas.ch", "guest@gmx.ch", "lect@unibas.ch"]}
+    by_sid = {s["session_id"]: s["is_student"] for s in build_sessions(rows, report_auth, {"lect@unibas.ch"})}
+    check(by_sid == {"1": True, "2": True, "3": False, "4": False, "5": False},
+          "listed = student; lecturer, unlisted and anonymous are not")
 
     print("\ncase: general assistant without lecture content")
     check(app._GENERAL_ASSISTANT and not app.COURSES, "general_assistant on, single-course")

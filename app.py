@@ -77,9 +77,21 @@ warm([d.path for v in ([c.viewer for c in COURSES] if COURSES else [ROOT_VIEWER]
       for d in v.docs.values()])
 
 
+def _login_allowed(email: str | None) -> bool:
+    """IID-AUTH-BASIC: is this logged-in user (still) on the allowlist?
+
+    The login form checks the allowlist only once, and its token then stays valid for 15 days
+    (Chainlit's `user_session_timeout`) and survives redeploys. So narrowing the allowlist has
+    to be enforced again wherever a token is accepted, or removed users simply keep access.
+    """
+    return not auth_enabled(_AUTH_CFG) or (bool(email) and is_email_allowed(email, _AUTH_CFG))
+
+
 def _viewer_for(course_id: str, user: cl.User | None) -> ViewerSet | None:
-    """IID-UI-CONTENT-VIEW, IID-COURSE-ACCESS: the viewer documents of `course_id`, if
-    this user may open that course right now — same rules as the profile chooser."""
+    """IID-UI-CONTENT-VIEW, IID-COURSE-ACCESS, IID-AUTH-BASIC: the viewer documents of
+    `course_id`, if this user may open that course right now — same rules as the profile chooser."""
+    if not _login_allowed(user.identifier if user else None):
+        return None
     if not COURSES:
         return ROOT_VIEWER if course_id == ROOT_COURSE_ID else None
     course = next((c for c in COURSES if c.course_id == course_id), None)
@@ -245,6 +257,8 @@ async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None
         return None
     today = date.today()
     user_email = user.identifier if user else None
+    if not _login_allowed(user_email):  # IID-AUTH-BASIC: stale token -> course names stay hidden
+        return []
     visible = [c for c in COURSES if c.is_available(today) and c.is_accessible(user_email)]
     profiles: list[cl.ChatProfile] = []
     for i, course in enumerate(visible):
@@ -257,6 +271,11 @@ async def set_chat_profiles(user: cl.User | None) -> list[cl.ChatProfile] | None
             default=(i == 0),
         ))
     return profiles
+
+
+# IID-AUTH-BASIC: shown to a logged-in user who is not (or no longer) on the allowlist.
+_NOT_ON_LIST = ("Your account is not on the participant list for this course. "
+                "If you think this is a mistake, please contact your lecturer.")
 
 
 # IID-AUTH-BASIC: password-based login/registration.
@@ -627,6 +646,12 @@ async def on_chat_start() -> None:
     chainlit_user = cl.context.session.user
     user_email = chainlit_user.identifier if chainlit_user else None
 
+    # IID-AUTH-BASIC: a token from before the allowlist was narrowed must not open a chat.
+    if not _login_allowed(user_email):
+        cl.user_session.set("login_refused", True)
+        await cl.Message(content=_NOT_ON_LIST).send()
+        return
+
     # IID-MULTI-COURSE: resolve course from selected profile, or use root content (fallback)
     if COURSES:
         profile_id = cl.user_session.get("chat_profile")
@@ -802,6 +827,11 @@ async def on_settings_update(settings: dict) -> None:
 @cl.on_message
 async def on_message(message: cl.Message) -> None:
     """IID-QNA-CORE, IID-UI-RENDER: Handle student question, stream answer."""
+    # IID-AUTH-BASIC: on_chat_start refused this session and set up no history.
+    if cl.user_session.get("login_refused"):
+        await cl.Message(content=_NOT_ON_LIST).send()
+        return
+
     history: list[dict] = cl.user_session.get("history")
     logger: ChatLogger = cl.user_session.get("logger")
     sheets_logger: SheetsLogger | None = cl.user_session.get("sheets_logger")

@@ -27,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 os.environ.setdefault("TEACHBOT_CONFIG", "config_timeseries.yaml")
+os.environ.setdefault("TIMESERIES_ALLOWED_EMAILS", "test@example.org")  # IID-AUTH-BASIC
 os.environ.setdefault("OPENROUTER_API_KEY", "test-key-not-used")
 
 import app  # noqa: E402
@@ -386,9 +387,12 @@ def main() -> None:
     route_course = next(c for c in app.COURSES if c.viewer)
     route_doc = next(iter(route_course.viewer.docs.values()))
     url = f"/viewer/{route_course.course_id}/{route_doc.filename}"
+    listed_user = app.cl.User(identifier=app._AUTH_CFG["allowed_emails"][0])  # IID-AUTH-BASIC
     app.chainlit_app.dependency_overrides[app.get_current_user] = lambda: None
     try:
         client = TestClient(app.chainlit_app)
+        check(client.get(url).status_code == 404, "user not on the allowlist → 404")
+        app.chainlit_app.dependency_overrides[app.get_current_user] = lambda: listed_user
         r1 = client.get(url, headers={"Accept-Encoding": "gzip"})
         etag = r1.headers.get("etag", "")
         check(r1.status_code == 200 and r1.headers.get("content-encoding") == "gzip"
