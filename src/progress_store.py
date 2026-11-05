@@ -4,7 +4,7 @@ Per-student persistence of completed learning goals for the learning-goals pract
 
 Keyed by (user_email, course_name). Backends, in priority order:
   1. Google Sheet tab `progress` in the configured `sheets_log_id` sheet — survives Railway
-     redeploys (the only durable store; users.yaml and local files are wiped on redeploy).
+     redeploys (local files are wiped on redeploy).
   2. Local JSON `progress/<email>.json` — dev fallback when Sheets is disabled but an email exists.
   3. In-session only — when no email is available (auth disabled); nothing is persisted.
 

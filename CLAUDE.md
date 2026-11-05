@@ -375,7 +375,8 @@ No HTML → nothing changes (tested in `tests/content_view.py`).
 | `.github/workflows/health.yml` | IID-HEALTH-MONITOR | Daily 05:17 UTC, one job per instance; GitHub's failure mail is the alert |
 | `src/chat_logger.py` | IID-CHAT-LOG, IID-SHEETS-LOG | Writes `logs/<uuid>.jsonl` per session; appends rows to Google Sheet if `sheets_log_id` set |
 | `src/auth.py` | IID-AUTH-BASIC | Allowlist check (incl. `allowed_emails_env` → `resolve_auth_cfg`), user load/save, bcrypt hash/verify |
-| `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration) |
+| `users.yaml` | IID-AUTH-BASIC | Runtime user registry (gitignored, auto-created on first registration; on the Railway volume when attached) |
+| `scripts/reset_password.py` | IID-AUTH-BASIC | Password reset: removes one account; run via `railway ssh` |
 | `credentials/` | IID-SHEETS-LOG | Gitignored folder for Google service account JSON key |
 | `scripts/make_qr.py` | IID-MULTI-DEPLOY | Generates QR codes for every deployed instance into `qr/` (PNG + SVG). QR codes live **only** in `qr/`, never in `public/` (Chainlit static assets, deployed) |
 | `scripts/archive_sheet.py` | IID-SHEETS-LOG | Downloads Sheet → `exports/sheets_backup_<date>.csv`, then clears it |
@@ -475,8 +476,8 @@ auth:
 - **Disable auth** (make app fully public): set both lists to `[]` — the login screen disappears.
 - **Add a new domain or individual email**: edit `config.yaml`, redeploy.
 - Registered users are stored in `users.yaml` (gitignored, created at runtime). Each entry holds the email and a bcrypt-hashed password — no plaintext passwords.
-- **Password reset**: remove the student's entry from `users.yaml`; they re-register on next visit.
-- **Railway caveat**: `users.yaml` lives on the dyno filesystem and is lost on redeploy. Export it before redeploying if accounts must be preserved.
+- **Password reset**: `railway ssh --service <service> -- python scripts/reset_password.py <email>`; they re-register on next visit.
+- **Accounts survive redeploys only with a Railway volume**: when one is attached, Railway sets `RAILWAY_VOLUME_MOUNT_PATH` and `users.yaml` lives there. Every login-protected service needs its own (`railway volume --service <service> add --mount-path /data`); without one, startup prints a WARNING and each deploy deletes all accounts.
 
 ```bash
 # Regenerate the JWT secret (logs out ALL active sessions)

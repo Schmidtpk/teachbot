@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from src.auth import auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, resolve_auth_cfg, verify_password
+from src.auth import accounts_lost_on_redeploy, auth_enabled, find_user, is_email_allowed, is_valid_email, load_users, register_user, resolve_auth_cfg, verify_password
 from src.chat_logger import ChatLogger, SheetsLogger
 from src.content_loader import load_content
 from src.course_loader import ROOT_COURSE_ID, CourseConfig, build_system_prompt, discover_courses, load_course_content, load_course_text, load_root_viewer, parse_model_choices
@@ -282,6 +282,10 @@ _NOT_ON_LIST = ("Your account is not on the participant list for this course. "
 # Only active when auth.allowed_domains or auth.allowed_emails is non-empty in config.yaml.
 # If auth is disabled (both lists empty), Chainlit skips the login screen entirely.
 if auth_enabled(_AUTH_CFG):
+    if accounts_lost_on_redeploy():
+        print("[Lectos] WARNING: login is on but this Railway service has no volume — "
+              "every deploy deletes all accounts and passwords.", file=sys.stderr)
+
     @cl.password_auth_callback
     async def auth_callback(username: str, password: str) -> Optional[cl.User]:
         """Validate credentials.  First login with an allowed email = registration."""

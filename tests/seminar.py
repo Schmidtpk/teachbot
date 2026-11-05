@@ -11,6 +11,7 @@ import asyncio
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -24,6 +25,7 @@ os.environ.setdefault("OPENROUTER_API_KEY", "test-key-not-used")
 os.environ.setdefault("SEMINAR_ALLOWED_EMAILS", "a.student@stud.uni-heidelberg.de, Mixed.Case@T-Online.de")
 
 import app  # noqa: E402
+from src import auth as store  # noqa: E402
 from src.auth import auth_enabled, is_email_allowed, resolve_auth_cfg  # noqa: E402
 
 RESULTS: list[tuple[bool, str]] = []
@@ -144,6 +146,39 @@ def main() -> None:
                           text=True, env={**env, "SEMINAR_ALLOWED_EMAILS": ""})
     check(proc.returncode != 0 and "SEMINAR_ALLOWED_EMAILS" in proc.stderr,
           "seminar app refuses to start without its allowlist")
+
+    print("\ncase: accounts on a Railway volume survive a redeploy")
+    saved_env = {k: os.environ.pop(k, None) for k in ("RAILWAY_VOLUME_MOUNT_PATH", "RAILWAY_ENVIRONMENT")}
+    check(store._users_path() == store._USERS_FILE, "no volume -> repo-root users.yaml, as before")
+    check(not store.accounts_lost_on_redeploy(), "local run -> no warning")
+    os.environ["RAILWAY_ENVIRONMENT"] = "production"
+    check(store.accounts_lost_on_redeploy(), "Railway without a volume -> warning")
+    with tempfile.TemporaryDirectory() as vol:
+        os.environ["RAILWAY_VOLUME_MOUNT_PATH"] = vol
+        check(not store.accounts_lost_on_redeploy(), "Railway with a volume -> no warning")
+        store.register_user("Keep.Me@stud.unibas.ch", "first-password")
+        check(store._users_path() == Path(vol) / "users.yaml" and store._users_path().exists(),
+              "account written to the volume")
+        check(os.listdir(vol) == ["users.yaml"], "no temp file left behind")
+        # A new container runs the same code against the same volume.
+        code = ("from src.auth import load_users, verify_password as v; u = load_users(); "
+                "print(v('keep.me@stud.unibas.ch', 'first-password', u), "
+                "v('keep.me@stud.unibas.ch', 'wrong', u))")
+        fresh = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True)
+        check(fresh.stdout.split() == ["True", "False"], "a fresh process still knows the password")
+        store.register_user("other@stud.unibas.ch", "second-password")
+        reset = subprocess.run([sys.executable, "scripts/reset_password.py", "KEEP.ME@stud.unibas.ch"],
+                               cwd=ROOT, capture_output=True, text=True)
+        users = store.load_users()
+        check(reset.returncode == 0 and "keep.me@stud.unibas.ch" not in users
+              and "other@stud.unibas.ch" in users, "password reset removes only that account")
+        again = subprocess.run([sys.executable, "scripts/reset_password.py", "keep.me@stud.unibas.ch"],
+                               cwd=ROOT, capture_output=True, text=True)
+        check(again.returncode != 0, "reset of an unknown account fails loudly")
+    for key, value in saved_env.items():
+        os.environ.pop(key, None)
+        if value is not None:
+            os.environ[key] = value
 
     print("\ncase: a token from before the allowlist was narrowed gives no access")
     listed, stale = "a.student@stud.uni-heidelberg.de", "someone.else@stud.uni-heidelberg.de"

@@ -595,7 +595,8 @@ block). Every other deploy keeps failing loudly on an empty content folder (SID-
 **Description:** Minimal authentication: student login via email restricted to configured domains / individual addresses. First login = automatic self-registration (student picks their own password). Educator configures `auth.allowed_domains` and `auth.allowed_emails` in `config.yaml`. If both lists are empty, auth is disabled and app is public. Registered users stored in `users.yaml` (gitignored, bcrypt-hashed passwords). User email is captured in session state and included in all log entries (IID-CHAT-LOG, IID-SHEETS-LOG).
 **Key files:** `src/auth.py`, `config.yaml` (auth section), `users.yaml` (runtime, gitignored), `app.py` (`@cl.password_auth_callback`)
 **Setup:** Generate JWT secret with `chainlit create-secret`, add as `CHAINLIT_AUTH_SECRET` in `.env` and Railway variables.
-**Password reset:** Educator removes student entry from `users.yaml`; student re-registers on next login.
+**Password reset:** `scripts/reset_password.py <email>` removes the entry; student re-registers on next login.
+**Accounts survive redeploys** (2026-11-05): with a Railway volume attached, `users.yaml` lives on it (`RAILWAY_VOLUME_MOUNT_PATH`, `src/auth.py::_users_path`) and is replaced atomically. Without a volume on Railway, startup prints a WARNING.
 **Allowlist from the environment** (2026-10-29): the repo is public, so a list of named students must
 not sit in a config file. `auth.allowed_emails_env: VAR` adds the addresses in that environment
 variable (separated by commas, semicolons or whitespace) to `allowed_emails`, resolved once at

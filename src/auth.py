@@ -9,8 +9,9 @@ Flow:
   - Subsequent logins verify the stored bcrypt hash.
   - If allowed_domains and allowed_emails are both empty, auth is disabled (public mode).
 
-User accounts are stored in users.yaml (gitignored, created at runtime).
-Password reset: educator removes the student's entry from users.yaml; student re-registers.
+User accounts are stored in users.yaml (gitignored, created at runtime): on the service's Railway
+volume when one is attached, so accounts survive redeploys; otherwise in the repo root.
+Password reset: scripts/reset_password.py removes the entry; the student re-registers.
 """
 
 import os
@@ -82,7 +83,15 @@ _USERS_FILE = Path(__file__).parent.parent / "users.yaml"
 
 
 def _users_path() -> Path:
-    return _USERS_FILE
+    """IID-AUTH-BASIC: Railway sets RAILWAY_VOLUME_MOUNT_PATH when the service has a volume.
+    The container's own file system is replaced on every deploy, the volume is not."""
+    mount = os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
+    return Path(mount) / "users.yaml" if mount else _USERS_FILE
+
+
+def accounts_lost_on_redeploy() -> bool:
+    """IID-AUTH-BASIC: running on Railway without a volume, so a deploy wipes all accounts."""
+    return bool(os.environ.get("RAILWAY_ENVIRONMENT")) and not os.environ.get("RAILWAY_VOLUME_MOUNT_PATH")
 
 
 def load_users() -> dict:
@@ -97,10 +106,16 @@ def load_users() -> dict:
 
 
 def _save_users(users: dict) -> None:
-    """Persist the users dict back to users.yaml."""
+    """Persist the users dict back to users.yaml.
+
+    IID-AUTH-BASIC: written to a temp file and swapped in, because the file now outlives the
+    container: a deploy stopping the app mid-write must not leave a damaged file behind.
+    """
     path = _users_path()
-    with path.open("w", encoding="utf-8") as fh:
+    tmp = path.with_name(path.name + ".tmp")
+    with tmp.open("w", encoding="utf-8") as fh:
         yaml.safe_dump({"users": users}, fh, default_flow_style=False, allow_unicode=True)
+    os.replace(tmp, path)
 
 
 def find_user(email: str, users: dict) -> Optional[dict]:
@@ -131,6 +146,16 @@ def register_user(email: str, password: str) -> None:
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     _save_users(users)
+
+
+def delete_user(email: str) -> bool:
+    """Password reset: remove the account, the student re-registers. IID-AUTH-BASIC.
+    Returns False if there is no such account."""
+    users = load_users()
+    if users.pop(email.strip().lower(), None) is None:
+        return False
+    _save_users(users)
+    return True
 
 
 def verify_password(email: str, password: str, users: dict) -> bool:
