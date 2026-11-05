@@ -155,7 +155,7 @@ Open `http://localhost:8000` in a browser.
 
 ## Authentication
 
-Students log in with their institutional email as username and a password of their choice. **First login = automatic registration** — no separate sign-up step. Passwords are bcrypt-hashed; plaintext is never stored. To reset a student's password, run `python scripts/reset_password.py <email>` where the app runs. On Railway, attach a volume to the service (`railway volume --service <service> add --mount-path /data`) so that accounts survive redeploys; without one, every deploy deletes them.
+Students log in with their institutional email as username and a password of their choice. **First login = automatic registration** — no separate sign-up step. Passwords are bcrypt-hashed; plaintext is never stored. To reset a student's password, run `python scripts/reset_password.py <email>` where the app runs. On Railway, attach a volume to the service (`railway volume --service <service-ID> add --mount-path /data`) so that accounts survive redeploys; without one, every deploy deletes them.
 
 Requires a JWT secret — generate once:
 

@@ -477,7 +477,7 @@ auth:
 - **Add a new domain or individual email**: edit `config.yaml`, redeploy.
 - Registered users are stored in `users.yaml` (gitignored, created at runtime). Each entry holds the email and a bcrypt-hashed password — no plaintext passwords.
 - **Password reset**: `railway ssh --service <service> -- python scripts/reset_password.py <email>`; they re-register on next visit.
-- **Accounts survive redeploys only with a Railway volume**: when one is attached, Railway sets `RAILWAY_VOLUME_MOUNT_PATH` and `users.yaml` lives there. Every login-protected service needs its own (`railway volume --service <service> add --mount-path /data`); without one, startup prints a WARNING and each deploy deletes all accounts.
+- **Accounts survive redeploys only with a Railway volume**: when one is attached, Railway sets `RAILWAY_VOLUME_MOUNT_PATH` and `users.yaml` lives there. Every login-protected service needs its own (`railway volume --service <service-ID> add --mount-path /data`; a service name crashes CLI 4.36.1, IDs are in `railway status --json`). Attached on `teachbot-timeseries` and `teachbot-seminar` since 2026-11-05. Adding a volume redeploys the service; without one, startup prints a WARNING and each deploy deletes all accounts.
 
 ```bash
 # Regenerate the JWT secret (logs out ALL active sessions)
