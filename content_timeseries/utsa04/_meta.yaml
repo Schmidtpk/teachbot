@@ -1,0 +1,10 @@
+# IID-MULTI-COURSE: Q&A for chapter 4 (IID-QNA-CORE). Both ARMA modelling decks (.qmd + .html)
+# are copied by scripts/sync_timeseries.py (a ch. 4 script too, once it exists).
+lecture_name: "Ch. 4 – ARMA Modelling"
+order: 4
+description: "Questions about **chapter 4** (ARMA modelling: order selection, estimation, diagnostics, parts 1 and 2)."
+extra_content:            # background: the chapter builds on chapters 1-3 (ch. 3 has only slides so far)
+  - utsa01/script_01-utsa-intro.qmd
+  - utsa02/script_02-utsa-fundamentals.qmd
+  - utsa03/03_1-utsa-arma.qmd
+  - utsa03/03_2-utsa-arma.qmd

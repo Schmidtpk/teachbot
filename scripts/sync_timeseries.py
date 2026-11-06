@@ -40,13 +40,15 @@ GRAPH = ROOT.parent / "graph" / "site" / "index.html"
 TARGET = ROOT / "content_timeseries"
 
 # course folder → decks (file stems in slides/), scripts (in script/), other files.
-# `optional_scripts` are copied once they exist (ch. 3 has no script yet).
+# `optional_scripts` are copied once they exist (ch. 3 and 4 have no script yet).
 # `sheets`: file stems in exercises/ whose solution-free .html is shown in the viewer panel.
 COURSES: dict[str, dict] = {
     "utsa01": {"decks": ["01-utsa-intro"], "scripts": ["script_01-utsa-intro.qmd"]},
     "utsa02": {"decks": ["02-utsa-fundamentals"], "scripts": ["script_02-utsa-fundamentals.qmd"]},
     "utsa03": {"decks": ["03_1-utsa-arma", "03_2-utsa-arma"],
                "optional_scripts": ["script_03-utsa-arma.qmd"]},
+    "utsa04": {"decks": ["04_1-utsa-armamodelling", "04_2-utsa-armamodelling"],
+               "optional_scripts": ["script_04-utsa-armamodelling.qmd"]},
     "cards": {"files": [(GRAPH, "cards.html")]},
     "exercises01-03": {"files": [(EXERCISES / "utsa-exercises-01-03.qmd",
                                   "utsa-exercises-01-03_solution.qmd")],

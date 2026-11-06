@@ -1,0 +1,579 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Ch. 4 – ARMA Modelling: Order Selection, Estimation, Diagnostics, Part 2 <br><br> HS 2026 · based on material by Christian Kleiber (University of Basel)"
+format:
+  clean-revealjs:
+    self-contained: true
+    css: [styles.css, legibility.css]
+    width: 1600
+    height: 900
+    scrollable: true
+    auto-stretch: false
+    include-after-body: autofit.html
+author:
+  - name: Patrick Schmidt
+    email: patrick.schmidt@awi.uni-heidelberg.de
+    affiliations: University of Heidelberg
+execute:
+  cache: true
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(fig.width = 12, fig.height = 6, fig.align = "center", dpi = 150)
+# larger fonts for every base R plot, without cluttering the code shown on the slides
+knitr::knit_hooks$set(par_ts = function(before, options, envir) {
+  if (before) par(mar = c(4.5, 4.5, 3, 1), cex.main = 1.6, cex.lab = 1.4, cex.axis = 1.3)
+})
+knitr::opts_chunk$set(par_ts = TRUE)
+```
+
+## Contents
+
+*Part 1:* Box–Jenkins strategy, properties of the sample ACF, preliminary model selection via ACF and PACF, examples
+
+4. Estimation of ARMA models
+5. Model selection via information criteria
+6. Example: US GDP growth
+7. Model diagnostics
+8. Keywords
+9. Further reading
+
+# Estimation of ARMA models
+
+## Estimation of ARMA models: preliminary remarks
+
+**task:** estimation of unknown parameters in an ARMA model for an observed time series $y_1, \dots, y_T$ [**given**]{.alert} a specification of the orders $p$, $q$
+
+- We begin with $q = 0$, i.e. pure AR models
+
+
+## ARMA models with a nonzero mean
+
+**up to now:** assumed $E(y_t) = 0$ for stationary processes
+
+**practical issue:** how can a nonzero mean be included in an ARMA process?
+
+:::{.clean-box}
+**definition:** $\{y_t\}$ is an [**ARMA($p$, $q$) process with mean $\mu$**]{.alert} if $\{y_t - \mu\}$ is an ARMA($p$, $q$) process
+:::
+
+- written out:
+$$y_t - \mu = \phi_1 (y_{t-1} - \mu) + \dots + \phi_p (y_{t-p} - \mu) + e_t + \theta_1 e_{t-1} + \dots + \theta_q e_{t-q}$$
+- compact: $\quad \phi(B)\, (y_t - \mu) = \theta(B)\, e_t, \qquad E(y_t) = \mu$
+- the estimators below estimate $\mu$ together with $\phi$, $\theta$ and $\sigma_e^2$
+- R output reports $\mu$ as "intercept" or "mean" (see below)
+
+## Estimation of AR models: (conditional) least squares
+
+**method:** (OLS) the AR($p$) model
+$$y_t = \phi_1 y_{t-1} + \dots + \phi_p y_{t-p} + e_t$$
+leads to the sum of squares, with $\phi := (\phi_1, \dots, \phi_p)^\top$,
+$$S_c(\phi) := \sum_{t=p+1}^T (y_t - \phi_1 y_{t-1} - \dots - \phi_p y_{t-p})^2$$
+
+:::{.clean-box}
+**definition:** the [**conditional least squares estimators**]{.alert} of $\phi$ and $\sigma_e^2$ are
+$$\hat\phi_{OLS} := \arg\min_{\phi} S_c(\phi), \qquad \hat\sigma_e^2 := \frac{S_c(\hat\phi_{OLS})}{T - p}$$
+:::
+
+- **note** that the first $p$ observations are 'lost', or rather treated as fixed. hence call this [**conditional**]{.alert} least squares (conditional LS, CLS)
+- OLS is popular in econometrics
+
+## Estimation of AR models: (conditional) least squares
+
+notation: $\Gamma_p := \big(\gamma(i - j)\big)_{i,j = 1, \dots, p}$, the autocovariance matrix of $(y_{t-1}, \dots, y_{t-p})^\top$
+
+:::{.clean-box}
+**property:** for AR($p$), stationary and causal,
+$$\sqrt{T}(\hat\phi_{OLS} - \phi) \overset{d}{\longrightarrow} N(0, \sigma_e^2 \Gamma_p^{-1}), \qquad \text{and} \qquad \hat\sigma_e^2 \overset{P}{\longrightarrow} \sigma_e^2$$
+:::
+
+**example:** for AR(1), $\Gamma_1 = \gamma(0)$ and $\quad \sqrt{T}(\hat\phi - \phi) \overset{d}{\longrightarrow} N\Big(0, \frac{\sigma_e^2}{\gamma(0)}\Big) = N(0, 1 - \phi^2)$
+
+
+## Estimation of AR models: (conditional) least squares
+
+:::{.clean-box}
+**ARIMA($p$, $d$, $q$)** means that $\Delta^d y_t$ is an ARMA($p$, $q$) process.
+:::
+
+- (details in Ch. 7)
+- here always $d = 0$, i.e. ARIMA($p$, 0, $q$) = ARMA($p$, $q$)
+
+**in R:**
+
+- `ar(..., method = "ols", order.max = p)` estimates AR($p$) models by conditional least squares. by default, $\mu$ is included (`demean = TRUE`)
+
+- `arima(..., method = "CSS")` estimates ARIMA($p$, $d$, $q$) models by conditional least squares. as in `ar()`, the mean is included by default (`include.mean = TRUE`). 
+
+
+## Estimation of AR models: (conditional) least squares
+
+**examples:** simulated AR(2) series from Part 1 ($\phi_1 = 1$, $\phi_2 = -0.6$), with LS via `ar()`
+
+```{r ar2-ls-ar}
+set.seed(1)
+ar2 <- arima.sim(model = list(ar = c(1, -0.6)), n = 120)
+ar(ar2, order.max = 2, aic = FALSE, method = "ols", demean = FALSE)
+```
+
+## Estimation of AR models: (conditional) least squares
+
+**examples:** the same series, with LS via `arima()`
+
+```{r ar2-ls-arima}
+set.seed(1)
+ar2 <- arima.sim(model = list(ar = c(1, -0.6)), n = 120)
+arima(ar2, c(2, 0, 0), method = "CSS", include.mean = FALSE)
+```
+
+## Least squares estimation: models with MA terms
+
+- least squares estimation is not straight forward without AR(p)
+
+- consider **MA(1):** invertible process has AR($\infty$) representation
+$$
+\begin{aligned}
+y_t &= e_t + \theta e_{t-1} \\
+e_t &= y_t - \theta e_{t-1} = y_t - \theta y_{t-1} + \theta^2 y_{t-2} - \theta^3 y_{t-3} + \dots
+\end{aligned}
+$$
+
+this gives $\quad S_c(\theta) := \sum_t e_t^2 = \sum_t \Big(\sum_j (-\theta)^j y_{t-j}\Big)^2$
+
+- thus $S_c(\theta)$ has infinite sums and is nonlinear in $\theta$. 
+
+- Note that $e_t$ cannot be computed unless...
+
+- [**conditional on**]{.alert} a starting value, $e_t$ can be computed recursively: $\quad e_1 = y_1-\theta e_{0}, \quad e_2 = y_2 - \theta e_1, \quad \dots$
+    - MA($q$) and ARMA($p$, $q$) similar, with $e_0 = e_{-1} = \dots = e_{-q+1} = 0$
+
+
+## Maximum likelihood
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**motivation:**
+
+- for short series or seasonal models, the starting values might have a more pronounced effect
+- employ not only information in the first two moments but in the entire distribution. hence use the full likelihood
+- properties of estimates follow from general (large sample) results for maximum likelihood (ML) estimation
+:::
+
+::: {.column width="50%"}
+**starting point:** what is the joint distribution of $y_1, \dots, y_T$?
+
+**recall:**
+
+- the likelihood $L$ is the joint density $f$ evaluated at the observations $y_1, \dots, y_T$, considered as a function of the unknown parameters
+- ML estimators of the parameters are those values for which observing the actual data is most likely
+:::
+
+::::
+
+we consider only an example: AR(1)
+
+## Maximum likelihood: AR(1)
+
+**example:** AR(1) $\quad y_t - \mu = \phi (y_{t-1} - \mu) + e_t$
+
+- assume that the innovations $e_t \sim N(0, \sigma_e^2)$ and i.i.d., i.e. independent normally distributed variables with zero mean and constant variance $\sigma_e^2$
+- the probability density function (PDF) of each $e_t$ is
+$$f(e_t) = \frac{1}{\sqrt{2 \pi \sigma_e^2}} \exp\Big(-\frac{e_t^2}{2 \sigma_e^2}\Big)$$
+- by independence, the joint PDF of $e_2, \dots, e_T$ is
+$$f(e_2, \dots, e_T) = \Big(\frac{1}{\sqrt{2 \pi \sigma_e^2}}\Big)^{T-1} \exp\Big(-\frac{1}{2 \sigma_e^2} \sum_{t=2}^T e_t^2\Big)$$
+- note that in view of $y_t - \mu = \phi (y_{t-1} - \mu) + e_t$ for $t = 2, \dots, T$, everything is [**conditional on**]{.alert} $y_1$
+
+## Maximum likelihood: AR(1)
+
+obtain the [**conditional**]{.alert} PDF for $y_2, \dots, y_T$ by substitution
+$$f(y_T, \dots, y_2 \mid y_1) = \Big(\frac{1}{\sqrt{2 \pi \sigma_e^2}}\Big)^{T-1} \exp\Big\{-\frac{1}{2 \sigma_e^2} \sum_{t=2}^T \big[(y_t - \mu) - \phi (y_{t-1} - \mu)\big]^2\Big\}$$
+
+now what about $y_1$? we cannot condition on previous observations
+
+- by stationarity, the [**unconditional**]{.alert} distribution of $y_1$ is $N(\mu, \gamma(0))$, with $\gamma(0) = \sigma_e^2/(1 - \phi^2)$. hence
+$$
+\begin{aligned}
+f(y_1) &= \frac{1}{\sqrt{2 \pi \gamma(0)}} \exp\Big(-\frac{(y_1 - \mu)^2}{2 \gamma(0)}\Big) \\
+&= \frac{1}{\sqrt{2 \pi \sigma_e^2}} \sqrt{1 - \phi^2}\, \exp\Big(-\frac{1}{2 \sigma_e^2} (1 - \phi^2)(y_1 - \mu)^2\Big)
+\end{aligned}
+$$
+
+## Maximum likelihood: AR(1)
+
+thus, the [**full (= unconditional) likelihood**]{.alert} is
+$$L(\phi, \mu, \sigma_e^2) = f(y_T, \dots, y_2 \mid y_1)\, f(y_1) = \Big(\frac{1}{\sqrt{2 \pi \sigma_e^2}}\Big)^T \sqrt{1 - \phi^2}\, \exp\Big(-\frac{1}{2 \sigma_e^2} S_u(\phi, \mu)\Big)$$
+
+with
+$$S_c(\phi, \mu) := \sum_{t=2}^T \big[(y_t - \mu) - \phi (y_{t-1} - \mu)\big]^2, \qquad S_u(\phi, \mu) := (1 - \phi^2)(y_1 - \mu)^2 + S_c(\phi, \mu)$$
+
+- $S_u(\phi, \mu)$ is the [**unconditional sum of squares**]{.alert}, $S_c(\phi, \mu)$ the [**conditional sum of squares**]{.alert}
+- typically, the log-likelihood $\quad \ell(\phi, \mu, \sigma_e^2) := \log L(\phi, \mu, \sigma_e^2) \quad$ is more convenient, both for numerical and analytical considerations
+
+## Maximum likelihood: AR(1)
+
+**estimating $\phi$ and $\mu$:** above derivations suggest two estimators
+
+- (unconditional) [**maximum likelihood (ML)**]{.alert} maximises $\ell(\phi, \mu, \sigma_e^2)$
+- [**conditional least squares (CSS)**]{.alert} minimises $S_c(\phi, \mu)$
+
+the effect of the first observation is more substantial for $|\phi|$ close to 1 and/or short series
+
+
+## Maximum likelihood: ARMA($p$, $q$)
+
+**general case:** employ the same ideas for general ARMA($p$, $q$) models. however, details and computational aspects are much more complex
+
+**fitting AR(I)MA models in R:**
+
+- `arima()` estimates general ARIMA($p$, $d$, $q$) models
+- ML estimation can be performed using `method = "ML"` or `method = "CSS-ML"` (default)
+- `"CSS-ML"` obtains initial estimates via CSS and uses them as starting values for the numerical optimisation of the full (= unconditional) log-likelihood
+
+
+## Properties of the estimators
+
+**approximate distribution of the MLE:** let $\{y_t\}$ be an ARMA($p$, $q$) process (stationary, causal, invertible, i.e. with all roots of $\phi(z)$ and $\theta(z)$ outside the unit circle, and no common factors) and $\{e_t\} \sim (0, \sigma_e^2)$ i.i.d.
+
+then, for the maximum likelihood estimator $\hat\beta$ of the full parameter vector $\beta = (\phi_1, \dots, \phi_p, \theta_1, \dots, \theta_q)^\top$ (we ignore the estimators of $\mu$ and $\sigma_e^2$ here):
+$$\sqrt{T}(\hat\beta - \beta) \overset{d}{\longrightarrow} N(0, V(\beta))$$
+
+where $V(\beta)$ is the inverse Fisher information (we skip over this).
+
+
+## Properties of the estimators
+
+**remarks:**
+
+- we don't discuss the technical details of the estimators
+
+big picture:
+
+- CSS and ML are asymptotically equivalent (i.e., have same limit distribution for large $T$)
+- CSS and ML estimation is asymptotically efficient (smallest possible variance of estimators) under the assumption of normal innovations
+- but the asymptotic behavior stated does [**not**]{.alert} depend on the normality assumption, just iid$(0, \sigma_e^2)$. 
+
+
+# Model selection via information criteria
+
+## Model selection via information criteria
+
+**motivation:** Now we can estimate an ARMA(p,q) model. But what $p$ and $q$ should we choose?
+
+- increasing the orders $p$ and $q$ of an ARMA model will always increase the maximised likelihood (recall $R^2$ in linear regression). 
+
+- however, this is at the 'cost' of a less parsimonious model, i.e. a model with more estimated parameters
+
+- what is a good trade-off between increasing the likelihood and increasing the model complexity?
+
+
+:::{.clean-box}
+solution: **information criteria = log likelihood + penalty for number of parameters** 
+:::
+
+- choose the model with the smallest information criteria
+
+## Model selection via information criteria
+
+:::{.clean-box}
+**definition:** for an ARMA($p$, $q$) model with parameter vector $\beta = (\phi_1, \dots, \phi_p, \theta_1, \dots, \theta_q)^\top$ and 'complexity' $k = p + q$, the [**information criterion $IC(\beta)$**]{.alert} is
+$$IC(\beta) := -2 \log L(\beta) + \text{penalty} \cdot k$$
+:::
+
+- There exist different proposals for the $\text{penalty}$ term
+
+- When we also estimate the mean $\mu$ and $\sigma_e^2$, the number of parameters in $\beta$ increase by 2, i.e. $k = p + q + 2$
+
+
+## Model selection via information criteria
+
+**common choices for penalties:**
+
+::: {style="font-size: 1.25em;"}
+| name | abbreviation | penalty |
+|:------------------------------------------|:-----------------|:-------------------|
+| Akaike information criterion | AIC | $2$ |
+| corrected AIC | AIC$_C$ | $2 \cdot \frac{T}{T - k - 2}$ |
+| Bayesian information criterion  | BIC | $\log(T)$ |
+:::
+
+- for $T \geqslant 8$, $\log(T) > 2$, hence penalties satisfy AIC $<$ BIC
+
+## Model selection via information criteria
+
+**remarks:**
+
+- for typical values of $T$ and $k$, BIC leads to the most parsimonious models, followed by AIC$_C$ and AIC
+- there exist theoretical results showing that
+    - if the true process is some finite-order ARMA($p$, $q$) process, then BIC leads to consistent selection of $p$ and $q$
+    - if the true process is not a finite-order ARMA process, an AIC-based selection finds the ARMA model closest to the true model (in the sense of Kullback–Leibler divergence)
+- maximum likelihood estimation can be affected by numerical problems when choosing orders $p$ and $q$ that are too large (e.g., common factors)
+- computational issues: how to find the model with the 'best' value of the IC from a large set of models? trade-off between speed and efficiency: stepwise vs. full-grid search, etc. 
+
+## Model selection via information criteria
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**information criteria in R:**
+
+- `AIC()` is a generic function for extracting information criteria from fitted model objects
+- there is also a convenience function `BIC()`
+:::
+
+::: {.column width="50%"}
+**automated model selection:**
+
+- `auto.arima()` from **forecast** implements automatic IC-based model selection for ARIMA models
+- AIC (default), AIC$_C$ and BIC are available
+- by default, `stepwise = TRUE` search is used. if `FALSE`, the function does a full-grid search (much slower!)
+- `stationary = TRUE` fixes $d = 0$
+  - by default, $d$ is selected based on a stationarity test.
+:::
+
+::::
+
+# Example: US GDP growth
+
+## Example: US GDP growth
+
+US GDP from FRED, growth rates up to 2015(4). automated model selection using `auto.arima()`: all combinations of $p = 0, 1, 2$, $q = 0, 1, 2$ and zero vs. non-zero mean, i.e. $3 \cdot 3 \cdot 2 = 18$ models in total. NB. Neusser and Wagner (2022) consider $p, q \leqslant 4$
+
+```{r gdp-auto-code}
+#| eval: false
+library("forecast")
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(window(gdp, end = c(2015, 4)))) * 100
+auto.arima(dlgdp, ic = "aic", stationary = TRUE,
+  max.p = 2, max.q = 2, max.P = 0, max.Q = 0,
+  stepwise = FALSE, trace = TRUE, approximation = FALSE)
+```
+
+```{r gdp-auto-run}
+#| include: false
+# runs the code above once and keeps the printed output, split over the next two slides
+gdp_auto_out <- capture.output(eval(parse(text = knitr::knit_code$get("gdp-auto-code"))))
+gdp_auto_out <- gdp_auto_out[gdp_auto_out != ""]
+gdp_auto_split <- grep("Best model", gdp_auto_out)
+```
+
+## Example: US GDP growth
+
+```{r gdp-auto-out1}
+#| echo: false
+cat(gdp_auto_out[1:(gdp_auto_split - 1)], sep = "\n")
+```
+
+## Example: US GDP growth
+
+```{r gdp-auto-out2}
+#| echo: false
+cat(gdp_auto_out[gdp_auto_split:length(gdp_auto_out)], sep = "\n")
+```
+
+## Example: US GDP growth
+
+impulse response function and inverse AR roots of the fitted AR(2):
+
+```{r gdp-irf-code}
+#| eval: false
+library("forecast")
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(window(gdp, end = c(2015, 4)))) * 100
+dlgdp_ar2 <- arima(dlgdp, order = c(2, 0, 0), include.mean = TRUE)
+par(mfrow = c(1, 2))
+plot(0:10, c(1, ARMAtoMA(ar = coef(dlgdp_ar2)[1:2], lag.max = 10)), type = "b",
+     xlab = "lag", ylab = expression(psi[j]), main = "impulse response function")
+plot(dlgdp_ar2)
+```
+
+## Example: US GDP growth
+
+```{r gdp-irf}
+#| echo: false
+#| ref.label: gdp-irf-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: two panels for the AR(2) fitted to quarterly US GDP growth (phi_1 = 0.257, phi_2 = 0.191). left: impulse response weights psi_j at lags 0 to 10, points joined by lines: 1 at lag 0, about 0.26 at lags 1 and 2, then decaying monotonically to nearly 0 by lag 8. right: 'Inverse AR roots' in the complex plane with the unit circle drawn; two real inverse roots on the horizontal axis, at about 0.58 and -0.33, both well inside the unit circle, so the fitted model is stationary and causal. -->
+
+# Model diagnostics
+
+## Model diagnostics
+
+**idea:** residuals $\hat e_t$ are a by-product of estimation. residuals from a correctly specified model should be similar to white noise, i.e. uncorrelated (or even independent), zero mean and constant variance (and normal)
+
+**illustration:** AR(2) model for US GDP growth, fitted above:
+
+```{r diag-fit}
+#| eval: false
+dlgdp_ar2 <- arima(dlgdp, order = c(2, 0, 0), include.mean = TRUE)
+```
+
+## Model diagnostics: time series plot
+
+extract and plot standardised residuals $\hat e_t / \hat\sigma$:
+
+```{r diag-res-code}
+#| eval: false
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(window(gdp, end = c(2015, 4)))) * 100
+dlgdp_ar2 <- arima(dlgdp, order = c(2, 0, 0), include.mean = TRUE)
+dlgdp_res <- residuals(dlgdp_ar2) / sqrt(dlgdp_ar2$sigma2)
+plot(dlgdp_res)
+abline(h = 0, col = "slategray")
+```
+
+## Model diagnostics: time series plot
+
+```{r diag-res}
+#| echo: false
+#| ref.label: diag-res-code
+#| fig-width: 9
+#| fig-height: 5.4
+#| out-width: "72%"
+```
+
+<!-- figure: standardised residuals of the AR(2) for quarterly US GDP growth, 1960 to 2015, x axis Time, y axis about -3.5 to 4.3, slate grey line at 0. the residuals fluctuate around zero without visible pattern in the mean; larger swings before the mid 1980s (largest value about +4.2 around 1978, about -3.3 around 1980) and calmer afterwards, with a dip of about -3.3 in 2008/09. -->
+
+## Model diagnostics: autocorrelation
+
+**main question:** does the model capture the autocorrelation of the data appropriately? is the associated noise term independent?
+
+**idea:** consider the empirical autocorrelation function of the residuals $\hat e_t$, denoted $\hat r_k$
+
+:::: {.columns}
+
+::: {.column width="45%"}
+**recall:** for large $T$, empirical autocorrelations of a white noise process are approximately uncorrelated with zero mean and variance $1/T$
+
+**problem:** residuals $\hat e_t$ from a correctly specified and efficiently estimated ARMA model have somewhat different properties
+:::
+
+::: {.column width="55%"}
+**solution:** derive the (asymptotic) distribution of ARMA residuals, due to Box and Pierce (1970). some properties:
+
+- the $\hat r_k$ are (still) approximately normal with zero means
+- for small $k$, the variance of $\hat r_k$ can be substantially less than $1/T$
+- for small $k$ and $j$, the estimates $\hat r_k$ and $\hat r_j$ can be highly correlated
+- for larger lags, the $\hat r_k$ are approximately uncorrelated and have variance $1/T$
+:::
+
+::::
+
+## Model diagnostics: Box–Pierce test
+
+**idea:** test formally for white noise by aggregating autocorrelation across lags
+
+**test:** Box and Pierce (1970) show that, for a correctly specified ARMA($p$, $q$) and [**strict**]{.alert} white noise $\{e_t\}$,
+$$Q = T (\hat r_1^2 + \hat r_2^2 + \dots + \hat r_K^2)$$
+asymptotically follows a $\chi^2_{K - (p+q)}$ distribution
+
+**remarks:**
+
+- intuition: under the null hypothesis of white noise, $Q$ should be 'small', e.g. below the 95% quantile of $\chi^2_{K - (p+q)}$. under the alternative, $Q$ is inflated
+- the maximal lag $K$ is typically chosen ad hoc so that the MA($\infty$) weights $\psi_j$ are sufficiently small for $j > K$. alternatively, consider a range of values $k = 1, \dots, K$
+- as before, use `Box.test()` in R, which has the argument `fitdf`
+
+## Model diagnostics: Box–Pierce test
+
+**illustration:** AR(2) model for US GDP growth (i.e., $p + q = 2$)
+
+```{r diag-box-code}
+#| eval: false
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(window(gdp, end = c(2015, 4)))) * 100
+dlgdp_res <- residuals(arima(dlgdp, order = c(2, 0, 0), include.mean = TRUE))
+Box.test(dlgdp_res, lag = 5, fitdf = 2)
+```
+
+## Model diagnostics: Box–Pierce test
+
+```{r diag-box}
+#| echo: false
+#| ref.label: diag-box-code
+```
+
+## Model diagnostics: summary
+
+**in practice:**
+
+- assess the time series of residuals $\hat e_t$ for patterns (means, variances, outliers)
+- inspect empirical autocorrelations $\hat r_k$ of residuals for remaining autocorrelation
+- test the null hypothesis of white noise using Box–Pierce up to some lag $K$
+
+**in R:** `tsdiag()` plots residuals, their ACF and test p-values at once. **careful:** its p-values use $\chi^2_K$ instead of $\chi^2_{K-(p+q)}$, so they are too high
+
+## Model diagnostics: summary
+
+residual ACF and Box–Pierce p-values for $K = 3, \dots, 12$ (AR(2), i.e. `fitdf = 2`):
+
+```{r diag-summary-code}
+#| eval: false
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(window(gdp, end = c(2015, 4)))) * 100
+dlgdp_res <- residuals(arima(dlgdp, order = c(2, 0, 0), include.mean = TRUE))
+pval <- sapply(3:12, function(K) Box.test(dlgdp_res, lag = K, fitdf = 2)$p.value)
+par(mfrow = c(1, 2))
+acf(dlgdp_res, main = "ACF of residuals")
+plot(3:12, pval, ylim = c(0, 1), xlab = "K", ylab = "p value",
+     main = "Box-Pierce p values")
+abline(h = 0.05, lty = 2, col = "blue")
+```
+
+## Model diagnostics: summary
+
+```{r diag-summary}
+#| echo: false
+#| ref.label: diag-summary-code
+#| fig-width: 12
+#| fig-height: 5.2
+#| out-width: "100%"
+```
+
+<!-- figure: two panels for the residuals of the AR(2) fitted to quarterly US GDP growth, 1960 to 2015. left 'ACF of residuals': lag axis in years (1 = 4 quarters) from 0 to about 5.75, bar of 1 at lag 0, all other bars small, largest about -0.125, and all inside the dashed white noise bands at about ±0.13; the first two bars are almost exactly 0. right 'Box-Pierce p values': x axis K from 3 to 12, y axis p value from 0 to 1, with fitdf = 2; p-values about 0.66 at K = 3 and 4, then between about 0.21 and 0.40 for K = 5 to 12, all well above the dashed blue 0.05 line: no evidence of remaining autocorrelation. -->
+
+
+# Keywords
+
+## Keywords
+
+- PACF
+- least squares estimator (conditional)
+- maximum likelihood estimator (conditional and unconditional)
+- order selection via information criteria: AIC, BIC and variations
+- model diagnostics
+
+# Further reading
+
+## Further reading
+
+try (some of)
+
+- Brockwell and Davis (2016), Ch. 5.1–5.3, 5.5
+- Chan (2010), Ch. 4, and Ch. 5 for examples
+- Cryer and Chan (2008), 6.1–6.3 (skip EACF, also note that we introduce PACF differently!), 7 (skip 7.6, and for LS focus on AR models), 6.5–6.6, 8 (mainly 8.1)
+- Neusser (2011, 2016), Ch. 5
+- Neusser and Wagner (2022), Ch. 5
+- Newbold P, Agiakloglou C, Miller J (1994). Adventures with ARIMA Software. *International Journal of Forecasting*, 10, 573–581. [this is a fairly old paper, but still interesting.]

@@ -74,9 +74,9 @@ Plan/documentation should be intention-first:
   comma-separated, also in local `.env`, which the weekly report reads). Change it with
   `railway variables set TIMESERIES_ALLOWED_EMAILS=... --service teachbot-timeseries`, then
   `railway redeploy --yes --service teachbot-timeseries`; someone removed loses access even with a
-  live login token (`app.py::_login_allowed`). Content folder `content_timeseries/` has six courses
-  (IID-MULTI-COURSE, since 2026-10-11): `utsa01/`, `utsa02/`, `utsa03/` — Q&A per chapter, each
-  deck as `.qmd` + `.html` plus the chapter script; ch. 2 and 3 get the earlier scripts via
+  live login token (`app.py::_login_allowed`). Content folder `content_timeseries/` has seven courses
+  (IID-MULTI-COURSE, since 2026-10-11): `utsa01/` to `utsa04/` — Q&A per chapter, each
+  deck as `.qmd` + `.html` plus the chapter script; ch. 2–4 get the earlier scripts (ch. 4 also the ch. 3 decks) via
   `extra_content` — then `cards/` (only the knowledge cards, `content_from_viewer: true`,
   IID-CONTENT-FROM-HTML), `assignment1/` (Assignment 1 & Exercise 1 helper,
   IID-ASSIGNMENT-HELP) and `exercises01-03/` (pen-and-paper exercises ch. 1–3, the sheet with
@@ -88,7 +88,7 @@ Plan/documentation should be intention-first:
   `junctions/lecture_timeseries/` (gitignored junction to `Dropbox/teaching/lecture_timeseries`)
   and `../graph/site/index.html`; **copy them with `python scripts/sync_timeseries.py`**
   (`--check` only reports), which keeps each deck's `.qmd` and `.html` together. The
-  course list is in the script's `COURSES` dict (add a ch. 4 there + a `utsa04/_meta.yaml`). **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
+  course list is in the script's `COURSES` dict (add a ch. 5 there + a `utsa05/_meta.yaml`). **The repo is public: `*_solution.qmd` is gitignored**, so deploy this
   service with `railway up --service teachbot-timeseries --no-gitignore --detach`, which
   uses `.railwayignore` (= `.gitignore` minus the solution rule; keep both in sync).
   **Thinking is off by default here** (`llm.reasoning: false`, IID-LLM-THINKING) because

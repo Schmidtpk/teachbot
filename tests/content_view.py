@@ -352,10 +352,10 @@ def main() -> None:
     # 9 — the time series deploy as configured (config_timeseries.yaml)
     print("\ncase: time series courses")
     by_id = {c.course_id: c for c in app.COURSES}
-    check([c.course_id for c in app.COURSES] == ["utsa01", "utsa02", "utsa03", "cards", "assignment1",
-                                                   "exercises01-03"],
+    check([c.course_id for c in app.COURSES] == ["utsa01", "utsa02", "utsa03", "utsa04", "cards",
+                                                   "assignment1", "exercises01-03"],
           f"one course per chapter, then cards, then the helpers (got {list(by_id)})")
-    for cid in ("utsa01", "utsa02", "utsa03"):
+    for cid in ("utsa01", "utsa02", "utsa03", "utsa04"):
         c = by_id[cid]
         decks = [d for d in (c.viewer.docs.values() if c.viewer else []) if d.kind == REVEAL]
         check(bool(decks) and all((c.content_dir / f"{d.doc_id}.qmd").is_file() for d in decks)
@@ -364,6 +364,10 @@ def main() -> None:
     check([p.name for p in by_id["utsa03"].extra_content]
           == ["script_01-utsa-intro.qmd", "script_02-utsa-fundamentals.qmd"],
           "ch. 3 has the scripts of ch. 1 and 2 as background")
+    check([p.name for p in by_id["utsa04"].extra_content]
+          == ["script_01-utsa-intro.qmd", "script_02-utsa-fundamentals.qmd",
+              "03_1-utsa-arma.qmd", "03_2-utsa-arma.qmd"],
+          "ch. 4 has the scripts of ch. 1 and 2 and the ch. 3 decks as background")
     check(by_id["cards"].content_from_viewer and list(by_id["cards"].viewer.docs) == ["cards"],
           "the card course shows only the cards and answers from them")
     # IID-ASSIGNMENT-HELP: students can open this file, so the check covers the raw HTML too

@@ -1,0 +1,386 @@
+---
+title: "Univariate Time Series Analysis"
+subtitle: "Ch. 4 – ARMA Modelling: Order Selection, Estimation, Diagnostics, Part 1 <br><br> HS 2026 · based on material by Christian Kleiber (University of Basel)"
+format:
+  clean-revealjs:
+    self-contained: true
+    css: [styles.css, legibility.css]
+    width: 1600
+    height: 900
+    scrollable: true
+    auto-stretch: false
+    include-after-body: autofit.html
+author:
+  - name: Patrick Schmidt
+    email: patrick.schmidt@awi.uni-heidelberg.de
+    affiliations: University of Heidelberg
+execute:
+  cache: true
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| include: false
+knitr::opts_chunk$set(fig.width = 12, fig.height = 6, fig.align = "center", dpi = 150)
+# larger fonts for every base R plot, without cluttering the code shown on the slides
+knitr::knit_hooks$set(par_ts = function(before, options, envir) {
+  if (before) par(mar = c(4.5, 4.5, 3, 1), cex.main = 1.6, cex.lab = 1.4, cex.axis = 1.3)
+})
+knitr::opts_chunk$set(par_ts = TRUE)
+```
+
+## Contents
+
+1. Properties of the sample ACF
+2. Preliminary model selection via ACF and PACF
+3. Examples
+
+*Part 2:* estimation of ARMA models, model selection via information criteria, example: US GDP growth, model diagnostics
+
+## Outline
+
+**Goal** of this chapter: **Model time series as ARMA models**
+
+On a given time series, iterate the following steps 
+
+1. **choose orders** $p$ and $q$
+2. **estimate the parameters** ($\phi$, $\theta$, $\sigma_e^2$, $\mu$) of an ARMA($p$, $q$) model
+3. **check** how good the model describes time series
+4. if unsatisfactory go back to 1
+
+**remarks:**
+
+- follows Box and Jenkins (1970) book [**Time Series Analysis: Forecasting and Control**]{.alert}
+
+# Estimating the ACF
+
+## The sample ACF
+
+- We have time series data $y_1, \dots, y_T$
+
+- Goal: Estimate the ACF $\gamma(k) = E\big[(y_t - E(y_t))(y_{t+k} - E(y_t))\big]$
+
+- Define the sample mean as $\bar y_T := \frac{1}{T} \sum_{t=1}^T y_t$
+
+:::: {.columns}
+
+::: {.column width="58%"}
+:::{.clean-box}
+**definition:** the [**sample autocovariance function**]{.alert} (sample ACVF) is
+$$\hat\gamma(k) := \frac{1}{T} \sum_{t=1}^{T-k} (y_t - \bar y_T)(y_{t+k} - \bar y_T)$$
+:::
+:::
+
+::: {.column width="42%"}
+:::{.clean-box}
+**definition:** the [**sample autocorrelation function**]{.alert} (sample ACF) is
+$$\hat\rho(k) := \frac{\hat\gamma(k)}{\hat\gamma(0)}$$
+:::
+:::
+
+::::
+
+**remarks:**
+
+- Natural estimators (substitution of mean operator by average)
+- rules of thumb: need $k \leqslant T/4$ and $T \geqslant 50$ in practice
+
+## Properties of the sample ACF
+
+:::{.clean-box}
+**theorem:** (properties of the sample ACF of white noise) suppose $y_t = \mu + e_t$, with $\{e_t\} \sim iid(0, \sigma_e^2)$. Then, for every fixed $k \geqslant 1$,
+$$\sqrt{T} \big(\hat\rho(k) - \rho(k)\big) \overset{d}{\longrightarrow} N(0, 1)$$
+:::
+
+- interpretation: For large $T$ it holds that $\quad \hat\rho(k) \approx N\Big(\rho(k), \frac{1}{T}\Big)$
+- can be applied to test H_0: $\rho(k)=0$
+- test of $H_0$: reject iid white noise at 5 % if $|\hat\rho(k)| > 1.96/\sqrt{T}$
+- $\pm 1.96/\sqrt{T}$ are the dashed bands in R's `acf()` plot (see next slide)
+
+## Properties of the sample ACF: simulated white noise
+
+**simulation** of (Gaussian) white noise and its sample ACF:
+
+```{r wn-acf-code}
+#| eval: false
+set.seed(4002)
+wn_sim <- rnorm(200)
+acf(wn_sim)
+```
+
+## Properties of the sample ACF: simulated white noise
+
+```{r wn-acf}
+#| echo: false
+#| ref.label: wn-acf-code
+#| fig-width: 9
+#| fig-height: 5.4
+#| out-width: "72%"
+```
+
+<!-- figure: sample ACF of 200 simulated Gaussian white noise values (seed 4002) as vertical bars at lags 0 to 23, title 'Series wn_sim', x axis Lag, y axis ACF from about -0.15 to 1. Bar at lag 0 equals 1; all other bars are small, between about -0.12 and 0.1, and stay inside the dashed blue 95% white noise bands at about ±0.14. -->
+
+## Testing with sample ACF for white noise
+
+- Joint test for $K$ lags of ACF 
+
+- Test hypothesis $H_0: \rho(1) = \dots = \rho(K) = 0$ 
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Box–Pierce statistic:**
+$$Q := T \sum_{k=1}^K \hat\rho^2(k)$$
+
+under $H_0$ and for a strict (i.e., iid!) white noise, $\sqrt{T}\hat\rho(1), \dots, \sqrt{T}\hat\rho(K)$ are moreover asymptotically independent, hence $\quad Q \overset{d}{\longrightarrow} \chi^2_K$
+:::
+
+::: {.column width="50%"}
+**Ljung–Box statistic:** refinement of $Q$ with the same limiting distribution
+$$Q^* := T (T + 2) \sum_{k=1}^K \frac{\hat\rho^2(k)}{T - k}$$
+:::
+
+::::
+
+
+## Testing for white noise
+
+**illustration:**
+
+:::: {.columns}
+
+::: {.column width="50%"}
+```{r wn-box-bp}
+set.seed(4002)
+wn_sim <- rnorm(200)
+Box.test(wn_sim, lag = 10)
+```
+:::
+
+::: {.column width="50%"}
+```{r wn-box-lb}
+set.seed(4002)
+wn_sim <- rnorm(200)
+Box.test(wn_sim, lag = 10,
+         type = "Ljung-Box")
+```
+:::
+
+::::
+
+
+
+# Preliminary model selection via ACF and PACF
+
+## Preliminary model selection via ACF and PACF
+
+**recall:**
+
+- ACF for MA($q$) processes cuts off after lag $q$
+- hence, ACF useful for order selection of MA processes
+- ACF for AR($p$) tails off slowly but does not cut off
+- hence, ACF does not help for order selection of AR processes ...
+
+**problem:** is there a function with similar properties for AR($p$) processes?
+
+**solution:** use partial autocorrelations of $y_t$ and $y_{t-k}$, as a function of $k$
+
+- 'partial' refers to correlation after removing the effect of the intervening variables $y_{t-1}, \dots, y_{t-k+1}$
+
+## Preliminary model selection via ACF and PACF
+
+:::{.clean-box}
+**definition:** the [**partial autocorrelation function**]{.alert} (PACF) is $k \mapsto \pi_{k,k}$, $k = 1, 2, 3, \dots$, the last coefficient of the auxiliary regressions
+$$
+\begin{aligned}
+y_t &= \pi_{0,1} + \pi_{1,1}\, y_{t-1} + e_{1,t} \\
+y_t &= \pi_{0,2} + \pi_{1,2}\, y_{t-1} + \pi_{2,2}\, y_{t-2} + e_{2,t} \\
+y_t &= \pi_{0,3} + \pi_{1,3}\, y_{t-1} + \pi_{2,3}\, y_{t-2} + \pi_{3,3}\, y_{t-3} + e_{3,t} \\
+&\ \ \vdots
+\end{aligned}
+$$
+:::
+
+**remarks:**
+
+- typically introduced along different lines (namely partial correlations); above version is equivalent and 'more practical'
+- fast algorithms for the PACF exist, notably the [**Durbin–Levinson algorithm**]{.alert}
+
+## Preliminary model selection via ACF and PACF
+
+**example:** for AR(1), $\pi_{1,1} = \phi$ and $\pi_{k,k} = 0$ for $k > 1$. thus, PACF is non-zero at lag 1 but zero at lag $\geqslant 2$
+
+**more generally:** for AR($p$) processes, $\pi_{k,k} = 0$ for all $k > p$
+
+**remark:** PACF of MA($q$) similar to ACF of AR($q$) process
+
+**properties of the empirical PACF:**
+
+- under the white noise hypothesis, $\hat\pi_{k,k}$ is approximately normal with zero mean and standard deviation $1/\sqrt{T}$
+- also under the AR($p$) hypothesis, the same holds for $k > p$
+
+**in R:** function `pacf()`
+
+## Preliminary model selection via ACF and PACF
+
+**problem:** order selection for ARMA($p$, $q$) with $p, q > 0$ more difficult
+
+|      | AR($p$)                | MA($q$)                | ARMA($p$, $q$) |
+|------|------------------------|------------------------|----------------|
+| ACF  | tails off              | cuts off after lag $q$ | tails off      |
+| PACF | cuts off after lag $p$ | tails off              | tails off      |
+
+**solutions:**
+
+- information criteria 
+
+# Examples
+
+## Examples: simulated time series
+
+**in practice:**
+
+- visualise sample ACF and PACF for the observed series
+- add pointwise confidence bands for white noise, e.g. $\pm 1.96/\sqrt{T}$ at 95% level
+- alternatively, some software packages offer confidence bands for an MA($k-1$) process for the ACF at lag $k$
+- recall that confidence bands for an AR($k-1$) process for the PACF at lag $k$ coincide with the white noise bands
+- in R, `acf()` and `pacf()` yield plots as by-products. for `acf()`, `ci.type = "ma"` can be added
+
+**illustration:** reconsider some simulated series from Ch. 3
+
+**remark:** function `tsdisplay()` from package **forecast** offers a joint display of time series, ACF and PACF
+
+## Examples: simulated time series
+
+**illustration:** MA(1) with $\theta = -0.9$, white noise bands
+
+```{r ma1-display-code}
+#| eval: false
+library("forecast")
+set.seed(1)
+ma1 <- arima.sim(model = list(ma = -0.9), n = 120)
+tsdisplay(ma1)
+```
+
+## Examples: simulated time series
+
+```{r ma1-display}
+#| echo: false
+#| ref.label: ma1-display-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: tsdisplay of a simulated MA(1) series with theta = -0.9 (seed 1, 120 observations). top panel: the series over time 0 to 120, very jagged, sign changes almost every period, range about -3 to 3. bottom left: sample ACF at lags 1 to about 20 with dashed white noise bands at about ±0.18; a single large negative bar of about -0.5 at lag 1, all other bars inside the bands except borderline values of about -0.2 and +0.18 at lags 16 and 17. bottom right: sample PACF; about -0.5 at lag 1, then -0.28, -0.22 and smaller negative values decaying slowly in absolute value, i.e. the PACF tails off. -->
+
+## Examples: simulated time series
+
+**illustration:** AR(2) with $\phi_1 = 1$ and $\phi_2 = -0.6$, white noise bands
+
+```{r ar2-display-code}
+#| eval: false
+library("forecast")
+set.seed(1)
+ar2 <- arima.sim(model = list(ar = c(1, -0.6)), n = 120)
+tsdisplay(ar2)
+```
+
+## Examples: simulated time series
+
+```{r ar2-display}
+#| echo: false
+#| ref.label: ar2-display-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: tsdisplay of a simulated AR(2) series with phi_1 = 1, phi_2 = -0.6 (seed 1, 120 observations). top panel: the series over time, short irregular cycles of a few periods, range about -3 to 4. bottom left: sample ACF at lags 1 to about 20, a damped oscillation: about 0.65 at lag 1, about -0.35 and -0.43 at lags 3 and 4, positive again (about 0.25) at lags 7 and 8, small swings afterwards. bottom right: sample PACF with two significant bars, about 0.65 at lag 1 and about -0.6 at lag 2, all later bars inside or at the white noise bands: the PACF cuts off after lag 2. -->
+
+## Examples: simulated time series
+
+**illustration:** ARMA(1, 1) with $\phi = 0.6$ and $\theta = 0.3$, white noise bands
+
+```{r arma11-display-code}
+#| eval: false
+library("forecast")
+set.seed(1)
+arma11 <- arima.sim(model = list(ar = 0.6, ma = 0.3), n = 120)
+tsdisplay(arma11)
+```
+
+## Examples: simulated time series
+
+```{r arma11-display}
+#| echo: false
+#| ref.label: arma11-display-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: tsdisplay of a simulated ARMA(1,1) series with phi = 0.6, theta = 0.3 (seed 1, 120 observations). top panel: a persistent series wandering around zero with range about -3 to 3. bottom left: sample ACF, about 0.7 at lag 1 and decaying over the first few lags, then small values partly outside the bands. bottom right: sample PACF, large at lag 1 (about 0.7), a smaller negative bar at lag 2, mostly inside the bands afterwards. neither function cuts off clearly. -->
+
+## Examples: US GDP growth
+
+**illustration:** US GDP growth from FRED, cf. Neusser and Wagner (2022). quarterly data, available from 1947(1)
+
+```{r gdp-plot-code}
+#| eval: false
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(gdp)) * 100
+plot(ts.union(gdp, log(gdp), dlgdp), main = "")
+```
+
+- GDP is obviously trending
+- use growth rates $\Delta \log(\mathrm{gdp}_t) \cdot 100$ for ARMA modelling
+
+
+## Examples: US GDP growth
+
+```{r gdp-plot}
+#| echo: false
+#| ref.label: gdp-plot-code
+#| fig-width: 12
+#| fig-height: 5.6
+#| out-width: "100%"
+```
+
+<!-- figure: three stacked panels over 1960 to 2020, x axis Time. top 'gdp': US real GDP per capita (FRED series A939RX0Q048SBEA, chained dollars), rising almost linearly from about 19,000 to about 63,000, with small dips in recessions and a sharp drop in 2020. middle 'log(gdp)': the same series in logs, from about 9.9 to 11.05, a nearly straight upward trend. bottom 'dlgdp': quarterly growth rates in percent, fluctuating around a mean of about 0.5 within roughly -2 to 3, more volatile before the mid 1980s, with an extreme drop to about -9 and rebound to about +7.5 in 2020. -->
+
+## Examples: US GDP growth
+
+sample ACF and PACF of the growth rates, data up to 2015(4):
+
+```{r gdp-acf-code}
+#| eval: false
+url <- paste0("https://fred.stlouisfed.org/graph/fredgraph.csv",
+              "?id=A939RX0Q048SBEA&cosd=1960-01-01&coed=2020-12-31")
+gdp <- read.csv(url)
+gdp <- ts(gdp[, 2], start = c(1960, 1), frequency = 4)
+dlgdp <- diff(log(window(gdp, end = c(2015, 4)))) * 100
+par(mfrow = c(1, 2))
+acf(dlgdp)
+pacf(dlgdp)
+```
+
+## Examples: US GDP growth
+
+```{r gdp-acf}
+#| echo: false
+#| ref.label: gdp-acf-code
+#| fig-width: 12
+#| fig-height: 4.4
+#| out-width: "84%"
+```
+
+<!-- figure: two panels for quarterly US GDP growth 1960(2) to 2015(4), lag axis in years (1 = 4 quarters) from 0 to about 6. left: sample ACF, 1 at lag 0, about 0.31 at lag 1 quarter and 0.27 at lag 2 quarters, smaller positive values at lags 3 and 4, then all bars inside the dashed white noise bands at about ±0.13. right: sample PACF, about 0.31 at lag 1 and 0.19 at lag 2, the remaining bars mostly inside the bands with a few borderline ones. -->
+
+- 95% pointwise white noise confidence bands
+- following Neusser and Wagner (2022) we only use data ending in 2015(4) for ARMA modelling.

@@ -490,9 +490,9 @@ service — "Auto deploy unavailable" state mismatch, unresolved 2026-08-28; see
   (IID-PUBLIC-RATELIMIT). Link distributed via QR code in an intro class (2026-09). Content is
   a generic primer until the actual lecture material is dropped into `content_dcm/`.
 - `teachbot-timeseries` (login-protected Q&A, Basel): `config_timeseries.yaml`,
-  `content_timeseries/` (multi-course since 2026-10-11: one Q&A course per chapter `utsa01/`–`utsa03/`
-  with each deck's `.qmd` + `.html` and the chapter script, later chapters with the earlier scripts as
-  `extra_content`; `cards/` = the knowledge cards only, IID-CONTENT-FROM-HTML; `assignment1/` and `exercises01-03/`
+  `content_timeseries/` (multi-course since 2026-10-11: one Q&A course per chapter `utsa01/`–`utsa04/`
+  with each deck's `.qmd` + `.html` and the chapter script, later chapters with the earlier scripts (ch. 4 also the
+  ch. 3 decks, as ch. 3 has no script yet) as `extra_content`; `cards/` = the knowledge cards only, IID-CONTENT-FROM-HTML; `assignment1/` and `exercises01-03/`
   helpers, IID-ASSIGNMENT-HELP; files copied by `scripts/sync_timeseries.py`), login for `stud.unibas.ch`, model
   `openai/gpt-6-luna` (since 2026-10-06; was `deepseek/deepseek-v4-flash-0731`), own OpenRouter key + own `CHAINLIT_AUTH_SECRET`, own log
   Sheet ("Lectos Timeseries logs"). No session caps (authenticated). Set up 2026-09-15 with a
@@ -643,7 +643,7 @@ start, on each message (via the refused session), in the course chooser and for 
 **Status:** Implemented (2026-09-30)
 **Description:** A course subfolder that helps students with a coding exercise and a graded assignment
 without doing it for them. First instance: `content_timeseries/assignment1/` ("Assignment 1 & Exercise 1
-helper") in `teachbot-timeseries`, next to the chapter Q&A courses (`utsa01/`–`utsa03/`). Content: task sheet, the Quarto
+helper") in `teachbot-timeseries`, next to the chapter Q&A courses (`utsa01/`–`utsa04/`). Content: task sheet, the Quarto
 template students fill in, coding exercise 1, the lecturer's reference solution, plus the lecture scripts
 via `extra_content`. Own `_system_prompt.md`: short concise explanations for questions; for solving, the
 tutor states it cannot run code or see output, gives **one** small code step at a time, asks the student

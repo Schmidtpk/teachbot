@@ -26,9 +26,11 @@ failed and where the students are.
 - The lecture material the tutor had depends on the session's course (folders under
   `content_timeseries/`, each with a `_meta.yaml` naming the course):
   - `Ch. 1 – Introduction` → `utsa01/`, `Ch. 2 – Fundamental Concepts` → `utsa02/`,
-    `Ch. 3 – ARMA Models` → `utsa03/`: the chapter's slide decks (`*.qmd`) and lecture
-    script (`script_*` = notes with definitions and derivations); chapters 2 and 3 also had
-    the earlier chapters' scripts as background. Instructions: `content_timeseries/_system_prompt.md`.
+    `Ch. 3 – ARMA Models` → `utsa03/`, `Ch. 4 – ARMA Modelling` → `utsa04/`: the chapter's
+    slide decks (`*.qmd`) and lecture script (`script_*` = notes with definitions and
+    derivations; ch. 3 and 4 have no script yet); chapters 2 and 3 also had the earlier
+    chapters' scripts as background, chapter 4 the scripts of ch. 1–2 and the ch. 3 decks.
+    Instructions: `content_timeseries/_system_prompt.md`.
   - `Knowledge cards` → `cards/cards.html`: one card per concept, all chapters. The card
     data is JSON inside `<script id="data">`; Grep for a card id or title rather than
     reading the file whole. Instructions: `content_timeseries/cards/_system_prompt.md`.
