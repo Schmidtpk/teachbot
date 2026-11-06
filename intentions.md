@@ -659,6 +659,10 @@ pen-and-paper sheet for chapters 1–3 with its solutions (copied as `utsa-exerc
 so the same secrecy rule applies), plus scripts 1–2 and both ch. 3 decks via `extra_content`. Differs from
 the assignment helper: hints and checking of the student's own work by default, but the **full worked
 solution on explicit request** (ungraded exercises).
+**Sheet in the viewer panel (2026-11-06):** the same course shows `utsa-exercises-01-03.html`, the sheet
+rendered **without** solutions (`-M solutions:false`), next to the chat (IID-UI-CONTENT-VIEW). Students can
+open this file, so `scripts/sync_timeseries.py` refuses to copy a render that mentions "solution" and
+`tests/content_view.py` checks the deployed copy. The bot keeps reading the `_solution.qmd`.
 **Key files:** `content_timeseries/assignment1/_meta.yaml`, `_system_prompt.md`, `_welcome.md`, `content_timeseries/exercises01-03/`, `.railwayignore`
 **No-Goals:** executing student code; grading submissions.
 

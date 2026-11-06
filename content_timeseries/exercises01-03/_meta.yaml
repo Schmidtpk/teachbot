@@ -4,6 +4,9 @@
 lecture_name: "Exercises Ch. 1–3"
 order: 6
 description: "Help with the **pen-and-paper exercises** for chapters 1–3 (lag operators, random walk with drift, MA and ARMA processes)."
+viewer:                   # IID-UI-CONTENT-VIEW: the sheet WITHOUT solutions, next to the chat
+  - file: utsa-exercises-01-03.html
+    label: "Exercise sheet"
 extra_content:            # lecture material the exercises use
   - utsa01/script_01-utsa-intro.qmd
   - utsa02/script_02-utsa-fundamentals.qmd

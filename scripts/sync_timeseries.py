@@ -10,8 +10,13 @@ Sources:
   junctions/lecture_timeseries/slides/   decks (.qmd + rendered .html)
   junctions/lecture_timeseries/script/   lecture scripts (script_*.qmd)
   junctions/lecture_timeseries/exercises/ exercise sheets (with solutions → *_solution.qmd,
-                                         gitignored: the repo is public)
+                                         gitignored: the repo is public) and, for the viewer
+                                         panel, the sheet rendered WITHOUT solutions (.html)
   ../graph/site/index.html               card graph → cards/cards.html
+
+Render a sheet for the panel (IID-ASSIGNMENT-HELP), in the exercises folder:
+  quarto render <sheet>.qmd --to html -M embed-resources:true -M solutions:false
+Students can open this file, so a render that mentions "solution" anywhere is never copied.
 
 Run:
   python scripts/sync_timeseries.py           # copy what changed, list it
@@ -36,6 +41,7 @@ TARGET = ROOT / "content_timeseries"
 
 # course folder → decks (file stems in slides/), scripts (in script/), other files.
 # `optional_scripts` are copied once they exist (ch. 3 has no script yet).
+# `sheets`: file stems in exercises/ whose solution-free .html is shown in the viewer panel.
 COURSES: dict[str, dict] = {
     "utsa01": {"decks": ["01-utsa-intro"], "scripts": ["script_01-utsa-intro.qmd"]},
     "utsa02": {"decks": ["02-utsa-fundamentals"], "scripts": ["script_02-utsa-fundamentals.qmd"]},
@@ -43,8 +49,21 @@ COURSES: dict[str, dict] = {
                "optional_scripts": ["script_03-utsa-arma.qmd"]},
     "cards": {"files": [(GRAPH, "cards.html")]},
     "exercises01-03": {"files": [(EXERCISES / "utsa-exercises-01-03.qmd",
-                                  "utsa-exercises-01-03_solution.qmd")]},
+                                  "utsa-exercises-01-03_solution.qmd")],
+                       "sheets": ["utsa-exercises-01-03"]},
 }
+
+
+def sheet_problem(qmd: Path, html: Path) -> str | None:
+    """IID-ASSIGNMENT-HELP: why this rendered sheet must not go to students, if so."""
+    render = f"quarto render {qmd.name} --to html -M embed-resources:true -M solutions:false"
+    if not html.is_file():
+        return f"missing {html} — in {html.parent}, run: {render}"
+    if html.stat().st_mtime < qmd.stat().st_mtime:
+        return f"{html.name} is older than {qmd.name} — in {html.parent}, run: {render}"
+    if "solution" in html.read_text(encoding="utf-8", errors="replace").lower():
+        return f"{html.name} mentions 'solution' — students would see it. Re-render: {render}"
+    return None
 
 
 def plan() -> tuple[list[tuple[Path, Path]], list[str]]:
@@ -76,6 +95,12 @@ def plan() -> tuple[list[tuple[Path, Path]], list[str]]:
             if not src.is_file():
                 problems.append(f"missing {src}")
             pairs.append((src, dest / name))
+        for stem in spec.get("sheets", []):
+            qmd, html = EXERCISES / f"{stem}.qmd", EXERCISES / f"{stem}.html"
+            problem = sheet_problem(qmd, html)
+            if problem:
+                problems.append(problem)
+            pairs.append((html, dest / html.name))
     return pairs, problems
 
 

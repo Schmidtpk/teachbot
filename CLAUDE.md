@@ -80,7 +80,11 @@ Plan/documentation should be intention-first:
   `extra_content` — then `cards/` (only the knowledge cards, `content_from_viewer: true`,
   IID-CONTENT-FROM-HTML), `assignment1/` (Assignment 1 & Exercise 1 helper,
   IID-ASSIGNMENT-HELP) and `exercises01-03/` (pen-and-paper exercises ch. 1–3, the sheet with
-  solutions as `utsa-exercises-01-03_solution.qmd`, IID-ASSIGNMENT-HELP). Source files come from
+  solutions as `utsa-exercises-01-03_solution.qmd` for the bot, the sheet without solutions as
+  `.html` in the viewer panel for students, IID-ASSIGNMENT-HELP). After editing the sheet,
+  re-render it in the exercises folder with
+  `quarto render utsa-exercises-01-03.qmd --to html -M embed-resources:true -M solutions:false`;
+  the sync script refuses a stale render or one that mentions "solution". Source files come from
   `junctions/lecture_timeseries/` (gitignored junction to `Dropbox/teaching/lecture_timeseries`)
   and `../graph/site/index.html`; **copy them with `python scripts/sync_timeseries.py`**
   (`--check` only reports), which keeps each deck's `.qmd` and `.html` together. The

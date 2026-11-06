@@ -366,6 +366,15 @@ def main() -> None:
           "ch. 3 has the scripts of ch. 1 and 2 as background")
     check(by_id["cards"].content_from_viewer and list(by_id["cards"].viewer.docs) == ["cards"],
           "the card course shows only the cards and answers from them")
+    # IID-ASSIGNMENT-HELP: students can open this file, so the check covers the raw HTML too
+    sheet = by_id["exercises01-03"].viewer.docs["utsa-exercises-01-03"]
+    sheet_text = sheet.locations[sheet.order[0]].text.lower()
+    check(sheet.label == "Exercise sheet" and all(f"exercise {n}" in sheet_text for n in range(1, 5)),
+          "the exercise course shows the sheet with all four exercises")
+    check("solution" not in sheet.path.read_text(encoding="utf-8").lower(),
+          "the sheet shown to students contains no solutions")
+    check((by_id["exercises01-03"].content_dir / "utsa-exercises-01-03_solution.qmd").is_file(),
+          "the bot still has the solutions as lecture content")
 
     # 10 — the real files (gitignored, copied in by scripts/sync_timeseries.py)
     print("\ncase: real lecture files (local)")
